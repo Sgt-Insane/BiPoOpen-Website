@@ -147,6 +147,7 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
     state.activeTeamIndex = startTeamIndex;
     state.infoText = `${activeTeam.value.players[state.activePlayerIndex].name} ist am Zug!`;
     effects.enterFullscreen();
+    effects.requestWakeLock();
     match.value.time = new Date().getTime();
   };
 

@@ -119,5 +119,38 @@ export const createEffects = () => {
       document.exitFullscreen();
   };
 
-  return { ballStart, ballToCup, ballToArea, hideBalls, snapshotBalls, restoreBalls, askCup, enterFullscreen, exitFullscreen };
+  // Keep the screen awake while a game is running (Screen Wake Lock API).
+  // Silently ignored where unsupported. The browser drops the lock when the
+  // tab is hidden, so it is re-acquired once the page becomes visible again.
+  let wakeLock: WakeLockSentinel | null = null;
+  let wantWakeLock = false;
+
+  const acquireWakeLock = async () => {
+    if (!('wakeLock' in navigator) || wakeLock) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch {
+      wakeLock = null;
+    }
+  };
+
+  const onVisibilityChange = () => {
+    if (wantWakeLock && document.visibilityState === 'visible') acquireWakeLock();
+  };
+
+  const requestWakeLock = () => {
+    wantWakeLock = true;
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    acquireWakeLock();
+  };
+
+  const releaseWakeLock = () => {
+    wantWakeLock = false;
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    wakeLock?.release();
+    wakeLock = null;
+  };
+
+  return { ballStart, ballToCup, ballToArea, hideBalls, snapshotBalls, restoreBalls, askCup, enterFullscreen, exitFullscreen, requestWakeLock, releaseWakeLock };
 };

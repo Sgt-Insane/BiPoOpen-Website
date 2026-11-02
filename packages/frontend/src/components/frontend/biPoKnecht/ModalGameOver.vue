@@ -25,6 +25,11 @@
             </div>
         </template>
 
+        <!-- Button 1 -->
+        <template #cancle v-if="onRematch">
+            <div @click="onRematch()">Revanche</div>
+        </template>
+
         <!-- Button 2 -->   
         <template #confirm>
             <div @click="endGame()">BiPo Knecht beenden</div>
@@ -41,7 +46,8 @@ import { addOpenGame } from '../openGames/OpenGamesUtilFunctions';
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
-    isLeagueGame: {type: Boolean, required: false, default: false }
+    isLeagueGame: {type: Boolean, required: false, default: false },
+    onRematch: {type: Function as PropType<() => void>, required: false }
 });
 
 onMounted(async () => {
