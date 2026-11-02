@@ -1,5 +1,6 @@
 import { computed, reactive, toRefs, type Ref } from 'vue';
 import type { Effects } from './biPoKnechtDom';
+import { useBiPoSound } from './biPoSound';
 
 // ---------------------------------------------------------------------------
 // Data model — the single source of truth for one beer-pong match.
@@ -27,6 +28,8 @@ type ReRack = { afterTurnIndex: number; teamIndex: number; time: number };
 //   over      = the game is finished
 type GameStatus = 'starting' | 'playing' | 'over';
 
+export type BannerEvent = 'heating-up' | 'on-fire' | 'bomb' | 'ballsback' | 'overtime' | 'deathcup' | null;
+
 type GameState = {
   racks: [Rack, Rack];        // racks[teamIndex] = that team's cups
   turns: Turn[];
@@ -36,6 +39,8 @@ type GameState = {
   reRacks: ReRack[];          // re-rack events, in chronological order
   infoText: string;
   status: GameStatus;
+  bannerEvent: BannerEvent;
+  isOvertime: boolean;
 };
 
 type GameSnapshot = {
@@ -107,7 +112,34 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
     reRacks: [],
     infoText: '',
     status: 'starting',
+    bannerEvent: null,
+    isOvertime: false,
   });
+
+  const sound = useBiPoSound();
+
+  let bannerTimer: ReturnType<typeof setTimeout> | null = null;
+  const triggerBanner = (event: BannerEvent) => {
+    state.bannerEvent = event;
+    if (bannerTimer) clearTimeout(bannerTimer);
+    if (event) {
+      bannerTimer = setTimeout(() => {
+        state.bannerEvent = null;
+      }, 1800);
+    }
+  };
+
+  const triggerOvertime = () => {
+    state.isOvertime = true;
+    state.racks[0].hit = [3, 4, 5, 6, 7, 8, 9];
+    state.racks[0].pending = [];
+    state.racks[1].hit = [3, 4, 5, 6, 7, 8, 9];
+    state.racks[1].pending = [];
+    state.status = 'playing';
+    state.infoText = '⚔️ AUSGLEICH! Verlängerung (2x3 Cups)!';
+    triggerBanner('overtime');
+    sound.playFire();
+  };
 
   const activeTeam = computed(() => state.activeTeamIndex === 0 ? match.value.team1 : match.value.team2);
   const activePlayer = computed(() => activeTeam.value.players[state.activePlayerIndex]);
@@ -336,11 +368,33 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
     enemy.pending.push(...resolved.cups);
 
     // Gentleman's rule: if the OTHER team already sank their last cup and the
-    // second player of this team has now thrown, the game is over.
+    // second player of this team has now thrown, the game is over (or overtime!).
     if (def.progress.kind === 'next') {
       const lastCupTurn = state.turns.find(t => t.type === 'lastCup');
-      if (lastCupTurn && lastCupTurn.teamIndex !== state.activeTeamIndex && state.activePlayerIndex === 1)
-        state.status = 'over';
+      if (lastCupTurn && lastCupTurn.teamIndex !== state.activeTeamIndex && state.activePlayerIndex === 1) {
+        const enemyTotal = enemy.hit.length + enemy.pending.length;
+        if (enemyTotal >= 10) {
+          triggerOvertime();
+        } else {
+          state.status = 'over';
+        }
+      }
+    }
+
+    // Trigger special action banners
+    if (resolved.type === 'bomb') {
+      triggerBanner('bomb');
+      sound.playBomb();
+    } else if (resolved.type === 'ballsback') {
+      triggerBanner('ballsback');
+    } else if (resolved.type === 'onfire') {
+      triggerBanner('on-fire');
+      sound.playFire();
+    } else if (resolved.type === 'hit') {
+      const streak = getPlayerStreak(state.activeTeamIndex, state.activePlayerIndex);
+      if (streak + 1 === 2) {
+        triggerBanner('heating-up');
+      }
     }
 
     // Commit this round's hits once the second player has thrown (a trickshot
@@ -362,10 +416,16 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
   const performTurn = async (base: Base, cup?: number) => {
     pushSnapshot();
     effects.ballStart(state.activeTeamIndex, state.activePlayerIndex);
-    if (base === 'hit')
+    if (base === 'hit') {
+      sound.playHit();
       effects.ballToCup(state.activeTeamIndex, state.activePlayerIndex, cup!);
-    else
-      effects.ballToArea(state.activeTeamIndex, state.activePlayerIndex, base === 'miss' ? 'null' : 'airball');
+    } else if (base === 'miss') {
+      sound.playMiss();
+      effects.ballToArea(state.activeTeamIndex, state.activePlayerIndex, 'null');
+    } else {
+      sound.playAirball();
+      effects.ballToArea(state.activeTeamIndex, state.activePlayerIndex, 'airball');
+    }
 
     const resolved = await resolveTurn(base, cup);
     applyTurn(resolved);
@@ -416,6 +476,8 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
     addTurn('hit', { cupIndex: remainingCups[0] ?? 0 });
     state.status = 'over';
     state.infoText = `💀 DEATHCUP! ${activePlayer.value.name} beendet das Spiel sofort!`;
+    triggerBanner('deathcup');
+    sound.playBomb();
     effects.exitFullscreen();
     effects.releaseWakeLock();
   };
@@ -469,6 +531,9 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
     performDeathcup,
     getPlayerStreak,
     getPlayerFireStatus,
+    triggerBanner,
+    triggerOvertime,
+    sound,
   });
 };
 

@@ -229,4 +229,32 @@ describe('useBiPoKnecht Match Engine', () => {
     await game.performTurn('hit', 9);
     expect(game.status).toBe('over');
   });
+  it('triggers Overtime (2x3 cups) when defending team equalizes in Gentleman rule', async () => {
+    const game = useBiPoKnecht(matchRef, effects);
+    game.startGame(0);
+
+    // Team 1 knocks down 9 cups
+    game.racks[1].hit = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    // Team 2 also has 9 cups down
+    game.racks[0].hit = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+    // Team 1 Player 0 hits the 10th cup (cup 9) -> Last Cup
+    await game.performTurn('hit', 9);
+    // Team 1 Player 1 misses -> switches to Team 2 for Gentleman rule
+    await game.performTurn('miss');
+
+    expect(game.activeTeamIndex).toBe(1);
+    expect(game.status).toBe('playing');
+
+    // Team 2 Player 0 hits the 10th cup (cup 9) -> Equalizer!
+    await game.performTurn('hit', 9);
+    // Team 2 Player 1 finishes turn -> Triggers Overtime!
+    await game.performTurn('miss');
+
+    expect(game.isOvertime).toBe(true);
+    expect(game.status).toBe('playing');
+    // Both teams now have 3 cups standing (7 hit: 3, 4, 5, 6, 7, 8, 9)
+    expect(game.racks[0].hit.length).toBe(7);
+    expect(game.racks[1].hit.length).toBe(7);
+  });
 });
