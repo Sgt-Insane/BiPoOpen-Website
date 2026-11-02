@@ -27,15 +27,16 @@
             :id="`ra-cup-team-${teamIndex}-${game.cupIndexOf(rowIndex, circleIndex)}`"
             class="cup-top-down relative cursor-pointer flex items-center justify-center transition-all duration-150 transform active:scale-90"
             :class="{
-              'cup-hit': isCupHit(game.cupIndexOf(rowIndex, circleIndex)),
-              'cup-standing': !isCupHit(game.cupIndexOf(rowIndex, circleIndex))
+              'cup-hit': isCupPermanentlyHit(game.cupIndexOf(rowIndex, circleIndex)),
+              'cup-pending ring-4 ring-amber-400 animate-pulse': isCupPending(game.cupIndexOf(rowIndex, circleIndex)),
+              'cup-standing': !isCupPermanentlyHit(game.cupIndexOf(rowIndex, circleIndex)) && !isCupPending(game.cupIndexOf(rowIndex, circleIndex))
             }"
             :style="{
               width: '64px',
               height: '64px',
               maxWidth: '17.5dvw',
               maxHeight: '17.5dvw',
-              pointerEvents: isCupHit(game.cupIndexOf(rowIndex, circleIndex)) ? 'none' : 'auto'
+              pointerEvents: isCupPermanentlyHit(game.cupIndexOf(rowIndex, circleIndex)) ? 'none' : 'auto'
             }"
             @click="game.performTurn('hit', game.cupIndexOf(rowIndex, circleIndex))"
           >
@@ -44,15 +45,25 @@
               class="cup-rim absolute inset-0 rounded-full"
               :style="{
                 borderColor: getRimColor(rowIndex, circleIndex),
-                backgroundColor: isCupHit(game.cupIndexOf(rowIndex, circleIndex)) ? '#d1d5db' : getLiquidColor()
+                backgroundColor: isCupPermanentlyHit(game.cupIndexOf(rowIndex, circleIndex)) ? '#d1d5db' : getLiquidColor()
               }"
             >
               <!-- Becher-Boden / Flüssigkeitsschatten -->
               <div class="cup-inner absolute inset-[5px] rounded-full flex items-center justify-center">
+                <!-- Dauerhaft getroffener Becher -->
                 <span
-                  v-if="isCupHit(game.cupIndexOf(rowIndex, circleIndex))"
+                  v-if="isCupPermanentlyHit(game.cupIndexOf(rowIndex, circleIndex))"
                   class="text-white text-base font-black opacity-80"
                 >✕</span>
+                <!-- In dieser Runde bereits getroffen (Pending) -> Klickbar für Bombe! -->
+                <div
+                  v-else-if="isCupPending(game.cupIndexOf(rowIndex, circleIndex))"
+                  class="flex flex-col items-center justify-center text-center"
+                >
+                  <span class="text-xs">💣</span>
+                  <span class="text-[9px] font-black text-amber-900 leading-none">BOMBE</span>
+                </div>
+                <!-- Normal stehender Becher -->
                 <span
                   v-else
                   class="cup-shine absolute inset-0 rounded-full"
@@ -64,12 +75,12 @@
       </div>
     </div>
 
-    <!-- ACTIVE TEAM: Dart-Automat Kontrollleiste & Spielerauswahl -->
+    <!-- ACTIVE TEAM: Dart-Automat Kontrollleiste (Oben Aktionen, unten Namen an der Kante) -->
     <div
       v-show="isActiveTeam"
-      class="w-full max-w-[500px] px-3 pb-3 pt-2 flex flex-col justify-end gap-2 bg-gradient-to-t from-white via-white/95 to-transparent"
+      class="w-full max-w-[500px] px-3 pb-2 pt-2 flex flex-col justify-end gap-2 bg-gradient-to-t from-white via-white/95 to-transparent"
     >
-      <!-- Info-Banner (z.B. "Alice ist am Zug", "ON FIRE!") -->
+      <!-- 1. Info-Banner (z.B. "Alice ist am Zug", "ON FIRE!", Wurf 1/2) -->
       <div class="flex items-center justify-between px-2">
         <div class="flex items-center gap-2 min-w-0">
           <span class="font-extrabold text-sm sm:text-base text-gray-800 truncate">
@@ -89,56 +100,13 @@
           </span>
         </div>
         <span class="text-xs font-semibold text-gray-400 shrink-0 ml-2">
-          Wurf {{ game.activePlayerIndex + 1 }}/{{ teamPlayers.length }}
+          Wurf {{ game.activePlayerIndex + 1 }}/2
         </span>
       </div>
 
-      <!-- Spieler-Pills zum direkten Auswählen des Werfers -->
-      <div class="grid grid-cols-2 gap-2">
-        <div
-          v-for="(player, pIdx) in teamPlayers"
-          :key="player._id || pIdx"
-          @click="game.selectPlayer(pIdx)"
-          class="cursor-pointer rounded-xl px-2.5 py-1.5 border-2 transition-all duration-200 flex items-center justify-between"
-          :class="[
-            game.activePlayerIndex === pIdx
-              ? isTeam1
-                ? 'bg-[#EA5160]/10 border-[#EA5160] shadow-sm'
-                : 'bg-[#61C3D9]/10 border-[#61C3D9] shadow-sm'
-              : 'bg-gray-50 border-gray-200 opacity-60 hover:opacity-100'
-          ]"
-        >
-          <div class="flex flex-col min-w-0">
-            <div class="flex items-center gap-1">
-              <span class="font-bold text-xs sm:text-sm text-gray-900 truncate">
-                {{ player.name }}
-              </span>
-              <!-- Flammen-Icon für diesen Spieler -->
-              <span
-                v-if="game.getPlayerFireStatus(teamIndex, pIdx) === 'on-fire'"
-                class="text-sm animate-bounce"
-                title="On Fire!"
-              >🔥</span>
-              <span
-                v-else-if="game.getPlayerFireStatus(teamIndex, pIdx) === 'heating-up'"
-                class="text-xs"
-                title="Heating Up"
-              >🔥</span>
-            </div>
-            <span class="text-[10px] text-gray-500">
-              {{ game.activePlayerIndex === pIdx ? 'Aktiv' : 'Wählen' }} · Streak: {{ game.getPlayerStreak(teamIndex, pIdx) }}
-            </span>
-          </div>
-          <div
-            class="w-2.5 h-2.5 rounded-full shrink-0"
-            :class="game.activePlayerIndex === pIdx ? (isTeam1 ? 'bg-[#EA5160]' : 'bg-[#61C3D9]') : 'bg-gray-300'"
-          />
-        </div>
-      </div>
-
-      <!-- Dart-Automat Tastenfeld: Nullwurf, Airball, Spezialwürfe -->
+      <!-- 2. Dart-Automat Tastenfeld (DARÜBER platziert): Nullwurf, Airball, Spezialwürfe -->
       <div class="flex flex-col gap-1.5">
-        <!-- Haupt-Tasten: Große Fehlwurf-Buttons direkt am Daumen -->
+        <!-- Haupt-Tasten: Große Fehlwurf-Buttons -->
         <div class="grid grid-cols-2 gap-2">
           <Button
             @click="game.performTurn('miss')"
@@ -217,6 +185,64 @@
           </Button>
         </div>
       </div>
+
+      <!-- 3. Spielernamen GANZ UNTEN AM BILDSCHIRMRAND (direkt an der Kante mit Profilbild / Liga-Logo) -->
+      <div
+        class="w-full mt-1"
+        :class="uniquePlayers.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-2'"
+      >
+        <div
+          v-for="item in uniquePlayers"
+          :key="item.player._id || item.originalIndex"
+          @click="uniquePlayers.length > 1 ? game.selectPlayer(item.originalIndex) : null"
+          class="cursor-pointer rounded-xl px-2.5 py-1.5 border-2 transition-all duration-200 flex items-center justify-between shadow-xs select-none"
+          :class="[
+            uniquePlayers.length === 1
+              ? 'w-full max-w-[280px] bg-white border-2 ' + (isTeam1 ? 'border-[#EA5160] shadow-sm' : 'border-[#61C3D9] shadow-sm')
+              : (game.activePlayerIndex === item.originalIndex
+                ? (isTeam1 ? 'bg-[#EA5160]/10 border-[#EA5160] shadow-sm' : 'bg-[#61C3D9]/10 border-[#61C3D9] shadow-sm')
+                : 'bg-gray-50 border-gray-200 opacity-60 hover:opacity-100')
+          ]"
+        >
+          <!-- Profilbild / Liga-Logo + Spielername -->
+          <div class="flex items-center gap-2 min-w-0">
+            <!-- Avatar: Nutzt Team-Logo (im Liga-Modus) oder Spieler-Profilbild -->
+            <Avatar
+              :name="item.player.name"
+              :avatarImage="teamLogo"
+              shape="circle"
+              class="!w-7 !h-7 text-xs font-bold shrink-0"
+            />
+
+            <div class="flex flex-col min-w-0">
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-xs sm:text-sm text-gray-900 truncate">
+                  {{ item.player.name }}
+                </span>
+                <span
+                  v-if="game.getPlayerFireStatus(teamIndex, item.originalIndex) === 'on-fire'"
+                  class="text-sm animate-bounce"
+                  title="On Fire!"
+                >🔥</span>
+                <span
+                  v-else-if="game.getPlayerFireStatus(teamIndex, item.originalIndex) === 'heating-up'"
+                  class="text-xs"
+                  title="Heating Up"
+                >🔥</span>
+              </div>
+              <span class="text-[10px] text-gray-500">
+                {{ uniquePlayers.length === 1 ? 'Werfer' : (game.activePlayerIndex === item.originalIndex ? 'Aktiv' : 'Wählen') }} · Streak: {{ game.getPlayerStreak(teamIndex, item.originalIndex) }}
+              </span>
+            </div>
+          </div>
+
+          <div
+            v-if="uniquePlayers.length > 1"
+            class="w-2.5 h-2.5 rounded-full shrink-0 ml-1.5"
+            :class="game.activePlayerIndex === item.originalIndex ? (isTeam1 ? 'bg-[#EA5160]' : 'bg-[#61C3D9]') : 'bg-gray-300'"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Ballflug-Animationselemente -->
@@ -228,6 +254,7 @@
 <script setup lang="ts">
 import { computed, PropType } from 'vue';
 import Button from 'primevue/button';
+import Avatar from '@/components/shared/Avatar.vue';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
 const props = defineProps({
@@ -238,13 +265,28 @@ const props = defineProps({
 const isTeam1 = computed(() => props.teamIndex === 0);
 const isActiveTeam = computed(() => props.game.activeTeamIndex === props.teamIndex);
 
+const currentTeam = computed(() => {
+  const match = (props.game as any).match ?? (props.game as any).matchRef?.value;
+  if (!match) return props.teamIndex === 0 ? props.game.activeTeam : props.game.activeTeam;
+  return props.teamIndex === 0 ? match.team1 : match.team2;
+});
+
+const teamLogo = computed<string | undefined>(() => {
+  return currentTeam.value?.logo;
+});
+
 const teamPlayers = computed(() => {
-  const team = props.teamIndex === 0 ? props.game.activeTeam : props.game.activeTeam;
-  // Sicherstellen, dass das jeweilige Team korrekt adressiert wird
-  const current = props.teamIndex === 0 ? (props.game as any).racks : null;
-  return props.teamIndex === 0
-    ? (props.game as any).match?.team1?.players ?? props.game.activeTeam.players
-    : (props.game as any).match?.team2?.players ?? props.game.activeTeam.players;
+  return currentTeam.value?.players ?? props.game.activeTeam.players;
+});
+
+// Bei 1v1 wird nur 1 Spielerkarte dargestellt
+const uniquePlayers = computed(() => {
+  const players = teamPlayers.value;
+  if (!players || players.length === 0) return [];
+  if (players.length > 1 && players[0].name === players[1].name) {
+    return [{ player: players[0], originalIndex: 0 }];
+  }
+  return players.map((p: Player, idx: number) => ({ player: p, originalIndex: idx }));
 });
 
 // Berechne den aktuellen Fire-Status des aktiven Spielers
@@ -256,13 +298,18 @@ const currentFireStatus = computed(() => {
 const cupsHit = computed(() => props.game.racks[props.teamIndex].hit);
 const cupsPending = computed(() => props.game.racks[props.teamIndex].pending);
 
-const isCupHit = (cupIndex: number) => {
-  return cupsHit.value.includes(cupIndex) || cupsPending.value.includes(cupIndex);
+const isCupPermanentlyHit = (cupIndex: number) => {
+  return cupsHit.value.includes(cupIndex);
+};
+
+const isCupPending = (cupIndex: number) => {
+  return cupsPending.value.includes(cupIndex);
 };
 
 const getRimColor = (row: number, position: number) => {
   const index = props.game.cupIndexOf(row, position);
-  if (isCupHit(index)) return '#9ca3af';
+  if (isCupPermanentlyHit(index)) return '#9ca3af';
+  if (isCupPending(index)) return '#f59e0b';
   return isTeam1.value ? '#EA5160' : '#61C3D9';
 };
 
