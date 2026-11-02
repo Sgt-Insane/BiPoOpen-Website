@@ -82,7 +82,7 @@ const TURN_DEFS: Record<Turn['type'], TurnDef> = {
   ballsback: { score: () => 1,   progress: { kind: 'restart-team' } },
   trickshot: { score: () => 0,   progress: { kind: 'same' }, afterInfo: (name) => `${name} bitte Trickshot eintragen!` },
   lastCup:   { score: () => 1,   progress: { kind: 'next' } },
-  onfire:    { score: () => 0,   progress: { kind: 'next' } },
+  onfire:    { score: () => 1,   progress: { kind: 'same' }, afterInfo: (name) => `🔥🔥 ${name} ist ON FIRE! Weiterwerfen!` },
 };
 
 // Cup index inside the triangle for a given row (1..4) and position (1..row).
@@ -116,6 +116,30 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
   const enemyRack = () => state.racks[1 - state.activeTeamIndex];
   const lastTurn = () => state.turns[state.turns.length - 1];
 
+  const isHitType = (type: Turn['type']) =>
+    type === 'hit' || type === 'bouncer' || type === 'bomb' || type === 'ballsback' || type === 'lastCup' || type === 'onfire';
+
+  const isMissType = (type: Turn['type']) => type === 'miss' || type === 'airball';
+
+  const getPlayerStreak = (teamIndex: number, playerIndex: number): number => {
+    let streak = 0;
+    for (let i = state.turns.length - 1; i >= 0; i--) {
+      const t = state.turns[i];
+      if (t.teamIndex === teamIndex && t.playerIndex === playerIndex) {
+        if (isHitType(t.type)) streak++;
+        else if (isMissType(t.type)) break;
+      }
+    }
+    return streak;
+  };
+
+  const getPlayerFireStatus = (teamIndex: number, playerIndex: number): 'normal' | 'heating-up' | 'on-fire' => {
+    const streak = getPlayerStreak(teamIndex, playerIndex);
+    if (streak >= 3) return 'on-fire';
+    if (streak === 2) return 'heating-up';
+    return 'normal';
+  };
+
   const history: GameSnapshot[] = [];
 
   // --- small setters used by the UI -------------------------------------
@@ -139,6 +163,11 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
       state.activeTeamIndex = teamIndex;
 
     state.activePlayerIndex = next;
+    state.infoText = `${activeTeam.value.players[state.activePlayerIndex].name} ist am Zug!`;
+  };
+
+  const selectPlayer = (playerIndex: number) => {
+    state.activePlayerIndex = playerIndex;
     state.infoText = `${activeTeam.value.players[state.activePlayerIndex].name} ist am Zug!`;
   };
 
@@ -241,10 +270,29 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
   const ruleLastCup = (base: Base, cup?: number): Resolved | null => {
     if (base !== 'hit') return null;
     const enemy = enemyRack();
+    const last = lastTurn();
+
+    if (last?.type === 'lastCup' && last.teamIndex === state.activeTeamIndex) {
+      state.status = 'over';
+      return { type: 'lastCup', data: { cupIndex: cup! } satisfies LastCupTurn, cups: [] };
+    }
+
     const totalAfterThisHit = enemy.hit.length + enemy.pending.length + 1;
     if (totalAfterThisHit !== 10) return null;
-    if (lastTurn()?.type === 'lastCup') return null;
     return { type: 'lastCup', data: { cupIndex: cup! } satisfies LastCupTurn, cups: [cup!] };
+  };
+
+  const ruleOnFire = (base: Base, cup?: number): Resolved | null => {
+    if (base !== 'hit') return null;
+    const streak = getPlayerStreak(state.activeTeamIndex, state.activePlayerIndex);
+    if (streak >= 2) {
+      return {
+        type: 'onfire',
+        data: { cupIndex: cup! },
+        cups: [cup!],
+      };
+    }
+    return null;
   };
 
   const ruleBase = (base: Base, cup?: number): Resolved => ({
@@ -253,7 +301,7 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
     cups: base === 'hit' ? [cup!] : [],
   });
 
-  const rules = [ruleTrickshot, ruleBouncer, ruleBombOrBallsBack, ruleLastCup];
+  const rules = [ruleTrickshot, ruleBouncer, ruleLastCup, ruleBombOrBallsBack, ruleOnFire];
 
   const resolveTurn = async (base: Base, cup?: number): Promise<Resolved> => {
     for (const rule of rules) {
@@ -354,6 +402,24 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
     });
   };
 
+  const performDeathcup = () => {
+    pushSnapshot();
+    const enemy = enemyRack();
+    const remainingCups = [];
+    for (let i = 0; i < 10; i++) {
+      if (!enemy.hit.includes(i) && !enemy.pending.includes(i)) {
+        remainingCups.push(i);
+      }
+    }
+    enemy.hit.push(...remainingCups);
+    enemy.pending.length = 0;
+    addTurn('hit', { cupIndex: remainingCups[0] ?? 0 });
+    state.status = 'over';
+    state.infoText = `💀 DEATHCUP! ${activePlayer.value.name} beendet das Spiel sofort!`;
+    effects.exitFullscreen();
+    effects.releaseWakeLock();
+  };
+
   // --- scoring (used when the game is over) ------------------------------
 
   const scoreTurn = (turn: Turn, index: number, turns: Turn[]) =>
@@ -399,6 +465,10 @@ export const useBiPoKnecht = (match: Ref<Match>, effects: Effects) => {
     setInfoText,
     scoreTurn,
     finalizeScores,
+    selectPlayer,
+    performDeathcup,
+    getPlayerStreak,
+    getPlayerFireStatus,
   });
 };
 

@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
-    "generate:league-logos": "node scripts/generate-league-logos.mjs"
+    "generate:league-logos": "node scripts/generate-league-logos.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",
@@ -37,6 +38,7 @@
     "vite": "^6.2.3",
     "vite-plugin-mkcert": "^1.17.5",
     "vite-plugin-pwa": "^0.19.8",
+    "vitest": "^5.1.0",
     "vue-tsc": "^2.0.21"
   }
 }

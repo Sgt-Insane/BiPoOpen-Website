@@ -1,5 +1,5 @@
 <template>
-    <div class="absolute w-[100dvw] h-[100dvh] top-0 left-0 z-[1000] bg-(--bp-bg)">
+    <div class="absolute w-[100dvw] h-[100dvh] top-0 left-0 z-[1000] bg-[#f8fafc] overflow-hidden">
         <ModalGameOver v-if="game.status === 'over'" :match="match" :isLeagueGame="props.isLeagueGame" :onRematch="props.onRematch" />
         <ModalStartingPlayer v-if="game.status === 'starting'" :match="match" :startGame="game.startGame"/>
 
@@ -7,19 +7,33 @@
             <Rack v-for="i in 2" :key="i" :game="game" :teamIndex="i - 1" />
         </div>
 
-        <!-- Fixed bottom nav -->
-        <div v-if="game.status !== 'starting'"
-            class="fixed bottom-[5px] left-1/2 -translate-x-1/2 w-auto bg-(--bp-surface) rounded-t-2xl px-4 pt-4 pb-3 shadow-sm flex flex-row gap-2 items-center justify-center z-[99999]"
+        <!-- Schwebende Quick-Actions an der rechten Tisch-Seitenkante: Verdeckt keine Becher oder Wurfbuttons -->
+        <div
+            v-if="game.status !== 'starting'"
+            class="fixed right-2 top-1/2 -translate-y-1/2 flex flex-col gap-2.5 z-[9999]"
         >
-            <Button @click="game.undoLastTurn()" :disabled="game.turns.length === 0 && game.reRacks.length === 0" text rounded>
-                <i class="pi pi-undo text-2xl text-(--bp-text-secondary)" />
-            </Button>
-            <Button @click="showHistory = true" text rounded>
-                <i class="pi pi-clock text-2xl text-(--bp-text-secondary)" />
-            </Button>
-            <Button @click="showStats = true" text rounded>
-                <i class="pi pi-trophy text-2xl text-(--bp-text-secondary)" />
-            </Button>
+            <button
+                @click="game.undoLastTurn()"
+                :disabled="game.turns.length === 0 && game.reRacks.length === 0"
+                class="w-11 h-11 rounded-full bg-white/95 backdrop-blur-sm shadow-md border border-gray-200 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center active:scale-95 transition-all"
+                title="Letzten Wurf rückgängig machen"
+            >
+                <i class="pi pi-undo text-lg" />
+            </button>
+            <button
+                @click="showHistory = true"
+                class="w-11 h-11 rounded-full bg-white/95 backdrop-blur-sm shadow-md border border-gray-200 text-gray-700 flex items-center justify-center active:scale-95 transition-all"
+                title="Spielverlauf"
+            >
+                <i class="pi pi-clock text-lg" />
+            </button>
+            <button
+                @click="showStats = true"
+                class="w-11 h-11 rounded-full bg-white/95 backdrop-blur-sm shadow-md border border-gray-200 text-gray-700 flex items-center justify-center active:scale-95 transition-all"
+                title="Statistiken"
+            >
+                <i class="pi pi-trophy text-lg" />
+            </button>
         </div>
 
         <GameHistoryDrawer v-model:visible="showHistory" :game="game" :match="match" />
@@ -29,7 +43,6 @@
 
 <script setup lang="ts">
 import { onUnmounted, PropType, ref, watch } from 'vue';
-import Button from 'primevue/button';
 import Rack from '@/components/frontend/biPoKnecht/Rack.vue';
 import ModalGameOver from './ModalGameOver.vue';
 import ModalStartingPlayer from './ModalStartingPlayer.vue';

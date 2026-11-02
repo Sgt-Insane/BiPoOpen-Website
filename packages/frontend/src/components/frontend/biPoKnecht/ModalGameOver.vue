@@ -51,6 +51,7 @@ const props = defineProps({
 });
 
 onMounted(async () => {
+    if (import.meta.env.DEV) return;
     if(props.isLeagueGame){
         let success = await addLeagueGame(props.match);
     }else{
