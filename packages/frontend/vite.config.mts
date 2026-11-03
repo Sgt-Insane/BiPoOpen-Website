@@ -24,6 +24,8 @@ export default defineConfig(({ command }) => {
           clientsClaim: true,
           // Force immediate activation
           skipWaiting: true,
+          // Push-Benachrichtigungen (public/push-sw.js)
+          importScripts: ['push-sw.js'],
 
           // Only precache the app shell (HTML, JS, CSS) - NOT images
           globPatterns: [

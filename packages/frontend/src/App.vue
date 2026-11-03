@@ -4,11 +4,13 @@ import AppFooter from '@/components/shared/AppFooter.vue';
 import AppBottomNav from '@/components/shared/AppBottomNav.vue';
 import TournamentPickerDrawer from '@/components/shared/TournamentPickerDrawer.vue';
 import AddGameDrawer from '@/components/shared/GameEntry/AddGameDrawer.vue';
+import PlayerSearchDrawer from '@/components/shared/PlayerSearchDrawer.vue';
 import Toast from 'primevue/toast';
 import { Analytics } from '@vercel/analytics/vue';
 import { SpeedInsights } from '@vercel/speed-insights/vue';
 
-import { onBeforeMount, provide } from 'vue'
+import { computed, onBeforeMount, provide } from 'vue'
+import { useRoute } from 'vue-router';
 import router from './router.js';
 import axios from "axios";
 import { getPlayerProfilePath } from '@/util/util';
@@ -19,6 +21,10 @@ const openPlayerProfile = (name: string) => {
 };
 
 provide('openPlayerProfile', openPlayerProfile);
+
+// Detailseiten (z.B. Benachrichtigungen) haben mobil keinen App-Header, nur ihren Zurueck-Pfeil
+const route = useRoute();
+const isDetailPage = computed(() => route.meta.detailPage === true);
 
 onBeforeMount(async() => {
 	// Configure Axios
@@ -36,7 +42,7 @@ onBeforeMount(async() => {
 
 <template>
 	<Toast position="bottom-right">
-		<template #container="{ message }">
+		<template #container="{ message, closeCallback }">
 			<div class="app-toast" :class="`app-toast--${message.severity ?? 'info'}`">
 				<span class="app-toast-icon">
 					<i v-if="message.severity === 'success'" class="pi pi-check"></i>
@@ -46,6 +52,13 @@ onBeforeMount(async() => {
 				<div class="app-toast-text">
 					<div class="app-toast-summary">{{ message.summary }}</div>
 					<div v-if="message.detail" class="app-toast-detail">{{ message.detail }}</div>
+					<!-- Optionaler Link im Toast: toast.add({ ..., action: { label, to } }) -->
+					<button
+						v-if="message.action"
+						type="button"
+						class="app-toast-action"
+						@click="closeCallback(); router.push(message.action.to)"
+					>{{ message.action.label }}</button>
 				</div>
 				<!-- Restlaufzeit, schrumpft ueber die Lebensdauer des Toasts -->
 				<span v-if="message.life" class="app-toast-progress" :style="{ animationDuration: `${message.life}ms` }"></span>
@@ -56,9 +69,9 @@ onBeforeMount(async() => {
 	<SpeedInsights/>
 
 	<!-- App header -->
-	<AppHeader/>
+	<AppHeader :class="{ 'AppHeader--hidden-mobile': isDetailPage }"/>
 
-	<div class="Page">
+	<div class="Page" :class="{ 'Page--detail': isDetailPage }">
 		<router-view v-slot="{ Component }" :key="$route.fullPath">
 			<transition name="fade-page" mode="out-in">
 				<component :is="Component"/>
@@ -73,6 +86,8 @@ onBeforeMount(async() => {
 	<AppBottomNav/>
 	<TournamentPickerDrawer/>
 	<AddGameDrawer/>
+	<!-- Spielersuche (Lupe im Header) -->
+	<PlayerSearchDrawer/>
 </template>
 
 <style>
@@ -104,6 +119,20 @@ body{
 	padding-bottom: 50px;
 	min-height: calc(100dvh - var(--app-header-height) - 47px - 80px);
 	width: 90%;
+}
+/* Gesetzt ueber useGrayPage */
+html.bp-gray-page body{
+	background: var(--page-gray);
+}
+/* Weisses Band bis an den Bildschirmrand (z.B. Reiter-Leiste auf grauen Seiten) */
+.bp-white-band{
+	background: white;
+	box-shadow: 0 0 0 100vmax white;
+	clip-path: inset(0 -100vmax);
+}
+/* Zusaetzlich nach oben bis unter den App-Header (Seitentitel) */
+.bp-white-band--top{
+	clip-path: inset(-100vmax -100vmax 0);
 }
 .bp-button{
 	padding: 20px;
@@ -200,6 +229,12 @@ body{
 		font-size: 28px;
 		padding: 12px 0 14px;
 	}
+	.AppHeader.AppHeader--hidden-mobile{
+		display: none;
+	}
+	.Page.Page--detail{
+		margin-top: 0;
+	}
 }
 
 /*MOBILE S*/
@@ -277,6 +312,15 @@ body{
 	color: #6B7079;
 	font-size: 13px;
 	line-height: 1.3;
+}
+.app-toast-action {
+	margin-top: 6px;
+	padding: 0;
+	border: none;
+	background: none;
+	color: var(--main-color);
+	font-size: 13px;
+	font-weight: 700;
 }
 .app-toast-progress {
 	position: absolute;

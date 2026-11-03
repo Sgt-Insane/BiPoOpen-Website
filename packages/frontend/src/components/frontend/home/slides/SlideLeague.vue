@@ -73,7 +73,6 @@ const formatDiff = (diff: number) => (diff > 0 ? `+${diff}` : `${diff}`);
     width: 22px;
     height: 22px;
     object-fit: contain;
-    border-radius: 4px;
     flex-shrink: 0;
 }
 .sl-name{

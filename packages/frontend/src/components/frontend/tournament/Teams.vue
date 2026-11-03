@@ -2,7 +2,7 @@
     <DataTable :value="teams" scrollable class="mb-[30px]">
 
         <!-- Nummer -->
-        <Column header="#" frozen>
+        <Column header="#" frozen class="bp-col-rank">
             <template #body="slotProps">
                 <span class="bp-rank">{{ slotProps.index + 1 }}</span>
             </template>

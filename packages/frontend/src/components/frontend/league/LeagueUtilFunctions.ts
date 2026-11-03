@@ -46,9 +46,19 @@ const getSeriesTeamNames = (team: Team | undefined) => team
     ? [team.name, ...team.players.map(player => player.name)].filter(Boolean).map(name => name!.toLocaleLowerCase())
     : [];
 
-const getSeriesResult = (games: Match[], team1: Team | undefined, team2: Team | undefined) => {
+// Punkte eines Spiels aus Sicht von team1 der Serie (das Spiel kann die Teams vertauscht eingetragen haben).
+export const getSeriesGameScores = (match: Match, team1: Team) => {
+    const matchTeam1Score = match.team1.players.reduce((score, player) => score + (player.score ?? 0), 0);
+    const matchTeam2Score = match.team2.players.reduce((score, player) => score + (player.score ?? 0), 0);
+    const matchUsesTeam1 = getSeriesTeamNames(match.team1).some(name => getSeriesTeamNames(team1).includes(name));
+    return matchUsesTeam1
+        ? { team1Score: matchTeam1Score, team2Score: matchTeam2Score }
+        : { team1Score: matchTeam2Score, team2Score: matchTeam1Score };
+};
+
+export const getSeriesResult = (games: Match[], team1: Team | undefined, team2: Team | undefined) => {
     if (!team1 || !team2)
-        return { winner: undefined, loser: undefined, games: [] as Match[] };
+        return { winner: undefined, loser: undefined, games: [] as Match[], team1Wins: 0, team2Wins: 0 };
 
     const team1Names = getSeriesTeamNames(team1);
     const team2Names = getSeriesTeamNames(team2);
@@ -62,15 +72,10 @@ const getSeriesResult = (games: Match[], team1: Team | undefined, team2: Team | 
     let team2Wins = 0;
 
     seriesGames.forEach(match => {
-        const matchTeam1Score = match.team1.players.reduce((score, player) => score + (player.score ?? 0), 0);
-        const matchTeam2Score = match.team2.players.reduce((score, player) => score + (player.score ?? 0), 0);
-        if (matchTeam1Score === matchTeam2Score)
-            return;
-
-        const matchUsesTeam1 = getSeriesTeamNames(match.team1).some(name => team1Names.includes(name));
-        if (matchUsesTeam1 === (matchTeam1Score > matchTeam2Score))
+        const { team1Score, team2Score } = getSeriesGameScores(match, team1);
+        if (team1Score > team2Score)
             team1Wins++;
-        else
+        else if (team2Score > team1Score)
             team2Wins++;
     });
 
@@ -78,7 +83,18 @@ const getSeriesResult = (games: Match[], team1: Team | undefined, team2: Team | 
         winner: team1Wins >= 2 ? team1 : team2Wins >= 2 ? team2 : undefined,
         loser: team1Wins >= 2 ? team2 : team2Wins >= 2 ? team1 : undefined,
         games: seriesGames,
+        team1Wins,
+        team2Wins,
     };
+};
+
+export type SeriesResult = ReturnType<typeof getSeriesResult>;
+
+export const getSeriesTeamName = (team: Team | undefined, placeholder: string) => {
+    if (!team)
+        return placeholder;
+
+    return team.name || team.players.map(player => player.name.trim()).filter(Boolean).join(' & ') || placeholder;
 };
 
 // Endstand einer Liga in einer Saison: Tabelle der Hauptrunde, nach gespieltem Final Four dessen Ergebnis.

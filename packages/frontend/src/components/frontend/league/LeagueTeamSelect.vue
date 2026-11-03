@@ -15,13 +15,15 @@
             <div class="lt-value">
                 <Avatar v-if="slotProps.value" :name="slotProps.value.name" :avatarImage="slotProps.value.logo" shape="square" class="lt-avatar" />
                 <span v-else class="lt-avatar lt-avatar--empty">?</span>
-                <span :class="{ 'lt-placeholder': !slotProps.value }">{{ slotProps.value?.name ?? slotProps.placeholder }}</span>
+                <span class="lt-name" :class="{ 'lt-placeholder': !slotProps.value }">{{ slotProps.value?.name ?? slotProps.placeholder }}</span>
+                <EloChip v-if="slotProps.value" :rating="getElo(slotProps.value.name)" />
             </div>
         </template>
         <template #option="slotProps">
             <div class="lt-value">
                 <Avatar :name="slotProps.option.name" :avatarImage="slotProps.option.logo" shape="square" class="lt-avatar" />
-                <span>{{ slotProps.option.name }}</span>
+                <span class="lt-name">{{ slotProps.option.name }}</span>
+                <EloChip :rating="getElo(slotProps.option.name)" />
             </div>
         </template>
     </Select>
@@ -31,6 +33,8 @@
 import { computed } from 'vue';
 import Select from 'primevue/select';
 import Avatar from '@/components/shared/Avatar.vue';
+import EloChip from '@/components/shared/EloChip.vue';
+import { useEloRatings } from '@/components/shared/useEloRatings';
 
 const props = withDefaults(defineProps<{
     modelValue: string;
@@ -41,6 +45,10 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{ 'update:modelValue': [name: string] }>();
+
+// Elo des Spielers hinter dem Team
+const { loadEloRatings, getElo } = useEloRatings();
+loadEloRatings();
 
 // Altdaten koennen Teams enthalten, die es in der Liga nicht mehr gibt: trotzdem anzeigen.
 const selectedTeam = computed(() =>
@@ -62,12 +70,20 @@ const options = computed(() => {
 }
 .lt-value{
     display: flex;
+    flex: 1;
     align-items: center;
     gap: 10px;
     min-width: 0;
     font-size: 15px;
     font-weight: 600;
     color: #1F2328;
+}
+.lt-name{
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .lt-placeholder{
     color: #9AA0A8;

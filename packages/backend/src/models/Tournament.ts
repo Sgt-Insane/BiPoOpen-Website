@@ -25,6 +25,7 @@ const TournamentSchema = new Schema(
                             {
                                 team1ID: { type: Schema.Types.ObjectId, ref: 'Team' },
                                 team2ID: { type: Schema.Types.ObjectId, ref: 'Team' },
+                                time: { type: Number, required: false }, // Zeitpunkt des ersten Ergebnis-Eintrags; fehlt bei Altdaten
                                 result: {
                                     team1Score: { type: Number, required: false },
                                     team2Score: { type: Number, required: false },
@@ -47,6 +48,7 @@ const TournamentSchema = new Schema(
                         {
                             team1ID: { type: Schema.Types.ObjectId, ref: 'Team' },
                             team2ID: { type: Schema.Types.ObjectId, ref: 'Team' },
+                            time: { type: Number, required: false }, // Zeitpunkt des ersten Ergebnis-Eintrags; fehlt bei Altdaten
                             result: {
                                 team1Score: { type: Number, required: false },
                                 team2Score: { type: Number, required: false },

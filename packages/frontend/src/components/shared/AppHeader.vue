@@ -5,11 +5,16 @@ import { MAIN_NAV_ITEMS, MainNavItem, isMainNavItemActive } from './mainNav';
 import { useTournamentPicker } from './useTournamentPicker';
 import { usePwaInstall } from './usePwaInstall';
 import { useAddGame } from './GameEntry/useAddGame';
+import { usePlayerSearch } from './usePlayerSearch';
+import { PUSH_SETTINGS_PATH, usePushNotifications } from './usePushNotifications';
+import BellIcon from './BellIcon.vue';
 
 const route = useRoute();
 const { tournamentPickerVisible, openTournamentPicker } = useTournamentPicker();
 const { openAddGame } = useAddGame();
+const { openPlayerSearch } = usePlayerSearch();
 const { canInstall, isInstalled, installPwa } = usePwaInstall();
+const { isActive: isPushActive } = usePushNotifications();
 
 const scrollToTop = () => {
 	if((router as any).path == "/"){
@@ -60,16 +65,34 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 				Spiel eintragen
 			</button>
 
-			<!-- PWA install -->
-			<button
-				v-if="canInstall && !isInstalled"
-				type="button"
-				class="ap-install-btn"
-				@click="installPwa"
-			>
-				<i class="pi pi-download ap-install-icon"></i>
-				App
-			</button>
+			<div class="ap-actions">
+				<!-- PWA install -->
+				<button
+					v-if="canInstall && !isInstalled"
+					type="button"
+					class="ap-install-btn"
+					@click="installPwa"
+				>
+					<i class="pi pi-download ap-install-icon"></i>
+					App
+				</button>
+
+				<!-- Benachrichtigungen: Kontur = aus, gefuellt = aktiv.
+				     Spaeter: roter Punkt bei Neuem und Liste der letzten Pushes, bis dahin direkt die Einstellungen -->
+				<router-link
+					:to="PUSH_SETTINGS_PATH"
+					class="ap-round-btn"
+					:class="{ 'ap-round-btn--active': route.path === PUSH_SETTINGS_PATH }"
+					:aria-label="isPushActive ? 'Benachrichtigungen (aktiv)' : 'Benachrichtigungen'"
+				>
+					<BellIcon :filled="isPushActive"/>
+				</router-link>
+
+				<!-- Spielersuche -->
+				<button type="button" class="ap-round-btn" aria-label="Spieler suchen" @click="openPlayerSearch()">
+					<i class="pi pi-search"></i>
+				</button>
+			</div>
 		</div>
 
 	</div>
@@ -171,12 +194,18 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 	font-weight: 700;
 }
 
-/* PWA INSTALL */
+/* PWA INSTALL + SPIELERSUCHE */
+.ap-actions{
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: 12px;
+}
+
 .ap-install-btn{
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	margin-left: 12px;
 	padding: 7px 14px;
 	border: none;
 	border-radius: 999px;
@@ -195,6 +224,34 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 	font-weight: 700;
 }
 
+.ap-round-btn{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 38px;
+	height: 38px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: #f1f2f4;
+	color: #222;
+	transition: .2s background ease;
+}
+.ap-round-btn:hover{
+	background: #e4e6e9;
+	color: #222;
+}
+.ap-round-btn .pi{
+	font-size: 15px;
+	font-weight: 700;
+}
+.ap-round-btn .BellIcon{
+	font-size: 18px;
+}
+.ap-round-btn--active{
+	color: var(--main-color);
+}
+
 /*MOBILE*/
 @media (width <= 900px){
 	.AppHeader{
@@ -208,10 +265,22 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 	.ap-add-btn{
 		display: none;
 	}
-	.ap-install-btn{
+	.ap-actions{
 		margin-left: auto;
+	}
+	.ap-install-btn{
 		padding: 6px 12px;
 		font-size: 13px;
+	}
+	.ap-round-btn{
+		width: 34px;
+		height: 34px;
+	}
+	.ap-round-btn .pi{
+		font-size: 14px;
+	}
+	.ap-round-btn .BellIcon{
+		font-size: 17px;
 	}
 }
 </style>

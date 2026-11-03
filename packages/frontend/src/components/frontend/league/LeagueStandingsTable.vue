@@ -9,7 +9,7 @@
     >
 
         <!-- Platz -->
-        <Column header="#" frozen>
+        <Column header="#" frozen class="bp-col-rank">
             <template #body="{ index }">
                 <span class="bp-rank" :class="getZoneClass(index)">{{ index + 1 }}</span>
             </template>
@@ -70,9 +70,7 @@
             <div class="bp-legend">
                 <span v-if="promotionSlots" class="bp-zone-promotion">Aufstieg in die 1. Liga</span>
                 <span v-if="highlightTopSlots > promotionSlots" class="bp-zone-qualify">Final 4</span>
-                <span v-if="relegationSlots" class="bp-zone-relegation">Abstieg in die 2. Liga</span>
-                <span class="bp-legend-swipe">seitlich wischen</span>
-            </div>
+                <span v-if="relegationSlots" class="bp-zone-relegation">Abstieg in die 2. Liga</span>            </div>
         </template>
     </DataTable>
 </template>
@@ -162,36 +160,41 @@ const labels = useTableLabels();
 <style scoped>
 .league-form {
     display: flex;
-    gap: 0.1875rem;
+    gap: 0.125rem;
 }
 .league-form-item {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.125rem;
-    height: 1.125rem;
-    border-radius: 0.25rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.1875rem;
     background: #EEF0F3;
     color: white;
-    font-size: 0.625rem;
+    font-size: 0.5625rem;
     font-weight: 700;
 }
 .league-form-win { background: #1F9D55; }
 .league-form-loss { background: #D64545; }
 
-/* Kleine Handys: Logo und Name schmaler, damit mehr Statistik-Spalten sichtbar sind */
-@media (max-width: 400px) {
-    .league-standings :deep(.bp-name-cell) {
-        gap: 0.375rem;
+/* Mobil: kleinere Trend-Felder, damit der Trend ohne Wischen sichtbar ist */
+@media (width <= 900px) {
+    .league-form-item {
+        width: 0.875rem;
+        height: 0.875rem;
+        font-size: 0.5rem;
     }
+}
+
+/* Mobil: lange Namen brechen in eine zweite Zeile um statt abgekuerzt zu werden */
+@media (width <= 900px) {
     .league-standings :deep(.bp-name) {
-        max-width: 6rem;
-        font-size: 0.8125rem;
-    }
-    .league-standings :deep(.p-datatable-tbody .p-avatar) {
-        width: 1.5rem;
-        height: 1.5rem;
-        font-size: 0.5625rem;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-height: 1.2;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 }
 </style>

@@ -163,7 +163,7 @@ const saveGameResult = async (sides: GameEntrySide[]) => {
    position: sticky;
    padding-bottom: 20px;
    display: flex;
-   background-color: white;
+   background-color: var(--page-gray);
 }
 #GameScheduleGroupsSwiper-Pagination .swiper-pagination-bullet, .Standings .swiper-pagination-bullet{
 	padding: 5px 10px; 

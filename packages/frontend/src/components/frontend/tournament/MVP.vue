@@ -17,7 +17,7 @@
             >
 
                 <!-- Platz -->
-                <Column header="#" frozen>
+                <Column header="#" frozen class="bp-col-rank">
                     <template #body="{ data }">
                         <span class="bp-rank" :class="`bp-rank-${data.placement + 1}`">{{ data.placement + 1 }}</span>
                     </template>

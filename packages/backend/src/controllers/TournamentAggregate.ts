@@ -94,7 +94,8 @@ export const tournamentAggregation = () => [
                       0
                     ]
                   },
-                  result: "$$match.result"
+                  result: "$$match.result",
+                  time: "$$match.time"
                 }
               }
             }
@@ -142,7 +143,8 @@ export const tournamentAggregation = () => [
                       0
                     ]
                   },
-                  result: "$$match.result"
+                  result: "$$match.result",
+                  time: "$$match.time"
                 }
               }
             }

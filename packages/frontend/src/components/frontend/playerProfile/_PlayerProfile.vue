@@ -1,25 +1,20 @@
 <template>
     <div class="PlayerProfile">
-        <div class="pp-topbar">
-            <button type="button" class="pp-icon-button" aria-label="Zurück" @click="goBack">
-                <i class="pi pi-chevron-left"></i>
-            </button>
-            <button v-if="profileData" type="button" class="pp-icon-button" aria-label="Profilbild ändern" @click="showImageUpload = true">
-                <i class="pi pi-pencil"></i>
-            </button>
-        </div>
-
         <PlayerProfileView
             v-if="profileData"
             :profileData="profileData"
             :avatarKey="avatarKey"
             v-model:trendPeriod="trendPeriod"
+            @back="goBack"
             @editImage="showImageUpload = true"
         />
 
         <!-- Skelett, bis die Spiele geladen sind: Name steht schon in der URL -->
         <div v-else-if="isLoading" class="pp-skeleton" aria-busy="true">
             <div class="pp-hero">
+                <button type="button" class="pp-back-button" aria-label="Zurück" @click="goBack">
+                    <i class="pi pi-chevron-left"></i>
+                </button>
                 <Avatar :name="normalizedPlayerName" class="pp-hero-avatar"/>
                 <div>
                     <div class="pp-hero-name">{{ normalizedPlayerName }}</div>
@@ -31,10 +26,15 @@
             <div class="bp-skeleton pp-skeleton-block" style="height: 220px"></div>
         </div>
 
-        <div v-else class="pp-empty">
-            <i class="pi" :class="hasError ? 'pi-wifi' : 'pi-user'"></i>
-            <div v-if="hasError">Das Profil konnte nicht geladen werden.</div>
-            <div v-else>Für „{{ normalizedPlayerName }}“ gibt es noch keine Spiele.</div>
+        <div v-else>
+            <button type="button" class="pp-back-button" aria-label="Zurück" @click="goBack">
+                <i class="pi pi-chevron-left"></i>
+            </button>
+            <div class="pp-empty">
+                <i class="pi" :class="hasError ? 'pi-wifi' : 'pi-user'"></i>
+                <div v-if="hasError">Das Profil konnte nicht geladen werden.</div>
+                <div v-else>Für „{{ normalizedPlayerName }}“ gibt es noch keine Spiele.</div>
+            </div>
         </div>
 
         <PlayerProfileImageUpload
@@ -54,13 +54,19 @@ import PlayerProfileImageUpload from './PlayerProfileImageUpload.vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import { usePlayerProfileData } from './usePlayerProfileData';
 import { fetchPlayerProfileImage } from './PlayerProfileImageMapping';
-import { getPlayerForLeagueTeam } from '@/components/frontend/league/LeaguePlayersData';
+import { LEAGUE_PLAYER_DATA, getPlayerForLeagueTeam } from '@/components/frontend/league/LeaguePlayersData';
 import { getPlayerProfilePath } from '@/util/util';
 
 const route = useRoute();
 const router = useRouter();
 
-const playerName = computed(() => decodeURIComponent(route.params.PlayerName as string).replaceAll('-', ' '));
+const urlName = computed(() => decodeURIComponent(route.params.PlayerName as string));
+// "-" steht in der URL fuer Leerzeichen, Liga-Teamnamen koennen aber selbst "-" enthalten ("SallyWin All-in")
+const urlLeagueTeam = computed(() => {
+    const path = getPlayerProfilePath(urlName.value).toLowerCase();
+    return LEAGUE_PLAYER_DATA.find(entry => getPlayerProfilePath(entry.teamName).toLowerCase() === path);
+});
+const playerName = computed(() => urlLeagueTeam.value?.teamName ?? urlName.value.replaceAll('-', ' '));
 const normalizedPlayerName = computed(() => getPlayerForLeagueTeam(playerName.value) ?? playerName.value);
 const { isLoading, hasError, profileData, trendPeriod } = usePlayerProfileData(normalizedPlayerName);
 
@@ -97,32 +103,6 @@ watch(playerName, (name) => {
     color: #1d1f23;
 }
 
-.pp-topbar {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-}
-.pp-icon-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 50%;
-    background: transparent;
-    color: #1d1f23;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-
-    .pi {
-        font-size: 16px;
-    }
-}
-.pp-icon-button:hover {
-    background: rgba(0, 0, 0, 0.05);
-}
-
 /* ── Laden ── */
 .pp-skeleton-line {
     height: 12px;
@@ -152,6 +132,30 @@ watch(playerName, (name) => {
 
 <!-- Gemeinsame Bausteine aller Profil-Abschnitte (ungescoped, Praefix pp-) -->
 <style>
+.PlayerProfile .pp-back-button {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-left: -8px;
+    margin-right: -6px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #1d1f23;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    .pi {
+        font-size: 16px;
+    }
+}
+.PlayerProfile .pp-back-button:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
 .PlayerProfile .pp-hero {
     display: flex;
     align-items: center;

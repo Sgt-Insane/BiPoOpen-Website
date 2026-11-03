@@ -5,6 +5,8 @@ export type IPushSubscriptionModel = InferSchemaType<typeof PushSubscriptionSche
 export const NOTIFICATION_CATEGORIES = ['openGames', 'leagueGames', 'registrations', 'tournamentResults'] as const;
 export type NotificationCategory = typeof NOTIFICATION_CATEGORIES[number];
 
+export const FOLLOW_MODES = ['all', 'followed'] as const;
+
 const PushSubscriptionSchema = new Schema(
     {
         endpoint: { type: String, required: true, unique: true },
@@ -18,7 +20,10 @@ const PushSubscriptionSchema = new Schema(
             registrations: { type: Boolean, default: false },
             tournamentResults: { type: Boolean, default: true }
         },
-        // leer = alle Spiele; sonst nur Spiele mit diesen Spielern (lowercase gespeichert)
+        // 'all' = alle Spiele, 'followed' = nur Spiele mit followedPlayers.
+        // Eigenes Feld, damit die Liste beim Zurueckschalten auf 'all' erhalten bleibt.
+        followMode: { type: String, enum: FOLLOW_MODES, default: 'all' },
+        // lowercase gespeichert
         followedPlayers: { type: [String], default: [] }
     },
     { versionKey: false, timestamps: true }

@@ -15,6 +15,7 @@
                 :chipLabel="SOURCE_LABELS[entry.source] ?? entry.source"
                 showChip
                 showDate
+                showElo
                 class="pp-history-match"
             >
                 <template #meta>

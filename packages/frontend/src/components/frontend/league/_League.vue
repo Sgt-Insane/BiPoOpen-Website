@@ -2,7 +2,7 @@
     <div class="League">
 
         <!-- Kopf: Titel links, Saison-Auswahl rechts -->
-        <div class="lg-head">
+        <div class="lg-head bp-white-band bp-white-band--top">
             <h1 class="bp-title">BiPo League</h1>
             <Select v-if="seasonOptions.length > 1"
                 class="lg-season-select"
@@ -19,7 +19,7 @@
         <!-- lazy: nur der aktive Reiter wird gerendert -->
         <Tabs v-model:value="activeTab" lazy>
             <!-- Liga/Cup-Auswahl + Reiter kleben gemeinsam unter dem App-Header -->
-            <div ref="stickyBar" class="lg-sticky-bar" :style="{ top: stickyBarTop }">
+            <div ref="stickyBar" class="lg-sticky-bar bp-white-band" :style="{ top: stickyBarTop }">
                 <!-- Liga-Auswahl, nur wenn die Saison mehr als eine Liga oder einen Pokal hat -->
                 <SelectButton v-if="leagueOptions.length > 1"
                     class="lg-division-select"
@@ -35,11 +35,11 @@
                 <TabList v-if="showDivisionTabs">
                     <Tab value="table">Tabelle</Tab>
                     <Tab value="games">Spiele</Tab>
-                    <!-- <Tab v-if="division.hasFinalFour" value="finalfour">Final 4</Tab> -->
+                    <Tab v-if="showFinalFourTab" value="finalfour">Final 4</Tab>
                 </TabList>
             </div>
 
-            <div v-if="isLoading" class="lg-gray-panel pt-[12px]">
+            <div v-if="isLoading" class="pt-[12px]">
                 <SkeletonList :rows="10" avatar="square" rank/>
             </div>
 
@@ -52,7 +52,7 @@
             </div>
 
             <TabPanels v-else :pt="{ root: { style: { '--p-tabs-tabpanel-padding': '0' } } }">
-                <TabPanel value="table" class="lg-gray-panel">
+                <TabPanel value="table">
                     <LeagueTable
                         :leaguePlayers="leaguePlayers"
                         :leagueGames="divisionGames"
@@ -67,11 +67,11 @@
 
                 <TabPanel value="games" class="pt-[12px]">
                     <div v-for="match in divisionGames" :key="match.time!" style="margin-top: 10px;">
-                        <MatchElement :match="withLeagueTeamLogos(match)" :avatarShape="'square'" showDate/>
+                        <MatchElement :match="withLeagueTeamLogos(match)" :avatarShape="'square'" showDate showElo/>
                     </div>
                 </TabPanel>
 
-                <TabPanel v-if="division.hasFinalFour" value="finalfour">
+                <TabPanel v-if="showFinalFourTab" value="finalfour">
                     <LeagueFinalFour
                         :leaguePlayers="leaguePlayers"
                         :leagueGames="divisionGames"
@@ -126,6 +126,7 @@ import {
     toLeaguePlayers,
 } from './LeagueSeasonsData';
 import { useStickyBar } from '@/components/shared/useStickyStack';
+import { useGrayPage } from '@/components/shared/useGrayPage';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Tabs from 'primevue/tabs';
@@ -172,6 +173,9 @@ const activeLeague = ref<number | 'cup'>(
 
 const isCupActive = computed(() => activeLeague.value === 'cup');
 
+// Grauer Seitengrund nur bei den Ligen, der League Cup hat keine Reiter
+useGrayPage(() => !isCupActive.value);
+
 const leagueOptions = computed(() => [
     ...season.value.divisions.map(entry => ({ label: entry.label, value: entry.league as number | 'cup' })),
     ...(season.value.hasCup ? [{ label: 'League Cup', value: 'cup' as const }] : []),
@@ -195,16 +199,22 @@ const changeLeague = (value: number | 'cup' | null) => {
     window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
-// Final-4-Reiter gibt es nicht in jeder Liga.
-watch(division, (newDivision) => {
-    if (activeTab.value === 'finalfour' && !newDivision.hasFinalFour)
-        activeTab.value = 'table';
-});
-
 // ─── Daten ───
 const leaguePlayers = computed(() => toLeaguePlayers(division.value.teams));
 const regularSeasonGameCount = computed(() => getRegularSeasonGameCount(division.value));
 const divisionGames = computed(() => filterLeagueGames(allLeagueGames.value, season.value.slug, division.value.league));
+
+// Final-4-Reiter gibt es nicht in jeder Liga und erst, wenn die Hauptrunde komplett gespielt ist.
+const showFinalFourTab = computed(() =>
+    division.value.hasFinalFour
+    && regularSeasonGameCount.value > 0
+    && divisionGames.value.length >= regularSeasonGameCount.value
+);
+
+watch(showFinalFourTab, (isVisible) => {
+    if (!isVisible && activeTab.value === 'finalfour')
+        activeTab.value = 'table';
+});
 
 const getLeagueGames = async () => {
     const games = await getAllLeagueGames();
@@ -280,21 +290,10 @@ const showDivisionTabs = computed(() => !isCupActive.value && division.value.tea
 .lg-sticky-bar{
     position: sticky;
     z-index: 4;
-    background: white;
-    /* Weiss bis an den Bildschirmrand, damit der graue Grund seitlich nicht durchscheint */
-    box-shadow: 0 0 0 100vmax white;
-    clip-path: inset(0 -100vmax);
 }
 
 .lg-division-select{
     margin-bottom: 4px;
-}
-
-/* Grauer Grund unter der Tabelle, randlos bis an den Bildschirmrand */
-.League :deep(.lg-gray-panel){
-    background: var(--page-gray);
-    margin-inline: calc(50% - 50vw);
-    padding: 0 calc(50vw - 50%) 8px;
 }
 
 .lg-empty{

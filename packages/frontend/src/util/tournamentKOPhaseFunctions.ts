@@ -182,6 +182,7 @@ export const setGameResultKOPhase = async (tournament:Tournament, match:Match) =
                 }
                 
                 matches[i][x].result = result;
+                matches[i][x].time ??= Date.now(); // beim Bearbeiten bleibt das erste Eintragsdatum
             }
         }
     }

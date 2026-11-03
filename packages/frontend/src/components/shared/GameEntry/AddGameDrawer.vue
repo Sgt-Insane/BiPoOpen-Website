@@ -5,6 +5,7 @@
         :initialSides="initialSides"
         v-bind="MODE_PROPS[mode]"
         :save="save"
+        eloPreview
     >
         <template #top="{ setTeams }">
             <!-- Spieltyp -->
@@ -50,13 +51,16 @@
             <LeagueTeamSelect :modelValue="player.name" :teams="leagueTeams" :excludedNames="excludedNames" @update:modelValue="setName"/>
         </template>
     </GameEntryDrawer>
+
+    <GameAwardSheet v-model:visible="awardVisible" :badges="awardBadges" :score="awardScore"/>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue';
 import SelectButton from 'primevue/selectbutton';
 import GameEntryDrawer from './GameEntryDrawer.vue';
-import { createEmptySides, sidesToNewMatch, type GameEntrySide } from './gameEntry';
+import GameAwardSheet from './GameAwardSheet.vue';
+import { createEmptySides, getSideScore, sidesToNewMatch, type GameEntrySide } from './gameEntry';
 import { useAddGame, type AddGameMode } from './useAddGame';
 import LeagueTeamSelect from '@/components/frontend/league/LeagueTeamSelect.vue';
 import CupPairingSelect from '@/components/frontend/league/cup/CupPairingSelect.vue';
@@ -64,8 +68,8 @@ import { addOpenGame } from '@/components/frontend/openGames/OpenGamesUtilFuncti
 import { addLeagueGame, filterLeagueGames, getAllLeagueGames, getLeagueGameSubtitle } from '@/components/frontend/league/LeagueUtilFunctions';
 import { getCupGames, getCupRoundGames, getLeagueCup, getPairingResult, getPlannedRoundNames } from '@/components/frontend/league/cup/LeagueCupUtilFunctions';
 import { CURRENT_SEASON_SLUG, LEAGUE_SEASONS, getSeason, toLeaguePlayers } from '@/components/frontend/league/LeagueSeasonsData';
-import { clearPlayerCaches } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
-import { clearGameDataCache } from '@/util/gameDataCache';
+import { clearPlayerCaches, getUnlockedBadges } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
+import { clearGameDataCache, getGameData } from '@/util/gameDataCache';
 
 // Drawer-Einstellungen je Spieltyp
 const TEAM_LABELS: [string, string] = ['Team 1', 'Team 2'];
@@ -175,14 +179,44 @@ const saveGame = (sides: GameEntrySide[]) => {
 };
 
 const save = async (sides: GameEntrySide[]) => {
+    const names = sides.flatMap(side => side.players.map(player => player.name));
+    // Erfolge vor dem Speichern, zum Vergleich danach. Ohne Daten gibt es eben keinen Hinweis.
+    const badgesBefore = await getGameData().then(data => getUnlockedBadges(data, names)).catch(() => null);
+
     const success = await saveGame(sides);
     if (success) {
         // Erst die Caches leeren, damit die Seiten beim Neuladen frische Daten bekommen
         clearGameDataCache();
         clearPlayerCaches();
         notifyGameSaved();
+        if (badgesBefore) showNewAwards(badgesBefore, names, sides.map(getSideScore).join(' : '));
     }
     return success;
+};
+
+// ─── Erfolge ───
+// Neu freigeschaltete Badges der beteiligten Spieler, Titel zuerst
+const AWARD_GROUP_ORDER: PlayerBadgeGroup[] = ['title', 'record', 'milestone', 'performance'];
+
+const awardVisible = ref(false);
+const awardBadges = shallowRef<PlayerBadge[]>([]);
+const awardScore = ref('');
+
+const showNewAwards = async (badgesBefore: Map<string, PlayerBadge[]>, names: string[], score: string) => {
+    try {
+        const badgesAfter = getUnlockedBadges(await getGameData(), names);
+        const newBadges = [...badgesAfter].flatMap(([playerName, badges]) => {
+            const knownIds = new Set(badgesBefore.get(playerName)?.map(badge => badge.id));
+            return badges.filter(badge => badge.award && !knownIds.has(badge.id));
+        });
+        if (!newBadges.length) return;
+
+        awardBadges.value = newBadges.sort((a, b) => AWARD_GROUP_ORDER.indexOf(a.group) - AWARD_GROUP_ORDER.indexOf(b.group));
+        awardScore.value = score;
+        awardVisible.value = true;
+    } catch {
+        // Kein Hinweis, das Spiel ist trotzdem gespeichert
+    }
 };
 </script>
 

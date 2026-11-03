@@ -4,7 +4,7 @@ import { getBiPoOpenTournamentFallbackTime } from "@/util/bipoOpenTournamentMeta
 import { GameData, getGameData } from "@/util/gameDataCache";
 import { calculateBadges, type RecordKey, type RecordStanding } from "./BadgeRegistry";
 import { getLeagueTeamForPlayer, getPlayerForLeagueTeam } from "@/components/frontend/league/LeaguePlayersData";
-import { ELO_START, buildEloGames, computeElo, getEloPlayerKey, getEloRanking } from "@/components/frontend/worldRanking/eloRating";
+import { ELO_START, buildEloGames, computeElo, getEloMatchChanges, getEloPlayerKey, getEloRanking } from "@/components/frontend/worldRanking/eloRating";
 
 const TREND_PERIOD_DAYS: Record<Exclude<TrendPeriod, 'all'>, number> = {
     '1m': 30,
@@ -509,10 +509,21 @@ const getBadgeHoldersById = memoize((data: GameData) => {
 export const getBadgeHolders = async (badgeId: string): Promise<string[]> =>
     [...(getBadgeHoldersById(await getGameData()).get(badgeId) ?? [])].sort();
 
+// Freigeschaltete Badges einzelner Spieler, z.B. vor und nach dem Eintragen eines Spiels.
+// Namen wie im Spiel eingetragen (Liga: Teamname), Schluessel ist der Profilname.
+export const getUnlockedBadges = (data: GameData, names: string[]) => new Map(names.map(name => {
+    const playerName = normalizePlayerNameForList(name);
+    const { matchHistory } = buildPlayerHistory(data, playerName);
+    const badges = matchHistory.length ? getPlayerBadges(data, playerName, matchHistory).filter(badge => !badge.locked) : [];
+    return [playerName, badges];
+}));
+
+const getEloGames = memoize(buildEloGames);
+
 // Elo-Rangliste wie auf der Weltranglisten-Seite (Spieler)
 const getEloRecords = memoize((data: GameData) => {
     const now = Date.now();
-    const records = computeElo(buildEloGames(data), now, 'players');
+    const records = computeElo(getEloGames(data), now, 'players');
     const ranking = getEloRanking(records, now);
     return {
         records: new Map(records.map(record => [record.key, record])),
@@ -520,6 +531,13 @@ const getEloRecords = memoize((data: GameData) => {
         inactive: new Set(ranking.inactive.map(entry => entry.key)),
     };
 });
+
+// Aktuelles Elo eines Spielers (Liga: Teamname geht auch), null = noch kein gewertetes Spiel
+export const getPlayerEloRating = (data: GameData, playerName: string): number | null =>
+    getEloRecords(data).records.get(getEloPlayerKey(playerName))?.rating ?? null;
+
+// Elo je Seite nach jedem Spiel, Schluessel = Match-_id
+export const getMatchEloChanges = memoize((data: GameData) => getEloMatchChanges(getEloGames(data)));
 
 const getPlayerElo = (data: GameData, playerName: string): PlayerEloSummary | null => {
     const { records, ranks, inactive } = getEloRecords(data);

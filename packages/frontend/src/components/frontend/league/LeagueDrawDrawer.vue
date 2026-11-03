@@ -507,6 +507,12 @@ button.ld-chip:hover{
     height: 100%;
     object-fit: contain;
 }
+/* Mit Logo: kein abgerundeter Rahmen, das Logo steht frei */
+.ld-avatar:has(img){
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+}
 .ld-slot-empty .ld-avatar{
     border: 2px dashed #D4D6DA;
     background: transparent;

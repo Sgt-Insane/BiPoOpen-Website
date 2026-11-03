@@ -167,7 +167,8 @@ export const setGameResultGroupPhase = async (tournament:Tournament, match:Match
                     team2Player2Score: match.team2.players[1].score
                 }
                 
-                matches[i][x].result = result;   
+                matches[i][x].result = result;
+                matches[i][x].time ??= Date.now(); // beim Bearbeiten bleibt das erste Eintragsdatum
             }
         }
     }

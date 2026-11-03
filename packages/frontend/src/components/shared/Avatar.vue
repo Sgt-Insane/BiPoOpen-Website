@@ -4,13 +4,13 @@
         ref="rootRef"
         :label="avatarImageComputed ? undefined : playerInitials"
         :image="avatarImageComputed || undefined"
-        :shape="shape"
+        :shape="resolvedShape"
         :pt="{
             root: {
-                class: `!outline-none !border-none ${avatarImageComputed ? '!bg-transparent' : (grayscale ? '!bg-gray-300 !text-gray-700' : '!bg-[var(--avatar-background,var(--main-color))] opacity-70 !text-[var(--avatar-color,white)]')}`
+                class: `!outline-none !border-none ${isTeamLogo ? '!rounded-none' : ''} ${avatarImageComputed ? '!bg-transparent' : (grayscale ? '!bg-gray-300 !text-gray-700' : '!bg-[var(--avatar-background,var(--main-color))] opacity-70 !text-[var(--avatar-color,white)]')}`
             },
             image: {
-                class: `${shape === 'square' ? 'object-contain' : 'object-cover'} bg-transparent ${grayscale ? 'grayscale' : ''}`
+                class: `${resolvedShape === 'square' ? 'object-contain' : 'object-cover'} ${isTeamLogo ? '!rounded-none' : ''} bg-transparent ${grayscale ? 'grayscale' : ''}`
             }
         }"
     />
@@ -69,6 +69,10 @@ const avatarImageComputed = computed(() => {
     const _trigger = backendImageCache[props.name?.trim().replace(/\s+/g, ' ').toLowerCase()];
     return getPlayerProfileImage(props.name);
 });
+// avatarImage ist immer ein Team-Logo (Liga oder Turnier): nie abrunden und nie beschneiden,
+// auch wenn die Stelle shape="circle" nutzt. Spielerbilder und Initialen behalten ihre Form.
+const isTeamLogo = computed(() => !!props.avatarImage);
+const resolvedShape = computed(() => isTeamLogo.value ? 'square' : props.shape);
 const playerInitials = computed(() => getPlayerInitials(props.name));
 const grayscale = computed(() => props.grayscale);
 </script>

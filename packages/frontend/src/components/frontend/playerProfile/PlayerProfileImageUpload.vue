@@ -11,12 +11,19 @@
         <div class="flex flex-col items-center gap-4 py-4">
             <Avatar :name="playerName" size="xlarge" shape="circle" class="!w-[250px] !h-[250px] !text-[40px]" />
             <p class="text-[--p-text-muted-color] text-center text-sm">
-                Wähle ein Bild aus, um dein Profilbild zu ändern.
+                Wähle ein Bild aus oder mach ein Foto, um dein Profilbild zu ändern.
             </p>
             <Button
                 label="Bild auswählen"
                 icon="pi pi-image"
                 @click="triggerFileInput"
+                class="w-full max-w-[280px]"
+            />
+            <Button
+                label="Foto aufnehmen"
+                icon="pi pi-camera"
+                severity="secondary"
+                @click="openCamera"
                 class="w-full max-w-[280px]"
             />
             <Button
@@ -36,8 +43,23 @@
                 class="hidden"
                 @change="onFileSelected"
             />
+            <!-- Fallback für Browser ohne getUserMedia: öffnet auf Mobilgeräten direkt die Kamera-App -->
+            <input
+                ref="cameraInputRef"
+                type="file"
+                accept="image/*"
+                capture="user"
+                class="hidden"
+                @change="onFileSelected"
+            />
         </div>
     </Dialog>
+
+    <CameraCaptureDialog
+        v-model:visible="cameraDialogVisible"
+        header="Profilbild aufnehmen"
+        @captured="onCaptured"
+    />
 
     <ImageCropDialog
         v-model:visible="cropDialogVisible"
@@ -58,6 +80,7 @@ import { useToast } from 'primevue/usetoast';
 import axios from 'axios';
 import Avatar from '@/components/shared/Avatar.vue';
 import ImageCropDialog from '@/components/shared/ImageCropDialog.vue';
+import CameraCaptureDialog from '@/components/shared/CameraCaptureDialog.vue';
 import { getPlayerProfileImageFromBackend, invalidatePlayerProfileImageCache } from './PlayerProfileImageMapping';
 
 const props = defineProps<{
@@ -82,6 +105,8 @@ const cropSrc = ref('');
 const uploading = ref(false);
 const hasExistingImage = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const cameraInputRef = ref<HTMLInputElement | null>(null);
+const cameraDialogVisible = ref(false);
 
 watch(() => props.visible, async (visible) => {
     if (visible) {
@@ -95,6 +120,20 @@ watch(() => props.visible, async (visible) => {
 });
 
 const triggerFileInput = () => fileInputRef.value?.click();
+
+const openCamera = () => {
+    // getUserMedia braucht einen sicheren Kontext (HTTPS/localhost)
+    if (window.isSecureContext && typeof navigator.mediaDevices?.getUserMedia === 'function') {
+        cameraDialogVisible.value = true;
+    } else {
+        cameraInputRef.value?.click();
+    }
+};
+
+const onCaptured = (dataUrl: string) => {
+    cropSrc.value = dataUrl;
+    cropDialogVisible.value = true;
+};
 
 const onFileSelected = (event: Event) => {
     const target = event.target as HTMLInputElement;

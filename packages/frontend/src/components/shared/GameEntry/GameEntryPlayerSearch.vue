@@ -4,6 +4,7 @@
         <div v-if="modelValue" class="gp-chip">
             <Avatar :name="modelValue" shape="circle" class="gp-avatar" />
             <span class="gp-chip-name">{{ modelValue }}</span>
+            <EloChip :rating="getElo(modelValue)" />
             <button type="button" class="gp-icon-button" aria-label="Spieler entfernen" @click="emit('clear')">
                 <i class="pi pi-times"></i>
             </button>
@@ -40,7 +41,8 @@
                     @click="select(name)"
                 >
                     <Avatar :name="name" shape="circle" class="gp-avatar" />
-                    <span>{{ name }}</span>
+                    <span class="gp-result-name">{{ name }}</span>
+                    <EloChip :rating="getElo(name)" />
                 </button>
 
                 <button v-if="newName" type="button" role="option" class="gp-result gp-result-new" @mousedown.prevent @click="select(newName)">
@@ -55,6 +57,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
+import EloChip from '@/components/shared/EloChip.vue';
+import { useEloRatings } from '@/components/shared/useEloRatings';
 import { getAllPlayerNames, getPlayerMatchCounts } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
 
 const MAX_RESULTS = 6;
@@ -79,6 +83,9 @@ const query = ref('');
 const isFocused = ref(false);
 const names = ref<string[]>([]);
 const matchCounts = ref<Record<string, number>>({});
+
+const { loadEloRatings, getElo } = useEloRatings();
+loadEloRatings();
 
 const normalize = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -244,6 +251,13 @@ defineExpose({ focus: () => inputEl.value?.focus() });
 }
 .gp-result:hover{
     background: #F6F7F9;
+}
+.gp-result-name{
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .gp-result-new{
     color: var(--main-color);

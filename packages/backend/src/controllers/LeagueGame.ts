@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import LeagueGame from "../models/LeagueGame";
-import { describeGame, gamePlayerNames, notify } from "../util/notify";
+import { describeResult, gamePlayerNames, notify } from "../util/notify";
 
 const createLeagueGame = (req: Request, res: Response, next: NextFunction) => {
     const { team1, team2, time, turns, endTime, season, league, cupId, cupRound } = req.body;
@@ -22,11 +22,15 @@ const createLeagueGame = (req: Request, res: Response, next: NextFunction) => {
     leagueGame
         .save()
         .then(async (leagueGame) => {
+            const result = describeResult(leagueGame.team1, leagueGame.team2, true);
+            const seasonPath = leagueGame.season ? `/League/${leagueGame.season}` : '/League';
+            const url = leagueGame.cupId ? `${seasonPath}/Pokal` : `${seasonPath}/${leagueGame.league ?? 1}`;
             await notify('leagueGames', {
-                title: leagueGame.cupId ? 'Neues League-Cup-Spiel' : 'Neues League-Spiel',
-                body: describeGame(leagueGame.team1, leagueGame.team2),
-                url: leagueGame.season ? `/League/${leagueGame.season}` : '/League',
-                tag: `leagueGame-${leagueGame._id}`
+                title: `🏆 ${result.title}`,
+                body: leagueGame.cupId ? 'BiPo League Cup' : `${leagueGame.league ?? 1}. Liga · BiPo League`,
+                url,
+                tag: `leagueGame-${leagueGame._id}`,
+                actions: [{ action: 'table', title: leagueGame.cupId ? 'Pokal ansehen' : 'Tabelle', url }]
             }, gamePlayerNames(leagueGame.team1, leagueGame.team2));
 
             res.status(201).json({ leagueGame });

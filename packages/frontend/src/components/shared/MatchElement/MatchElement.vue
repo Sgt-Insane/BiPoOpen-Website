@@ -10,8 +10,8 @@
          </div>
 
          <!-- Team Name & Score -->
-         <MatchElementTeam :match="match" :isTeam2="false" :playersVisible="playersVisible" :placeholder="team1Placeholder" :avatarShape="avatarShape"/> <!-- Team 1 -->
-         <MatchElementTeam :match="match" :isTeam2="true" :playersVisible="playersVisible" :placeholder="team2Placeholder" :avatarShape="avatarShape"/> <!-- Team 2 -->
+         <MatchElementTeam :match="match" :isTeam2="false" :playersVisible="playersVisible" :placeholder="team1Placeholder" :avatarShape="avatarShape" :elo="matchElo?.[0]" :fitTextGroup="nameFitGroup"/> <!-- Team 1 -->
+         <MatchElementTeam :match="match" :isTeam2="true" :playersVisible="playersVisible" :placeholder="team2Placeholder" :avatarShape="avatarShape" :elo="matchElo?.[1]" :fitTextGroup="nameFitGroup"/> <!-- Team 2 -->
 
          <!-- Spielverlauf Timeline -->
          <MatchTimeline v-if="hasTurns && playersVisible" :match="match" />
@@ -31,6 +31,8 @@
 import { PropType, computed, ref, useSlots } from "vue"
 import MatchElementTeam from '@/components/shared/MatchElement/MatchElementTeam.vue';
 import MatchTimeline from '@/components/shared/MatchElement/MatchTimeline.vue';
+import { useEloRatings } from '@/components/shared/useEloRatings';
+import { createFitTextGroup } from '@/components/shared/fitText';
 import { checkIfMatchFinished } from "@/util/tournamentMatchFunctions";
 import { formatGameTime } from "@/util/util";
 
@@ -56,10 +58,19 @@ const props = defineProps({
    gameType: {type: String as PropType<GameType>, default: undefined},
    // Eigener Chip-Text statt des Spielart-Labels (z.B. Quelle im Spielerprofil).
    chipLabel: {type: String, default: undefined},
+   // Elo nach dem Spiel und Elo-Wechsel klein unter jedem Team
+   showElo: {type: Boolean, default: false},
 });
 
 const emit = defineEmits<{ edit: [match: Match] }>();
 const slots = useSlots();
+
+const { loadEloRatings, getMatchElo } = useEloRatings();
+if(props.showElo) loadEloRatings();
+const matchElo = computed(() => props.showElo ? getMatchElo(props.match) : null);
+
+// Beide Teamnamen werden gemeinsam verkleinert, damit sie immer gleich gross sind
+const nameFitGroup = createFitTextGroup();
 
 const resolvedGameType = computed<GameType>(() => {
    if(props.gameType) return props.gameType;
@@ -90,6 +101,9 @@ let togglePlayersVisible = () => {
    flex-direction: column;
    gap: 6px;
    width: 100%;
+   /* Namen brechen nicht um: ohne min-width 0 waere die Mindestbreite der ganze Name und das Element ragt in Grid/Flex heraus */
+   min-width: 0;
+   max-width: 100%;
    padding: 10px 12px;
    margin-bottom: 8px;
    background: white;
@@ -109,7 +123,7 @@ let togglePlayersVisible = () => {
 .mt-chip{
    padding: 2px 8px;
    border-radius: 6px;
-   font-size: 12px;
+   font-size: clamp(12px, 3.1vw, 13px);
    font-weight: 700;
    line-height: 18px;
 }
@@ -126,7 +140,7 @@ let togglePlayersVisible = () => {
    color: #4a5058;
 }
 .mt-date{
-   font-size: 12px;
+   font-size: clamp(12px, 3.1vw, 13px);
    color: var(--p-text-muted-color);
 }
 

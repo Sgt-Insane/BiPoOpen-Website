@@ -4,8 +4,8 @@
 
         <!-- Skelett, bis das Turnier geladen ist: Name steht schon in der URL -->
         <div v-if="!tournament" aria-busy="true">
-            <h1 class="bp-title">{{ route.params.TournamentName }}</h1>
-            <div class="to-skeleton-tabs">
+            <h1 class="bp-title bp-white-band bp-white-band--top">{{ route.params.TournamentName }}</h1>
+            <div class="to-skeleton-tabs bp-white-band">
                 <div class="bp-skeleton" style="width: 110px"></div>
                 <div class="bp-skeleton" style="width: 90px"></div>
                 <div class="bp-skeleton" style="width: 50px"></div>
@@ -15,13 +15,13 @@
 
         <div v-if="tournament && tournament.groupPhase.groups">
 
-            <h1 class="bp-title">{{ tournament.name }}</h1>
+            <h1 class="bp-title bp-white-band bp-white-band--top">{{ tournament.name }}</h1>
 
             <!-- Tabs (lazy: nur der aktive Reiter wird gerendert, z.B. Fotos erst beim Oeffnen) -->
             <Tabs v-model:value="place" lazy @update:value="changeRouter">
                <!-- Reiter kleben unter dem App-Header -->
-               <div ref="stickyBar" class="to-sticky-bar" :style="{ top: stickyBarTop }">
-                  <TabList class="pb-[20px]">
+               <div ref="stickyBar" class="to-sticky-bar bp-white-band" :style="{ top: stickyBarTop }">
+                  <TabList>
                      <!-- <Tab value="Teams">Teams</Tab> -->
                      <Tab value="Gruppenphase">Gruppenphase</Tab>
                      <Tab value="K.o.Phase">K.o.Phase</Tab>
@@ -29,7 +29,16 @@
                      <Tab v-if="getTournamentPhotos()" value="Fotos">Fotos</Tab>
                   </TabList>
                </div>
-               <TabPanels class="!p-[0px]">
+               <TabPanels class="!px-0 !pb-0 !pt-[20px]">
+                  <!-- Laufendes Turnier (Finale noch offen): Ergebnisse per Push -->
+                  <PushPromptCard
+                     v-if="isLive"
+                     class="to-push-prompt"
+                     title="Ergebnisse live aufs Handy?"
+                     text="Push für jedes Spiel in Gruppe und K.o.-Phase"
+                     :to="{ path: PUSH_SETTINGS_PATH, query: { kategorie: 'tournamentResults' } }"
+                     :dismissKey="`bp-push-prompt-tournament-${tournament._id}`"
+                  />
                   <!-- <TabPanel value="Teams">
                      <Teams :tournament="tournament"/>
                   </TabPanel> -->
@@ -52,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, Ref } from "vue"
+import { ref, computed, onUnmounted, Ref } from "vue"
 import { getTournamentByName, getTournamentPodium } from "@/util/tournamentFunctions"
 // import Teams from '@/components/frontend/tournament/Teams.vue';
 import ScheduleGroups from '@/components/frontend/tournament/ScheduleGroups.vue';
@@ -65,14 +74,26 @@ import Tab from 'primevue/tab';
 import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
 import { useStickyBar } from '@/components/shared/useStickyStack';
+import { useGrayPage } from '@/components/shared/useGrayPage';
+import PushPromptCard from '@/components/shared/PushPromptCard.vue';
+import { PUSH_SETTINGS_PATH } from '@/components/shared/usePushNotifications';
 
 import { useRoute } from "vue-router";
 const route = useRoute()
+
+useGrayPage();
 
 const stickyBar = ref<HTMLElement | null>(null);
 const stickyBarTop = useStickyBar(stickyBar);
 
 let tournament = ref<Tournament|undefined>();
+
+// Turniertag: Finale noch offen und Turnier aus diesem Jahr (alte, nie beendete Turniere nicht)
+const isLive = computed(() =>
+   !!tournament.value
+   && tournament.value.name.includes(String(new Date().getFullYear()))
+   && !getTournamentPodium(tournament.value).length
+);
 
 let place:Ref<"Teams"|"Gruppenphase"|"K.o.Phase"|"MVP"|"Fotos"> = ref("Gruppenphase");
 let name = route.path.split("/").pop();
@@ -180,9 +201,11 @@ const getTournamentPhotos = () => {
 </script>
 
 <style scoped>
+.to-push-prompt{
+   margin-bottom: 16px;
+}
 .to-sticky-bar{
    position: sticky;
-   background: white;
    z-index: 3;
 }
 :deep(.p-tabs){
@@ -191,7 +214,6 @@ const getTournamentPhotos = () => {
 .to-skeleton-tabs{
    display: flex;
    gap: 24px;
-   margin-bottom: 20px;
    padding-bottom: 12px;
    border-bottom: 1px solid #eef0f2;
 
@@ -202,7 +224,7 @@ const getTournamentPhotos = () => {
 }
 .to-skeleton-group{
    height: 220px;
-   margin-bottom: 20px;
+   margin-top: 20px;
 }
 /* MOBILE */
 @media (width <= 900px){

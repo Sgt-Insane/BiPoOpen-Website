@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { config } from "../config/config";
-import PushSubscription, { NOTIFICATION_CATEGORIES } from "../models/PushSubscription";
+import PushSubscription, { FOLLOW_MODES, NOTIFICATION_CATEGORIES } from "../models/PushSubscription";
 import { normalizePlayerName, sendToSubscription } from "../util/notify";
 
 // Baut ein $set-Update aus den erlaubten Feldern im Body
-const buildUpdate = (preferences: any, followedPlayers: any) => {
+const buildUpdate = (preferences: any, followMode: any, followedPlayers: any) => {
     const update: Record<string, unknown> = {};
 
     if (preferences && typeof preferences === 'object') {
@@ -12,6 +12,8 @@ const buildUpdate = (preferences: any, followedPlayers: any) => {
             if (typeof preferences[category] === 'boolean') update[`preferences.${category}`] = preferences[category];
         });
     }
+
+    if (FOLLOW_MODES.includes(followMode)) update.followMode = followMode;
 
     if (Array.isArray(followedPlayers)) {
         update.followedPlayers = [...new Set(
@@ -26,6 +28,7 @@ const buildUpdate = (preferences: any, followedPlayers: any) => {
 
 const toResponse = (subscription: any) => ({
     preferences: subscription.preferences,
+    followMode: subscription.followMode ?? 'all',
     followedPlayers: subscription.followedPlayers
 });
 
@@ -34,7 +37,7 @@ const getVapidPublicKey = (req: Request, res: Response, next: NextFunction) => {
 };
 
 const subscribe = (req: Request, res: Response, next: NextFunction) => {
-    const { subscription, preferences, followedPlayers } = req.body;
+    const { subscription, preferences, followMode, followedPlayers } = req.body;
 
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
         res.status(400).json({ message: 'Ungültige Subscription' });
@@ -44,7 +47,7 @@ const subscribe = (req: Request, res: Response, next: NextFunction) => {
     const update = {
         endpoint: subscription.endpoint,
         keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth },
-        ...buildUpdate(preferences, followedPlayers)
+        ...buildUpdate(preferences, followMode, followedPlayers)
     };
 
     PushSubscription.findOneAndUpdate({ endpoint: subscription.endpoint }, { $set: update }, { upsert: true, new: true, setDefaultsOnInsert: true })
@@ -53,14 +56,14 @@ const subscribe = (req: Request, res: Response, next: NextFunction) => {
 };
 
 const updatePreferences = (req: Request, res: Response, next: NextFunction) => {
-    const { endpoint, preferences, followedPlayers } = req.body;
+    const { endpoint, preferences, followMode, followedPlayers } = req.body;
 
     if (!endpoint) {
         res.status(400).json({ message: 'endpoint ist erforderlich' });
         return;
     }
 
-    PushSubscription.findOneAndUpdate({ endpoint }, { $set: buildUpdate(preferences, followedPlayers) }, { new: true })
+    PushSubscription.findOneAndUpdate({ endpoint }, { $set: buildUpdate(preferences, followMode, followedPlayers) }, { new: true })
         .then((saved) => {
             if (saved) res.status(200).json(toResponse(saved));
             else res.status(404).json({ message: 'Subscription not found' });
@@ -98,8 +101,8 @@ const sendTest = async (req: Request, res: Response, next: NextFunction) => {
         }
 
         await sendToSubscription(subscription as any, {
-            title: 'Weck BiPo Open',
-            body: 'Benachrichtigungen funktionieren!',
+            title: '🔔 Benachrichtigungen funktionieren!',
+            body: 'So sieht ein Push von Weck BiPo Open aus',
             url: '/Benachrichtigungen',
             tag: 'test'
         });

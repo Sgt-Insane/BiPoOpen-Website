@@ -20,6 +20,7 @@
                         <Avatar v-if="getSideName(side)" :name="getSideName(side)" :avatarImage="side.logo" :shape="avatarShape" class="ge-team-avatar" />
                         <span v-else class="ge-team-avatar ge-team-avatar--empty">?</span>
                         <span class="ge-team-name" :class="{ 'ge-team-name--empty': !getSideName(side) }">{{ getSideName(side) || sideLabels[sideIndex] }}</span>
+                        <EloChip v-if="side.players.length === 1" :rating="getElo(side.players[0].name)" />
                     </template>
                     <span v-else class="ge-side-label">{{ sideLabels[sideIndex] }}</span>
 
@@ -32,6 +33,7 @@
                     <div v-if="lockedNames && side.players.length > 1" class="ge-player-name">
                         <Avatar :name="player.name" shape="circle" class="ge-player-avatar" />
                         <span>{{ player.name }}</span>
+                        <EloChip :rating="getElo(player.name)" />
                     </div>
 
                     <template v-else-if="!lockedNames">
@@ -67,6 +69,22 @@
                 </button>
             </div>
 
+            <!-- Elo-Vorschau, sobald das Ergebnis feststeht -->
+            <div v-if="eloChanges.length" class="ge-elo">
+                <div class="ge-elo-header">
+                    <span class="ge-elo-title">Elo nach diesem Spiel</span>
+                    <button type="button" class="ge-elo-info" aria-label="Elo erklärt" @click="eloExplainedVisible = true">
+                        <i class="pi pi-info"></i>
+                    </button>
+                </div>
+                <div v-for="change in eloChanges" :key="change.name" class="ge-elo-row">
+                    <span class="ge-elo-name">{{ change.name }}</span>
+                    <span class="ge-elo-rating">{{ formatRating(change.before) }} → <b>{{ formatRating(change.after) }}</b></span>
+                    <span class="ge-elo-delta" :class="change.delta > 0 ? 'ge-elo-up' : 'ge-elo-down'">{{ formatDelta(change.delta) }}</span>
+                </div>
+            </div>
+            <EloExplainedSheet v-if="eloPreview" v-model:visible="eloExplainedVisible"/>
+
             <div class="ge-footer">
                 <button v-if="remove" type="button" class="ge-button ge-button-delete" :disabled="loading" aria-label="Spiel löschen" @click="onDelete()">
                     <i class="pi pi-trash"></i>
@@ -87,14 +105,21 @@
  * - #player: ersetzt die Spielersuche (z.B. Liga-Team-Dropdown)
  * - #top: Inhalt ueber den Seiten (z.B. Pokal-Paarung), setzt die Seiten per setTeams
  * - lockedNames: Namen stehen fest (Turnier, Pokal), nur Treffer werden gewaehlt
+ * - eloPreview: Elo-Wechsel unter den Seiten, nur fuer neue Spiele (bearbeitete sind schon eingerechnet)
  */
 import { computed, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import BottomSheet from '@/components/shared/BottomSheet.vue';
 import Avatar from '@/components/shared/Avatar.vue';
+import EloChip from '@/components/shared/EloChip.vue';
+import EloExplainedSheet from '@/components/frontend/worldRanking/EloExplainedSheet.vue';
+import { useEloRatings } from '@/components/shared/useEloRatings';
+import { ELO_START, getEloSideDeltas } from '@/components/frontend/worldRanking/eloRating';
+import { getPlayerForLeagueTeam } from '@/components/frontend/league/LeaguePlayersData';
 import GameEntryPlayerSearch from './GameEntryPlayerSearch.vue';
 import GameEntryScorePicker from './GameEntryScorePicker.vue';
 import { createEmptySides, getSideName, getSideScore, type GameEntrySide } from './gameEntry';
+import { PUSH_SETTINGS_PATH, usePushNotifications } from '@/components/shared/usePushNotifications';
 
 const MAX_PLAYERS_PER_SIDE = 4;
 
@@ -111,6 +136,7 @@ const props = withDefaults(defineProps<{
     maxScore?: number;
     incompleteLabel?: string;           // Button-Text, solange Namen fehlen
     avatarShape?: 'circle' | 'square';
+    eloPreview?: boolean;
     save: (sides: GameEntrySide[]) => Promise<boolean | void>;
     remove?: () => Promise<boolean | void>;
 }>(), {
@@ -125,12 +151,15 @@ const props = withDefaults(defineProps<{
 const toast = useToast();
 const sides = ref<GameEntrySide[]>(createEmptySides());
 const loading = ref(false);
+const { loadEloRatings, isEloLoaded, getElo } = useEloRatings();
+const { status: pushStatus } = usePushNotifications();
 
 // Bei jedem Oeffnen und jeder neuen Vorbelegung (z.B. anderer Spieltyp) frisch aus der Vorbelegung,
 // die Eingaben eines abgebrochenen Versuchs verfallen.
 watch([visible, () => props.initialSides], ([isVisible]) => {
-    if (isVisible)
-        sides.value = props.initialSides ? JSON.parse(JSON.stringify(props.initialSides)) : createEmptySides();
+    if (!isVisible) return;
+    sides.value = props.initialSides ? JSON.parse(JSON.stringify(props.initialSides)) : createEmptySides();
+    loadEloRatings();
 }, { immediate: true });
 
 // ─── Spieler ───
@@ -190,16 +219,38 @@ const saveLabel = computed(() => {
     return `Ergebnis speichern · ${totals.value[0]} : ${totals.value[1]}`;
 });
 
+// ─── Elo ───
+// Gleiche Rechnung wie die Weltrangliste, wer noch kein Spiel hat, startet bei ELO_START.
+// Liga/Pokal: gewertet wird der Spieler hinter dem Team.
+const eloExplainedVisible = ref(false);
+
+const eloChanges = computed(() => {
+    if (!props.eloPreview || !isEloLoaded.value || winnerIndex.value === -1 || !hasAllNames.value || hasDuplicateNames.value) return [];
+
+    const ratings = sides.value.map(side => side.players.map(player => getElo(player.name) ?? ELO_START));
+    const deltas = getEloSideDeltas(ratings, winnerIndex.value as 0 | 1);
+    return sides.value.flatMap((side, sideIndex) => side.players.map((player, playerIndex) => {
+        const before = ratings[sideIndex][playerIndex];
+        const name = player.name.trim();
+        return { name: getPlayerForLeagueTeam(name) ?? name, before, after: before + deltas[sideIndex], delta: deltas[sideIndex] };
+    }));
+});
+
+const formatRating = (rating: number) => rating.toLocaleString('de-DE');
+const formatDelta = (delta: number) => delta > 0 ? `+${delta}` : `−${-delta}`;
+
 // ─── Aktionen ───
 // Toasts nennen nur die Paarung (ggf. mit Ergebnis), ohne Beschreibung darunter.
-const runAction = async (action: () => Promise<boolean | void>, successSummary: string, errorSummary: string) => {
+// successExtra: wird erst nach Erfolg ausgewertet (z.B. einmaliger Push-Hinweis)
+const runAction = async (action: () => Promise<boolean | void>, successSummary: string, errorSummary: string, successExtra: () => object = () => ({})) => {
     if (loading.value) return;
     loading.value = true;
     try {
         const success = await action();
         if (success === false) throw new Error(errorSummary);
         visible.value = false;
-        setTimeout(() => toast.add({ severity: 'success', summary: successSummary, life: 3000 }), 400);
+        const extra = successExtra();
+        setTimeout(() => toast.add({ severity: 'success', summary: successSummary, life: 3000, ...extra }), 400);
     } catch {
         toast.add({ severity: 'error', summary: errorSummary, life: 3000 });
     } finally {
@@ -211,7 +262,26 @@ const onSave = () => {
     if (!canSave.value) return;
     const result: GameEntrySide[] = JSON.parse(JSON.stringify(sides.value));
     const [name1, name2] = result.map(getSideName);
-    runAction(() => props.save(result), `${name1} ${totals.value[0]} : ${totals.value[1]} ${name2}`, 'Spiel nicht gespeichert');
+    const playerNames = allNames.value.map(name => getPlayerForLeagueTeam(name) ?? name);
+    runAction(() => props.save(result), `${name1} ${totals.value[0]} : ${totals.value[1]} ${name2}`, 'Spiel nicht gespeichert', () => takePushHint(playerNames));
+}
+
+// Einmalig nach dem ersten selbst eingetragenen Spiel (nur neue Spiele, wie eloPreview): Push anbieten.
+// Die Seite folgt nach dem Aktivieren den Spielern dieses Spiels.
+const PUSH_HINT_KEY = 'bp-push-hint-after-game';
+const takePushHint = (playerNames: string[]) => {
+    if (!props.eloPreview || pushStatus.value !== 'inactive') return {};
+    try {
+        if (localStorage.getItem(PUSH_HINT_KEY)) return {};
+        localStorage.setItem(PUSH_HINT_KEY, '1');
+    } catch {
+        return {};
+    }
+    return {
+        detail: 'Benachrichtigen, wenn deine Gegner spielen?',
+        action: { label: 'Aktivieren ›', to: { path: PUSH_SETTINGS_PATH, query: { folgen: playerNames.join(',') } } },
+        life: 8000,
+    };
 }
 
 const onDelete = () => {
@@ -368,6 +438,80 @@ const onDelete = () => {
 .ge-add-player .pi{
     font-size: 11px;
 }
+
+/* ─── Elo-Vorschau ─── */
+.ge-elo{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #F4F5F7;
+}
+.ge-elo-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+.ge-elo-title{
+    font-size: 16px;
+    font-weight: 700;
+    color: #1F2328;
+}
+.ge-elo-info{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    padding: 0;
+    border: 1.5px solid #8A9099;
+    border-radius: 50%;
+    background: none;
+    color: #6B7079;
+    cursor: pointer;
+}
+.ge-elo-info:hover{
+    background: #E9EBEE;
+}
+.ge-elo-info .pi{
+    font-size: 9px;
+    font-weight: 700;
+}
+.ge-elo-row{
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 16px;
+    color: #1F2328;
+}
+.ge-elo-name{
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ge-elo-rating{
+    color: #6B7079;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.ge-elo-rating b{
+    color: #1F2328;
+    font-weight: 800;
+}
+.ge-elo-delta{
+    min-width: 40px;
+    text-align: right;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.ge-elo-up{ color: #1f9d55; }
+.ge-elo-down{ color: #d64545; }
 
 /* ─── Footer ─── */
 .ge-footer{

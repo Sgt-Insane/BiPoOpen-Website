@@ -65,6 +65,14 @@ export const getEloDelta = (own: number, opponent: number, won: boolean) => {
     return won ? delta : -delta;
 };
 
+// Elo-Wechsel je Seite fuer ein noch nicht gespeichertes Spiel (Vorschau beim Eintragen).
+// Gleiche Rechnung wie computeElo: Team-Rating = Durchschnitt, alle Spieler einer Seite bekommen dieselben Punkte.
+export const getEloSideDeltas = (sideRatings: number[][], winner: 0 | 1): [number, number] => {
+    const averages = sideRatings.map(ratings => ratings.reduce((acc, rating) => acc + rating, 0) / ratings.length);
+    const winnerDelta = getEloDelta(averages[winner], averages[1 - winner], true);
+    return winner === 0 ? [winnerDelta, -winnerDelta] : [-winnerDelta, winnerDelta];
+};
+
 // Fuer das Erklaer-Sheet, damit Anzeige und Berechnung dieselben Werte nutzen.
 export const ELO_EXAMPLE_ROWS = [
     { label: 'Beide gleich stark', difference: 0, won: true },
@@ -87,6 +95,7 @@ export const ELO_EXAMPLE_IN_BETWEEN = {
 type EloSide = { players: string[]; teamName?: string };
 
 export type EloGame = {
+    matchId?: string;
     time: number;
     order: number;
     sourceLabel: string;
@@ -102,7 +111,7 @@ export const buildEloGames = (data: RankingData): EloGames => {
     const games: EloGame[] = [];
     const { toPlayerKey, getDisplayNames } = createPlayerNameResolver();
 
-    const addGame = (sourceLabel: string, time: number, team1: Team, team2: Team, team1Score: number, team2Score: number, useTeamNames: boolean) => {
+    const addGame = (match: Match, sourceLabel: string, time: number, team1: Team, team2: Team, team1Score: number, team2Score: number, useTeamNames: boolean) => {
         // Nur Sieg oder Niederlage zaehlt, Unentschieden fliegen raus
         if (team1Score === team2Score) return;
 
@@ -115,19 +124,20 @@ export const buildEloGames = (data: RankingData): EloGames => {
         if (sides.some(side => !side.players.length)) return;
         if (sides[0].players.some(player => sides[1].players.includes(player))) return;
 
-        games.push({ time, order: games.length, sourceLabel, sides, winner: team1Score > team2Score ? 0 : 1 });
+        const matchId = match._id && match._id !== 'placeholder' ? match._id : undefined;
+        games.push({ matchId, time, order: games.length, sourceLabel, sides, winner: team1Score > team2Score ? 0 : 1 });
     };
 
     data.openGames
         .filter(match => match.time)
-        .forEach(match => addGame('Offen', match.time!, match.team1, match.team2, getTeamScore(match.team1), getTeamScore(match.team2), false));
+        .forEach(match => addGame(match, 'Offen', match.time!, match.team1, match.team2, getTeamScore(match.team1), getTeamScore(match.team2), false));
 
     // Liga und Cup: 1. und 2. Liga ohne Faktor, Final Four zaehlt wie jedes andere Spiel
     data.leagueGames
         .filter(match => match.time && match.team1.players.length === 1 && match.team2.players.length === 1)
         .forEach(match => {
             const toLeagueTeam = (team: Team): Team => ({ ...team, name: team.players[0].name });
-            addGame(isCupGame(match) ? 'Cup' : 'Liga', match.time!, toLeagueTeam(match.team1), toLeagueTeam(match.team2),
+            addGame(match, isCupGame(match) ? 'Cup' : 'Liga', match.time!, toLeagueTeam(match.team1), toLeagueTeam(match.team2),
                 getTeamScore(match.team1), getTeamScore(match.team2), true);
         });
 
@@ -141,7 +151,7 @@ export const buildEloGames = (data: RankingData): EloGames => {
             const team1Score = getMatchScore(match, true);
             const team2Score = getMatchScore(match, false);
             if (team1Score === undefined || team2Score === undefined) return;
-            addGame(sourceLabel, match.time ?? time, match.team1, match.team2, team1Score, team2Score, true);
+            addGame(match, sourceLabel, match.time ?? time, match.team1, match.team2, team1Score, team2Score, true);
         });
     });
 
@@ -259,6 +269,37 @@ export const computeElo = ({ games, displayNames }: EloGames, now: number, mode:
     if (!snapshotTaken) takeSnapshot();
 
     return [...records.values()];
+};
+
+////////////////////////
+// JE SPIEL           //
+////////////////////////
+// Elo je Seite nach einem Spiel (Spieler-Wertung wie computeElo), z.B. fuer die Elo-Zeile im MatchElement.
+// rating = Stand nach dem Spiel, bei mehreren Spielern der Durchschnitt.
+export type EloMatchSide = { rating: number; delta: number; players: number };
+
+// Schluessel = Match-_id, Unentschieden und nicht gewertete Spiele fehlen.
+export const getEloMatchChanges = ({ games }: EloGames): Map<string, [EloMatchSide, EloMatchSide]> => {
+    const ratings = new Map<string, number>();
+    const changes = new Map<string, [EloMatchSide, EloMatchSide]>();
+
+    games.forEach(game => {
+        const before = game.sides.map(side => side.players.map(player => ratings.get(player) ?? ELO_START));
+        const deltas = getEloSideDeltas(before, game.winner);
+        game.sides.forEach((side, sideIndex) =>
+            side.players.forEach((player, playerIndex) => ratings.set(player, before[sideIndex][playerIndex] + deltas[sideIndex]))
+        );
+
+        if (!game.matchId) return;
+        const toSide = (sideIndex: number): EloMatchSide => ({
+            rating: Math.round(before[sideIndex].reduce((acc, rating) => acc + rating, 0) / before[sideIndex].length + deltas[sideIndex]),
+            delta: deltas[sideIndex],
+            players: before[sideIndex].length,
+        });
+        changes.set(game.matchId, [toSide(0), toSide(1)]);
+    });
+
+    return changes;
 };
 
 ////////////////////////

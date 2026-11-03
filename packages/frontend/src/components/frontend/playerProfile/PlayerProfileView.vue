@@ -2,13 +2,18 @@
     <div class="pp-view">
         <!-- Kopf -->
         <div class="pp-hero">
+            <button type="button" class="pp-back-button" aria-label="Zurück" @click="emit('back')">
+                <i class="pi pi-chevron-left"></i>
+            </button>
             <button type="button" class="pp-avatar-button" aria-label="Profilbild ändern" @click="emit('editImage')">
                 <Avatar :key="avatarKey" :name="profileData.name" :lazy="false" class="pp-hero-avatar"/>
+                <span class="pp-avatar-edit" aria-hidden="true"><i class="pi pi-pencil"></i></span>
             </button>
             <div class="min-w-0">
                 <h1 class="pp-hero-name">{{ profileData.name }}</h1>
                 <div class="pp-hero-meta">{{ heroMeta }}</div>
             </div>
+            <PlayerProfileFollowButton :playerName="profileData.name"/>
         </div>
 
         <PlayerProfileEloCard v-if="profileData.elo" :elo="profileData.elo"/>
@@ -70,6 +75,7 @@ import PlayerProfileAchievements from './PlayerProfileAchievements.vue';
 import PlayerProfileStats from './PlayerProfileStats.vue';
 import PlayerProfilePeers from './PlayerProfilePeers.vue';
 import PlayerProfileHistory from './PlayerProfileHistory.vue';
+import PlayerProfileFollowButton from './PlayerProfileFollowButton.vue';
 import { PROFILE_GAME_TYPE_SOURCES, filterProfileDataByGameType } from './PlayerProfileUtilFunctions';
 import { trendPeriodOptions } from './usePlayerProfileData';
 
@@ -80,7 +86,7 @@ const props = defineProps<{
     avatarKey: number;
 }>();
 
-const emit = defineEmits<{ editImage: [] }>();
+const emit = defineEmits<{ back: []; editImage: [] }>();
 
 const trendPeriod = defineModel<TrendPeriod>('trendPeriod', { required: true });
 
@@ -105,12 +111,33 @@ const heroMeta = computed(() => {
 
 <style scoped>
 .pp-avatar-button {
+    position: relative;
     flex-shrink: 0;
     padding: 0;
     border: none;
     border-radius: 50%;
     background: none;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.pp-avatar-edit {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid #e3e5e8;
+    border-radius: 50%;
+    background: white;
+    color: #1d1f23;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+
+    i {
+        font-size: 11px;
+    }
 }
 .pp-hero-name {
     margin: 0;

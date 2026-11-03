@@ -16,29 +16,44 @@
                     :avatarImage="teamLogo"
                     :shape="avatarShape"
                     :grayscale="isLoser"
-                    class="!w-[30px] !h-[30px] !min-w-[30px]"
+                    class="mt-logo"
                 />
 
+                <!-- Ohne Team-Logo: Spielerbilder immer rund, avatarShape gilt nur fuer Logos -->
                 <template v-else-if="team">
                     <Avatar
                         v-for="(player, index) in team.players"
                         :key="`${player.name}-${index}`"
                         :name="player.name"
-                        :shape="avatarShape"
+                        shape="circle"
                         size="normal"
                         :grayscale="isLoser"
-                        class="!w-[28px] !h-[28px] !min-w-[28px] !text-[11px] border-[2px] border-[--p-surface-0] box-content"
+                        class="mt-avatar border-[2px] border-[--p-surface-0] box-content"
                     />
                 </template>
             </div>
-            <div
-                class="mt-team-name"
-                :class="{ 'cursor-pointer': team && team.players.length === 1 }"
-                @click="team && team.players.length === 1 && openPlayerProfile?.(team.players[0].name)"
-            >
-                {{ teamName }}
+            <div class="mt-team-main">
+                <!-- Name und Score auf einer Hoehe, Elo darunter -->
+                <div class="mt-team-line">
+                    <div
+                        v-fit-text="fitTextGroup"
+                        class="mt-team-name"
+                        :class="{ 'cursor-pointer': team && team.players.length === 1 }"
+                        :title="teamName"
+                        @click="team && team.players.length === 1 && openPlayerProfile?.(team.players[0].name)"
+                    >
+                        {{ teamName }}
+                    </div>
+                    <div class="mt-team-score">{{ teamScore ?? '–' }}</div>
+                </div>
+                <!-- Elo nach dem Spiel, im Doppel der Durchschnitt -->
+                <div v-if="elo" class="mt-team-elo">
+                    {{ elo.players > 1 ? 'Ø ' : '' }}{{ elo.rating.toLocaleString('de-DE') }} Elo
+                    <span class="mt-team-elo-delta" :class="elo.delta > 0 ? 'mt-elo-up' : 'mt-elo-down'">
+                        {{ elo.delta > 0 ? '▲' : '▼' }} {{ elo.delta > 0 ? `+${elo.delta}` : `−${-elo.delta}` }}
+                    </span>
+                </div>
             </div>
-            <div class="mt-team-score">{{ teamScore ?? '–' }}</div>
         </div>
 
         <!-- Team Players when expanded -->
@@ -48,7 +63,7 @@
                     :name="player.name"
                     :shape="avatarShape"
                     size="normal"
-                    class="!text-[9px] !w-[22px] !h-[22px] !min-w-[22px] shrink-0"
+                    class="mt-player-avatar shrink-0"
                     :grayscale="isLoser"
                 />
                 <div class="mt-team-player-name">{{ player.name }}</div>
@@ -63,6 +78,8 @@
 import { PropType, computed, inject } from 'vue';
 import { getMatchScore } from "@/util/tournamentMatchFunctions";
 import Avatar from '@/components/shared/Avatar.vue';
+import { vFitText, type FitTextGroup } from '@/components/shared/fitText';
+import type { EloMatchSide } from '@/components/frontend/worldRanking/eloRating';
 
 const props = defineProps({
     match: {type: Object as PropType<Match>, required: true },
@@ -70,6 +87,9 @@ const props = defineProps({
     isTeam2: {type: Boolean, required: true },
     placeholder: {type: String, default: undefined},
     avatarShape: {type: String as () => 'circle' | 'square', default: 'circle'},
+    elo: {type: Object as PropType<EloMatchSide>, default: undefined},
+    // Beide Teamnamen eines Spiels gleich gross (v-fit-text)
+    fitTextGroup: {type: Object as PropType<FitTextGroup>, default: undefined},
 });
 
 const team = computed(() => props.isTeam2 ? props.match.team2 : props.match.team1);
@@ -110,7 +130,16 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
 </script>
 
 <style scoped>
+/* Groessen wachsen stufenlos mit der Bildschirmbreite (schmales Handy ~320px bis breites ~440px), darueber fest */
 .MatchElementTeam{
+    --mt-font: clamp(13.5px, 3.9vw, 17px);
+    --mt-avatar: clamp(26px, 8.6vw, 38px);
+    --mt-player-avatar: clamp(22px, 6.4vw, 28px);
+    --mt-elo-font: clamp(10.5px, 2.75vw, 12px);
+    --mt-score-font: clamp(15px, 4.2vw, 18px);
+    --mt-score-height: clamp(26px, 7.4vw, 31px);
+    --mt-gap: clamp(8px, 2.8vw, 12px);
+
     display: flex;
     flex-direction: column;
     color: #4a5058;
@@ -118,9 +147,9 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
 .mt-team{
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 32px;
-    font-size: 15px;
+    gap: var(--mt-gap);
+    min-height: calc(var(--mt-avatar) + 4px);
+    font-size: var(--mt-font);
 }
 .mt-team-avatars{
     display: flex;
@@ -128,14 +157,50 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     flex-shrink: 0;
 }
 .mt-team-avatars > * + *{
-    margin-left: -10px;
+    margin-left: calc(var(--mt-avatar) * -0.36);
 }
+.mt-logo,
+.mt-avatar{
+    width: var(--mt-avatar) !important;
+    height: var(--mt-avatar) !important;
+    min-width: var(--mt-avatar) !important;
+    font-size: calc(var(--mt-avatar) * 0.39) !important;
+}
+.mt-player-avatar{
+    width: var(--mt-player-avatar) !important;
+    height: var(--mt-player-avatar) !important;
+    min-width: var(--mt-player-avatar) !important;
+    font-size: calc(var(--mt-player-avatar) * 0.4) !important;
+}
+.mt-team-main{
+    flex: 1;
+    min-width: 0;
+}
+.mt-team-line{
+    display: flex;
+    align-items: center;
+    gap: calc(var(--mt-gap) + 6px);
+}
+/* Immer eine Zeile: zu lange Namen werden kleiner (v-fit-text), … nur als letzte Notloesung */
 .mt-team-name{
     flex: 1;
     min-width: 0;
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     line-height: 1.25;
 }
+/* Elo bewusst zurueckhaltend, der Name bleibt im Vordergrund.
+   Rueckt in den Leerraum unter dem Namen, den die hoehere Score-Box laesst. */
+.mt-team-elo{
+    margin-top: min(0px, calc((var(--mt-font) * 1.25 - var(--mt-score-height)) / 2 + 1px));
+    font-size: var(--mt-elo-font);
+    line-height: 1.3;
+    color: #B3B8BF;
+    font-variant-numeric: tabular-nums;
+}
+.mt-elo-up{ color: #7DBD98; }
+.mt-elo-down{ color: #DDA0A0; }
 .mt-team-win .mt-team-name{
     font-weight: 700;
     color: #1f2328;
@@ -143,15 +208,15 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
 
 /* Ergebnis-Box: Sieger rot, sonst neutral grau */
 .mt-team-score{
-    min-width: 30px;
-    height: 26px;
+    min-width: calc(var(--mt-score-height) + 4px);
+    height: var(--mt-score-height);
     padding: 0 6px;
     border-radius: 6px;
     background: #ECEEF1;
     color: #1f2328;
-    font-size: 15px;
+    font-size: var(--mt-score-font);
     font-weight: 600;
-    line-height: 26px;
+    line-height: var(--mt-score-height);
     text-align: center;
     flex-shrink: 0;
 }
@@ -166,14 +231,15 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 4px 0 6px 38px;
+    /* Spielernamen buendig mit dem Teamnamen */
+    padding: 4px 0 6px calc(var(--mt-avatar) + var(--mt-gap));
 }
 .mt-team-player{
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 24px;
-    font-size: 13px;
+    gap: var(--mt-gap);
+    min-height: calc(var(--mt-player-avatar) + 2px);
+    font-size: calc(var(--mt-font) - 2px);
     color: #4a5058;
 }
 .mt-team-player-name{
@@ -182,26 +248,9 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     overflow-wrap: anywhere;
 }
 .mt-team-player-score{
-    min-width: 30px;
+    min-width: calc(var(--mt-score-height) + 4px);
     text-align: center;
     color: #1f2328;
     flex-shrink: 0;
-}
-
-/*MOBILE*/
-@media (width <= 900px){
-    .mt-team{
-        font-size: 14px;
-    }
-}
-
-/*MOBILE S*/
-@media (width <= 360px){
-    .mt-team-name{
-        font-size: 13px;
-    }
-    .mt-team-players{
-        padding-left: 20px;
-    }
 }
 </style>

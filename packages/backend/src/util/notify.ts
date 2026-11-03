@@ -6,8 +6,9 @@ let vapidConfigured = false;
 
 const ensureVapid = () => {
     if (vapidConfigured) return true;
-    if (!config.vapid.publicKey || !config.vapid.privateKey) {
-        console.warn('VAPID keys missing - push notifications disabled');
+    // subject muss "mailto:..." oder eine https-URL sein, sonst wirft setVapidDetails
+    if (!config.vapid.publicKey || !config.vapid.privateKey || !config.vapid.subject) {
+        console.warn('VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY or VAPID_SUBJECT missing - push notifications disabled');
         return false;
     }
     webpush.setVapidDetails(config.vapid.subject, config.vapid.publicKey, config.vapid.privateKey);
@@ -18,24 +19,49 @@ const ensureVapid = () => {
 export const normalizePlayerName = (name: string) => name.trim().toLowerCase();
 
 interface GameTeam {
+    name?: string | null;
     players: { name: string, score?: number }[];
 }
 
 const teamLabel = (team: GameTeam) => team.players.map((player) => player.name).join(" & ");
 const teamScore = (team: GameTeam) => team.players.reduce((acc, player) => acc + (player.score ?? 0), 0);
 
-// z.B. "Max & Tim 10:7 Lisa & Jan"
-export const describeGame = (team1: GameTeam, team2: GameTeam) =>
-    `${teamLabel(team1)} ${teamScore(team1)}:${teamScore(team2)} ${teamLabel(team2)}`;
+// Gleiche Pfade wie getPlayerProfilePath im Frontend
+export const playerProfilePath = (name: string) => `/Spieler/${encodeURIComponent(name).replaceAll('%20', '-')}`;
+
+/**
+ * Titel = Ergebnis, Gewinner zuerst: "Max & Tim gewinnen 10 : 7" bzw. mit Teamnamen "Don Promillo 10 : 3 BPC Likör".
+ * Bei Unentschieden bleibt die eingetragene Reihenfolge.
+ */
+export const describeResult = (team1: GameTeam, team2: GameTeam, useTeamNames = false) => {
+    const isDraw = teamScore(team1) === teamScore(team2);
+    const [winner, loser] = teamScore(team1) >= teamScore(team2) ? [team1, team2] : [team2, team1];
+    const label = (team: GameTeam) => (useTeamNames && team.name) || teamLabel(team);
+    const score = `${teamScore(winner)} : ${teamScore(loser)}`;
+
+    let title = `${label(winner)} ${score} ${label(loser)}`;
+    if (!useTeamNames && !isDraw)
+        title = `${label(winner)} ${winner.players.length > 1 ? 'gewinnen' : 'gewinnt'} ${score}`;
+
+    return { title, isDraw, opponents: label(loser), winnerName: winner.players[0]?.name ?? '' };
+};
 
 export const gamePlayerNames = (team1: GameTeam, team2: GameTeam) =>
     [...team1.players, ...team2.players].map((player) => player.name);
+
+// Buttons unter der Benachrichtigung (Android/Desktop), max. 2. url wird in push-sw.js geoeffnet.
+export interface NotificationAction {
+    action: string;
+    title: string;
+    url: string;
+}
 
 export interface NotificationPayload {
     title: string;
     body: string;
     url: string;
     tag?: string;
+    actions?: NotificationAction[];
 }
 
 interface StoredSubscription {
@@ -64,7 +90,7 @@ export const sendToSubscription = async (subscription: StoredSubscription, paylo
 
 /**
  * Schickt eine Benachrichtigung an alle Subscriptions, die die Kategorie aktiviert haben
- * und (falls sie Spielern folgen) mindestens einem der beteiligten Spieler folgen.
+ * und (bei followMode 'followed') mindestens einem der beteiligten Spieler folgen.
  * Wirft nie - Fehler werden nur geloggt.
  */
 export const notify = async (category: NotificationCategory, payload: NotificationPayload, playerNames: string[] = []) => {
@@ -76,7 +102,7 @@ export const notify = async (category: NotificationCategory, payload: Notificati
         const subscriptions = await PushSubscription.find({
             [`preferences.${category}`]: true,
             $or: [
-                { followedPlayers: { $size: 0 } },
+                { followMode: { $ne: 'followed' } },
                 { followedPlayers: { $in: normalizedPlayers } }
             ]
         }).lean();

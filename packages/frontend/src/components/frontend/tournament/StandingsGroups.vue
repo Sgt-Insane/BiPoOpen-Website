@@ -4,11 +4,11 @@
         @row-click="onRowClick"
         rowHover
         scrollable
-        class="mb-[30px]"
+        class="group-standings mb-[30px]"
     >
 
         <!-- Platz: die ersten beiden kommen weiter -->
-        <Column header="#" frozen>
+        <Column header="#" frozen class="bp-col-rank">
             <template #body="{ index }">
                 <span class="bp-rank" :class="{ 'bp-zone-qualify': index < 2 }">{{ index + 1 }}</span>
             </template>
@@ -79,3 +79,27 @@ const onRowClick = (event: { data: TeamWithStats }) => {
 const isMobile = useIsMobile();
 const labels = useTableLabels();
 </script>
+
+<style scoped>
+/* Teamnamen nie abkuerzen: ohne feste Maximalbreite nimmt die Spalte den freien Platz,
+   umgebrochen wird erst, wenn die Tabelle sonst nicht mehr passt */
+.group-standings :deep(.bp-name) {
+    overflow: visible;
+    max-width: none;
+    line-height: 1.2;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+}
+
+/* Groessere Logos als in den anderen Tabellen (theme.ts) */
+.group-standings :deep(.p-datatable-tbody .p-avatar) {
+    --bp-avatar-size: 2.75rem;
+}
+/* Mobil: 32px bei 360px Viewport bis max. 40px ab 450px */
+@media (width <= 900px) {
+    .group-standings :deep(.p-datatable-tbody .p-avatar) {
+        --bp-avatar-size: clamp(2rem, calc(2rem + (100vw - 360px) * 0.0889), 2.5rem);
+    }
+}
+</style>

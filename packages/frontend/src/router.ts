@@ -101,6 +101,18 @@ const routes = [
 		}
 	},
 
+	// Detailseite: mobil ohne App-Header, mit Zurueck-Pfeil (App.vue)
+	{
+		path: '/Benachrichtigungen',
+		name: 'Benachrichtigungen',
+		component: () => import('@/components/frontend/notifications/_Notifications.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Benachrichtigungen',
+			description: 'Benachrichtigungen',
+			detailPage: true
+		}
+	},
+
 	// Frontend - Tournament
 	{
 		path: '/:TournamentName',

@@ -1,5 +1,14 @@
 <template>
     <div class="Home">
+        <!-- Erst in der installierten App: auf dem iPhone ist Push erst ab hier moeglich -->
+        <PushPromptCard
+            v-if="isInstalled"
+            title="Push aktivieren"
+            text="Erfahre sofort von neuen Spielen."
+            :to="PUSH_SETTINGS_PATH"
+            dismissKey="bp-push-prompt-home"
+        />
+
         <HomeHero
             :openGames="openGames"
             :leagueGames="leagueGames"
@@ -25,8 +34,12 @@ import HomeRecentGames from './HomeRecentGames.vue';
 import HomePhotoMosaic from './HomePhotoMosaic.vue';
 import { useHomeData } from './useHomeData';
 import { LAST_TOURNAMENT_YEAR } from './homeUtil';
+import PushPromptCard from '@/components/shared/PushPromptCard.vue';
+import { PUSH_SETTINGS_PATH } from '@/components/shared/usePushNotifications';
+import { usePwaInstall } from '@/components/shared/usePwaInstall';
 
 const { openGames, leagueGames, leagueCup, lastTournament, gamesLoading, isLoading } = useHomeData();
+const { isInstalled } = usePwaInstall();
 </script>
 
 <style scoped>

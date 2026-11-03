@@ -15,7 +15,7 @@
 
             <div v-else-if="!visibleGames.length" class="hr-empty">Noch keine Spiele</div>
 
-            <MatchElement v-for="entry in visibleGames" v-else :key="entry.match._id" :match="entry.match" :gameType="entry.type" showChip showDate class="hr-entry" />
+            <MatchElement v-for="entry in visibleGames" v-else :key="entry.match._id" :match="entry.match" :gameType="entry.type" showChip showDate showElo class="hr-entry" />
         </div>
     </section>
 </template>
@@ -79,7 +79,7 @@ const visibleGames = computed(() => allGames.value
 
 .hr-list{
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 10px;
     align-items: start;
 }
@@ -99,7 +99,7 @@ const visibleGames = computed(() => allGames.value
         font-size: 20px;
     }
     .hr-list{
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 </style>

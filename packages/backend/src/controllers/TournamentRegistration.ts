@@ -50,8 +50,8 @@ const createRegistration = (req: Request, res: Response, next: NextFunction) => 
 
             return registration.save().then(async (saved) => {
                 await notify('registrations', {
-                    title: 'Neue Turnier-Anmeldung',
-                    body: `${saved.teamName} (${saved.player1} & ${saved.player2})`,
+                    title: `📝 Neue Anmeldung: ${saved.teamName}`,
+                    body: `${saved.player1} & ${saved.player2} sind fürs BiPo Open angemeldet`,
                     url: '/',
                     tag: `registration-${saved._id}`
                 }, [player1, player2]);

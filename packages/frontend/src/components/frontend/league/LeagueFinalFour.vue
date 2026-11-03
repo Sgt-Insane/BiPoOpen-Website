@@ -1,82 +1,49 @@
 <template>
     <div class="LeagueFinalFour">
 
-        <div class="tb-bracket">
+        <div class="ff-bracket">
+            <div class="ff-round-title">Halbfinale</div>
+            <div class="ff-round-title">Finale</div>
 
             <!-- ── Halbfinale ── -->
-            <div class="tb-round">
-                <div class="tb-round-title">Halbfinale</div>
-                <div class="tb-matches">
-                    <div class="tb-pair">
-                        <div class="tb-slot">
-                            <div class="tb-match">
-                                <FinalFourSeries
-                                    :team1="seedTeams[0]"
-                                    :team2="seedTeams[3]"
-                                    team1Placeholder="1. der Tabelle"
-                                    team2Placeholder="4. der Tabelle"
-                                    :leagueGames="leagueGames"
-                                    :regularSeasonGameCount="regularSeasonGameCount"
-                                />
-                            </div>
-                        </div>
-                        <div class="tb-slot">
-                            <div class="tb-match">
-                                <FinalFourSeries
-                                    :team1="seedTeams[1]"
-                                    :team2="seedTeams[2]"
-                                    team1Placeholder="2. der Tabelle"
-                                    team2Placeholder="3. der Tabelle"
-                                    :leagueGames="leagueGames"
-                                    :regularSeasonGameCount="regularSeasonGameCount"
-                                />
-                            </div>
-                        </div>
-                    </div>
+            <div class="ff-semis">
+                <div v-for="index in [0, 1]" :key="index" class="ff-semi-slot">
+                    <FinalFourSeriesCard v-bind="getCardProps(index)" @open="openSeries(index)"/>
                 </div>
             </div>
 
-            <!-- ── Finale ── -->
-            <div class="tb-round tb-round--connected">
-                <div class="tb-round-title">Finale</div>
-                <div class="tb-matches tb-final-matches">
-                    <div class="tb-match">
-                        <FinalFourSeries
-                            :team1="semiFinalResults[0].winner"
-                            :team2="semiFinalResults[1].winner"
-                            team1Placeholder="Sieger Halbfinale 1"
-                            team2Placeholder="Sieger Halbfinale 2"
-                            :leagueGames="leagueGames"
-                            :regularSeasonGameCount="regularSeasonGameCount"
-                        />
+            <!-- ── Finale: mittig zwischen den Halbfinals ── -->
+            <div class="ff-final">
+                <div class="ff-final-slot">
+                    <div v-if="series[2].result.winner" class="ff-champion-label">
+                        <i class="pi pi-trophy"></i> Meister
                     </div>
+                    <FinalFourSeriesCard v-bind="getCardProps(2)" highlightWinner @open="openSeries(2)"/>
                 </div>
             </div>
 
-            <div class="tb-third-place">
-                <div class="tb-round-title">Spiel um Platz 3</div>
-                <div class="tb-matches">
-                    <div class="tb-match">
-                        <FinalFourSeries
-                            :team1="semiFinalResults[0].loser"
-                            :team2="semiFinalResults[1].loser"
-                            team1Placeholder="Verlierer Halbfinale 1"
-                            team2Placeholder="Verlierer Halbfinale 2"
-                            :leagueGames="leagueGames"
-                            :regularSeasonGameCount="regularSeasonGameCount"
-                        />
-                    </div>
-                </div>
+            <!-- ── Spiel um Platz 3 ── -->
+            <div class="ff-third-place">
+                <div class="ff-round-title">Spiel um Platz 3</div>
+                <FinalFourSeriesCard v-bind="getCardProps(3)" @open="openSeries(3)"/>
             </div>
-
         </div>
+
+        <FinalFourSeriesSheet
+            v-model:visible="sheetVisible"
+            :title="selectedSeries.title"
+            :team1="selectedSeries.team1"
+            :team2="selectedSeries.team2"
+            :result="selectedSeries.result"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import FinalFourSeries from './FinalFourSeries.vue';
-import { getLeagueList } from './LeagueUtilFunctions';
+import { computed, ref } from 'vue';
+import FinalFourSeriesCard from './FinalFourSeriesCard.vue';
+import FinalFourSeriesSheet from './FinalFourSeriesSheet.vue';
+import { getLeagueList, getSeriesResult } from './LeagueUtilFunctions';
 import { LeagueTeam } from './LeagueSeasonsData';
 
 const props = defineProps({
@@ -86,63 +53,25 @@ const props = defineProps({
     teams: { type: Array as () => LeagueTeam[], required: true },
 });
 
-const getTeamNames = (team: Team | undefined) => team
-    ? [team.name, ...team.players.map(player => player.name)].filter(Boolean).map(name => name!.toLocaleLowerCase())
-    : [];
-
-const getRegularSeasonGames = () => props.leagueGames
+const sortedGames = computed(() => props.leagueGames
     .slice()
     .sort((match1, match2) => (match1.time ?? 0) - (match2.time ?? 0))
-    .slice(0, props.regularSeasonGameCount);
-
-const getSeriesResult = (team1: Team | undefined, team2: Team | undefined) => {
-    const team1Names = getTeamNames(team1);
-    const team2Names = getTeamNames(team2);
-    const games = props.leagueGames
-        .slice()
-        .sort((match1, match2) => (match1.time ?? 0) - (match2.time ?? 0))
-        .slice(props.regularSeasonGameCount)
-        .filter(match => {
-            const matchTeam1Names = getTeamNames(match.team1);
-            const matchTeam2Names = getTeamNames(match.team2);
-            return matchTeam1Names.some(name => team1Names.includes(name)) && matchTeam2Names.some(name => team2Names.includes(name))
-                || matchTeam1Names.some(name => team2Names.includes(name)) && matchTeam2Names.some(name => team1Names.includes(name));
-        })
-        .slice(0, 3);
-    let team1Wins = 0;
-    let team2Wins = 0;
-
-    games.forEach(match => {
-        const matchTeam1Score = match.team1.players.reduce((score, player) => score + (player.score ?? 0), 0);
-        const matchTeam2Score = match.team2.players.reduce((score, player) => score + (player.score ?? 0), 0);
-        if (matchTeam1Score === matchTeam2Score)
-            return;
-
-        const matchUsesTeam1 = getTeamNames(match.team1).some(name => team1Names.includes(name));
-        if (matchUsesTeam1 === (matchTeam1Score > matchTeam2Score))
-            team1Wins++;
-        else
-            team2Wins++;
-    });
-
-    return {
-        winner: team1Wins >= 2 ? team1 : team2Wins >= 2 ? team2 : undefined,
-        loser: team1Wins >= 2 ? team2 : team2Wins >= 2 ? team1 : undefined,
-    };
-};
+);
+const regularSeasonGames = computed(() => sortedGames.value.slice(0, props.regularSeasonGameCount));
+const finalFourGames = computed(() => sortedGames.value.slice(props.regularSeasonGameCount));
 
 // Die Hauptrunde muss komplett gespielt sein, bevor gesetzt wird.
 const isRegularSeasonComplete = computed(() =>
-    props.regularSeasonGameCount > 0 && getRegularSeasonGames().length >= props.regularSeasonGameCount
+    props.regularSeasonGameCount > 0 && regularSeasonGames.value.length >= props.regularSeasonGameCount
 );
 
 // Top 4 der Abschlusstabelle (positional, damit Ties nicht das Seeding verfaelschen).
-// Solange die Hauptrunde laeuft, bleiben alle Plaetze leer -> FinalFourSeries zeigt die Platzhalter-Texte.
+// Solange die Hauptrunde laeuft, bleiben alle Plaetze leer -> die Karten zeigen die Platzhalter-Texte.
 const seedTeams = computed<(Team | undefined)[]>(() => {
     if (!isRegularSeasonComplete.value)
         return [undefined, undefined, undefined, undefined];
 
-    const standings = getLeagueList(getRegularSeasonGames(), props.leaguePlayers).slice(0, 4);
+    const standings = getLeagueList(regularSeasonGames.value, props.leaguePlayers).slice(0, 4);
 
     return [0, 1, 2, 3].map((index) => {
         const player = standings[index];
@@ -152,7 +81,6 @@ const seedTeams = computed<(Team | undefined)[]>(() => {
         const logo = props.leaguePlayers.find(leaguePlayer => leaguePlayer.name === player.name)?.logo;
         const playerName = props.teams.find(team => team.teamName === player.name)?.playerName ?? player.name;
 
-        // Mock-Team ohne Score -> MatchElement zeigt "vs.".
         return {
             _id: '',
             name: player.name,
@@ -162,153 +90,154 @@ const seedTeams = computed<(Team | undefined)[]>(() => {
     });
 });
 
-const semiFinalResults = computed(() => [
-    getSeriesResult(seedTeams.value[0], seedTeams.value[3]),
-    getSeriesResult(seedTeams.value[1], seedTeams.value[2]),
-]);
+const createSeries = (title: string, team1: Team | undefined, team2: Team | undefined, team1Placeholder: string, team2Placeholder: string) => ({
+    title,
+    team1,
+    team2,
+    team1Placeholder,
+    team2Placeholder,
+    result: getSeriesResult(finalFourGames.value, team1, team2),
+});
+
+// Reihenfolge: Halbfinale 1, Halbfinale 2, Finale, Spiel um Platz 3
+const series = computed(() => {
+    const semiFinal1 = createSeries('Halbfinale 1', seedTeams.value[0], seedTeams.value[3], '1. der Tabelle', '4. der Tabelle');
+    const semiFinal2 = createSeries('Halbfinale 2', seedTeams.value[1], seedTeams.value[2], '2. der Tabelle', '3. der Tabelle');
+
+    return [
+        semiFinal1,
+        semiFinal2,
+        createSeries('Finale', semiFinal1.result.winner, semiFinal2.result.winner, 'Sieger Halbfinale 1', 'Sieger Halbfinale 2'),
+        createSeries('Spiel um Platz 3', semiFinal1.result.loser, semiFinal2.result.loser, 'Verlierer Halbfinale 1', 'Verlierer Halbfinale 2'),
+    ];
+});
+
+// Ohne title, der sonst als HTML-Attribut (Tooltip) auf der Karte landet.
+const getCardProps = (index: number) => {
+    const { title, ...cardProps } = series.value[index];
+    return cardProps;
+};
+
+// ─── Detail-Sheet ───
+const sheetVisible = ref(false);
+const selectedSeriesIndex = ref(0);
+const selectedSeries = computed(() => series.value[selectedSeriesIndex.value]);
+
+const openSeries = (index: number) => {
+    selectedSeriesIndex.value = index;
+    sheetVisible.value = true;
+};
 </script>
 
 <style scoped>
-.bp-title {
-    text-align: center;
-}
-.ff-intro {
-    text-align: center;
-    color: var(--main-color);
-    opacity: 0.8;
-    font-size: 14px;
-    margin-bottom: 20px;
+.LeagueFinalFour {
+    padding-top: 16px;
 }
 
-/* ── Turnierbaum (uebernommen aus der Turnier-K.o.-Phase) ── */
-.tb-bracket {
+/* Zwei Spalten: links Halbfinale + Spiel um Platz 3, rechts das Finale mittig neben den Halbfinals */
+.ff-bracket {
     display: grid;
-    grid-template-columns: minmax(350px, 1fr) minmax(350px, 1fr);
-    grid-template-rows: auto auto;
-    column-gap: 30px;
-    overflow-x: auto;
-    padding: 8px 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    --ff-line-length: 12px;
+    --ff-line-color: #d5d8dd;
+    /* Platz fuer die Verbindungslinien: aus dem Halbfinale raus und ins Finale rein */
+    column-gap: calc(2 * var(--ff-line-length));
+    max-width: 640px;
+    margin: 0 auto;
 }
 
-.tb-round {
+.ff-round-title {
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--main-color);
+}
+
+/* ── Verbindungslinien (aus der Turnier-K.o.-Phase): Halbfinale -> Finale ── */
+.ff-semis {
+    --ff-semi-gap: 20px;
     display: flex;
     flex-direction: column;
-    min-width: 0;
-}
-.tb-round-title {
-    font-size: 13px;
-    color: var(--main-color);
-    text-align: center;
-    margin-bottom: 8px;
-    font-weight: bold;
+    gap: var(--ff-semi-gap);
 }
 
-.tb-third-place-title {
-    margin-top: 20px;
+.ff-semi-slot {
+    position: relative;
 }
 
-.tb-final-matches {
-    flex: 1;
-    align-items: center;
+/* Waagerecht aus dem Halbfinale nach rechts */
+.ff-semi-slot::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: calc(-1 * var(--ff-line-length));
+    width: var(--ff-line-length);
+    height: 2px;
+    background: var(--ff-line-color);
 }
 
-.tb-third-place {
-    grid-column: 2;
-    grid-row: 2;
-    margin-top: 20px;
+/* Senkrecht: oberes Halbfinale nach unten, unteres nach oben, treffen sich in der Luecke */
+.ff-semi-slot::before {
+    content: '';
+    position: absolute;
+    right: calc(-1 * var(--ff-line-length));
+    width: 2px;
+    background: var(--ff-line-color);
 }
-.tb-matches {
+.ff-semi-slot:first-child::before {
+    top: 50%;
+    bottom: calc(-0.5 * var(--ff-semi-gap));
+}
+.ff-semi-slot:last-child::before {
+    top: calc(-0.5 * var(--ff-semi-gap));
+    bottom: 50%;
+}
+
+/* Finale mittig neben den Halbfinals, damit die Linie die Karte in der Mitte trifft */
+.ff-final {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    flex: 1;
 }
 
-.tb-match {
+.ff-final-slot {
     position: relative;
-    width: 100%;
 }
 
-/* Eingehende horizontale Linie aus der vorherigen Runde */
-.tb-round--connected .tb-match::before {
+/* Waagerecht von der Mitte der Halbfinals ins Finale */
+.ff-final-slot::before {
     content: '';
     position: absolute;
     top: 50%;
-    left: -15px;
-    width: 15px;
+    left: calc(-1 * var(--ff-line-length));
+    width: var(--ff-line-length);
     height: 2px;
-    background: #ccc;
-    z-index: 1;
+    background: var(--ff-line-color);
 }
 
-/* Paar (zwei Halbfinals, die ins Finale fuehren) */
-.tb-pair {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.tb-slot {
-    flex: 1;
+/* Absolut ueber der Karte, damit sie mittig bleibt */
+.ff-champion-label {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
     display: flex;
     align-items: center;
-    position: relative;
-    padding: 4px 0;
+    gap: 4px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #8a6400;
+}
+.ff-champion-label .pi {
+    font-size: 11px;
+    color: #e2b93b;
 }
 
-/* Horizontale Linie aus dem Match nach rechts */
-.tb-slot::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    right: -15px;
-    width: 15px;
-    height: 2px;
-    background: #ccc;
-}
-
-/* Vertikaler Verbinder: oberes Slot -> zur Mitte */
-.tb-slot:first-child:not(:only-child)::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    bottom: 0;
-    right: -15px;
-    width: 2px;
-    background: #ccc;
-}
-
-/* Vertikaler Verbinder: unteres Slot -> zur Mitte */
-.tb-slot:last-child:not(:only-child)::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 50%;
-    right: -15px;
-    width: 2px;
-    background: #ccc;
-}
-
-/* ═══════ MOBILE ═══════ */
-@media (width <= 900px) {
-    .tb-bracket {
-        grid-template-columns: minmax(200px, 1fr) minmax(200px, 1fr);
-        column-gap: 24px;
-    }
-    .tb-round {
-        min-width: 0;
-    }
-    .tb-slot::after {
-        right: -12px;
-        width: 12px;
-    }
-    .tb-slot:first-child:not(:only-child)::before,
-    .tb-slot:last-child:not(:only-child)::before {
-        right: -12px;
-    }
-    .tb-round--connected .tb-match::before {
-        left: -12px;
-        width: 12px;
-    }
+.ff-third-place {
+    margin-top: 28px;
 }
 </style>

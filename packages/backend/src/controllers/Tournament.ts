@@ -213,7 +213,9 @@ const setGroups = (req: Request, res: Response, next: NextFunction) => {
 const hasResult = (match: any) => match?.result?.team1Score != null && match?.result?.team2Score != null;
 
 // Vergleicht alte und neue Matches nach Position und benachrichtigt über neu eingetragene Ergebnisse
-const notifyNewResults = async (tournament: any, oldMatches: any[][], newMatches: any[][], phaseLabel: string, urlSegment: string) => {
+const notifyNewResults = async (tournament: any, oldMatches: any[][], newMatches: any[][], isGroupPhase: boolean) => {
+    const urlSegment = isGroupPhase ? 'Gruppenphase' : 'K.o.Phase';
+    const url = `/${tournament.name}/${urlSegment}`;
     const teamsByID = new Map<string, any>(tournament.teams.map((team: any) => [String(team._id), team]));
     const notifications: Promise<void>[] = [];
 
@@ -227,11 +229,20 @@ const notifyNewResults = async (tournament: any, oldMatches: any[][], newMatches
             const team2 = teamsByID.get(String(match.team2ID));
             if (!team1 || !team2) return;
 
+            // Gewinner zuerst: "Weck-Knicken 10 : 6 Not und Elend"
+            const team1Won = match.result.team1Score >= match.result.team2Score;
+            const [winner, loser] = team1Won ? [team1, team2] : [team2, team1];
+            const [winnerScore, loserScore] = team1Won
+                ? [match.result.team1Score, match.result.team2Score]
+                : [match.result.team2Score, match.result.team1Score];
+            const phaseLabel = isGroupPhase ? `Gruppe ${String.fromCharCode(65 + i)}` : 'K.o.-Phase';
+
             notifications.push(notify('tournamentResults', {
-                title: `${tournament.name} - ${phaseLabel}`,
-                body: `${team1.name} ${match.result.team1Score}:${match.result.team2Score} ${team2.name}`,
-                url: `/${tournament.name}/${urlSegment}`,
-                tag: `tournament-${tournament._id}-${urlSegment}-${i}-${j}`
+                title: `🔥 ${winner.name} ${winnerScore} : ${loserScore} ${loser.name}`,
+                body: `${tournament.name} · ${phaseLabel}`,
+                url,
+                tag: `tournament-${tournament._id}-${urlSegment}-${i}-${j}`,
+                actions: [{ action: 'phase', title: isGroupPhase ? 'Gruppe ansehen' : 'K.o.-Phase ansehen', url }]
             }, [...team1.players, ...team2.players]));
         });
     });
@@ -258,7 +269,7 @@ const setMatchesGroupPhase = (req: Request, res: Response, next: NextFunction) =
                 tournament
                     .save()
                     .then(async (updatedTournament) => {
-                        await notifyNewResults(updatedTournament, oldMatches, matches, 'Gruppenphase', 'Gruppenphase');
+                        await notifyNewResults(updatedTournament, oldMatches, matches, true);
                         res.status(201).json({ message: "Matches Groupphase updated successfully", tournament: updatedTournament });
                     })
                     .catch((error) => {
@@ -296,7 +307,7 @@ const setMatchesKOPhase = (req: Request, res: Response, next: NextFunction) => {
                 tournament
                     .save()
                     .then(async (updatedTournament) => {
-                        await notifyNewResults(updatedTournament, oldMatches, matches, 'K.o.-Phase', 'K.o.Phase');
+                        await notifyNewResults(updatedTournament, oldMatches, matches, false);
                         res.status(201).json({ message: "Matches KOPhase updated successfully", tournament: updatedTournament });
                     })
                     .catch((error) => {

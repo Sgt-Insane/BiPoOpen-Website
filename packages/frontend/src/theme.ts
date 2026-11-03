@@ -134,17 +134,17 @@ const BiPoPreset = definePreset(Aura, {
         // Mit scrollable + frozen (Platz, Name) wischt der Rest seitlich, fixierte Spalten sind linksbuendig.
         datatable: {
             headerCell: {
-                padding: '0.625rem 0.5rem',
+                padding: '0.5rem 0.375rem',
                 gap: '0.25rem'
             },
             columnTitle: {
                 fontWeight: '700'
             },
             bodyCell: {
-                padding: '0.5rem 0.5rem'
+                padding: '0.375rem 0.375rem'
             },
             footer: {
-                padding: '0.625rem 0.875rem',
+                padding: '0.5rem 0.75rem',
                 borderWidth: '1px 0 0 0'
             },
             colorScheme: {
@@ -207,11 +207,11 @@ const BiPoPreset = definePreset(Aura, {
                 /* Innenabstand zum Kartenrand */
                 .p-datatable-thead > tr > th:first-child,
                 .p-datatable-tbody > tr > td:first-child {
-                    padding-inline-start: 0.875rem;
+                    padding-inline-start: 0.5rem;
                 }
                 .p-datatable-thead > tr > th:last-child,
                 .p-datatable-tbody > tr > td:last-child {
-                    padding-inline-end: 0.875rem;
+                    padding-inline-end: 0.75rem;
                 }
 
                 /* Fixierte Spalten und <Column class="bp-col-start"> linksbuendig, Trennlinie nach der letzten fixierten */
@@ -225,6 +225,15 @@ const BiPoPreset = definePreset(Aura, {
                 }
                 .p-datatable .p-datatable-frozen-column:not(:has(+ .p-datatable-frozen-column)) {
                     border-inline-end: 1px solid var(--p-datatable-border-color);
+                }
+
+                /* Platz-Spalte <Column class="bp-col-rank">: trotz fixiert zentriert, damit ein- und zweistellige Plaetze mittig wirken */
+                .p-datatable th.bp-col-rank,
+                .p-datatable td.bp-col-rank {
+                    text-align: center;
+                }
+                .p-datatable .bp-col-rank .p-datatable-column-header-content {
+                    justify-content: center;
                 }
 
                 /* Hervorgehobene Spalte, z.B. Siege */
@@ -256,20 +265,23 @@ const BiPoPreset = definePreset(Aura, {
                 .bp-name-cell {
                     display: flex;
                     align-items: center;
-                    gap: 0.625rem;
+                    gap: 0.5rem;
                 }
                 .bp-name {
                     overflow: hidden;
                     max-width: 9rem;
                     font-weight: 700;
                     color: #16181D;
+                    text-align: start;
                     text-overflow: ellipsis;
                 }
-                .p-datatable-tbody .p-avatar {
+                /* Doppelte Klasse, damit seitenweite Avatar-Groessen (z.B. in _League.vue) die Tabelle nicht aufblaehen */
+                .p-datatable .p-datatable-tbody .p-avatar {
+                    --bp-avatar-size: 2.25rem;
                     flex-shrink: 0;
-                    width: 2rem;
-                    height: 2rem;
-                    font-size: 0.6875rem;
+                    width: var(--bp-avatar-size);
+                    height: var(--bp-avatar-size);
+                    font-size: calc(var(--bp-avatar-size) * 0.35);
                     font-weight: 700;
                     opacity: 1;
                     --avatar-background: #EEF0F3;
@@ -321,17 +333,37 @@ const BiPoPreset = definePreset(Aura, {
                     margin-inline-end: 0.25rem;
                     color: var(--bp-zone-color);
                 }
-                .bp-legend-swipe::before {
-                    content: '‹›';
-                    margin-inline-end: 0.25rem;
-                }
 
                 @media (width > 900px) {
                     .bp-name {
                         max-width: 18rem;
                     }
-                    .bp-legend-swipe {
-                        display: none;
+                }
+
+                /* Mobil: engere Spalten, kleinerer Avatar und Name, damit moeglichst alle Spalten ohne Wischen passen */
+                @media (width <= 900px) {
+                    .p-datatable .p-datatable-thead > tr > th,
+                    .p-datatable .p-datatable-tbody > tr > td {
+                        padding-inline: 0.25rem;
+                    }
+                    .p-datatable .p-datatable-thead > tr > th:first-child,
+                    .p-datatable .p-datatable-tbody > tr > td:first-child {
+                        padding-inline-start: 0.375rem;
+                    }
+                    .p-datatable .p-datatable-thead > tr > th:last-child,
+                    .p-datatable .p-datatable-tbody > tr > td:last-child {
+                        padding-inline-end: 0.5rem;
+                    }
+                    .bp-name-cell {
+                        gap: 0.375rem;
+                    }
+                    .bp-name {
+                        max-width: 6.5rem;
+                        font-size: 0.8125rem;
+                    }
+                    /* Waechst stufenlos mit der Breite: 24px bei 360px Viewport bis max. 36px ab 500px */
+                    .p-datatable .p-datatable-tbody .p-avatar {
+                        --bp-avatar-size: clamp(1.5rem, calc(1.5rem + (100vw - 360px) * 0.0857), 2.25rem);
                     }
                 }
             `

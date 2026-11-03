@@ -30,13 +30,14 @@
                 />
             </TabPanel>
 
+            <!-- Auf-/Abstiegs- und Final-4-Plaetze gibt es nur in der Gesamttabelle -->
             <TabPanel value="rueckrunde">
                 <LeagueStandingsTable
                     :leaguePlayers="props.leaguePlayers"
                     :leagueGames="leagueGamesByRound.rueckrunde"
-                    :highlightTopSlots="props.highlightTopSlots"
-                    :promotionSlots="props.promotionSlots"
-                    :relegationSlots="props.relegationSlots"
+                    :highlightTopSlots="0"
+                    :promotionSlots="0"
+                    :relegationSlots="0"
                     @select-player="openPlayerOverview"
                 />
             </TabPanel>
@@ -45,9 +46,9 @@
                 <LeagueStandingsTable
                     :leaguePlayers="props.leaguePlayers"
                     :leagueGames="leagueGamesByRound.hinrunde"
-                    :highlightTopSlots="props.highlightTopSlots"
-                    :promotionSlots="props.promotionSlots"
-                    :relegationSlots="props.relegationSlots"
+                    :highlightTopSlots="0"
+                    :promotionSlots="0"
+                    :relegationSlots="0"
                     @select-player="openPlayerOverview"
                 />
             </TabPanel>

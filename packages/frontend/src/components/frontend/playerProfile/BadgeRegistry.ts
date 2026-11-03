@@ -71,6 +71,7 @@ type TierStep = { count: number; label: string };
 
 // Meilenstein-Reihe: alle erreichten Stufen und die naechste offene mit Fortschritt
 const getTierBadges = (
+    playerName: string,
     tier: string,
     icon: string,
     value: number,
@@ -83,16 +84,18 @@ const getTierBadges = (
         .filter(step => value >= step.count)
         .map(step => {
             const match = findMatch(step.count);
+            const amount = `${formatNumber(step.count)} ${unit}`;
             return {
                 id: `${tier}-${step.count}`,
                 group: 'milestone',
                 tier,
                 icon,
-                label: `${formatNumber(step.count)} ${unit}`,
+                label: amount,
                 caption: match ? shortDateStr(match.time) : '',
-                description: `${step.label}: ${formatNumber(step.count)} ${unit} ${verb}`,
+                description: `${step.label}: ${amount} ${verb}`,
                 date: match ? dateStr(match.time) : null,
                 time: match?.time ?? 0,
+                award: { title: step.label, text: `${playerName} hat ${amount} ${verb}.`, highlight: amount },
             };
         });
 
@@ -203,6 +206,7 @@ registerBadge(({ data, playerName }) => getTitleWins(data)
         description: win.description,
         date: win.id === 'tournament-win-2021' ? null : dateStr(win.time),
         time: win.time,
+        award: { title: win.label, text: `${playerName} ist ${win.caption}.`, highlight: win.caption },
     })));
 
 // Rekorde
@@ -215,7 +219,7 @@ const RECORDS: { key: RecordKey; label: string; unit: string; onlyIfHeld?: boole
     { key: 'loss-streak-record', label: 'Längste Pleite', unit: 'Niederlagen in Folge', onlyIfHeld: true },
 ];
 
-registerBadge(({ records }) => RECORDS.flatMap(({ key, label, unit, onlyIfHeld }): PlayerBadge[] => {
+registerBadge(({ playerName, records }) => RECORDS.flatMap(({ key, label, unit, onlyIfHeld }): PlayerBadge[] => {
     const { own, record, holder, status, until } = records[key];
     if (record <= 0 || (onlyIfHeld && status === 'never')) return [];
 
@@ -239,11 +243,16 @@ registerBadge(({ records }) => RECORDS.flatMap(({ key, label, unit, onlyIfHeld }
         locked: status !== 'current',
         former: status === 'former',
         progress: status === 'never' ? { current: own, target: record } : undefined,
+        award: {
+            title: label,
+            text: `${playerName} hält jetzt den Rekord mit ${formatNumber(own)} ${unit}.`,
+            highlight: `${formatNumber(own)} ${unit}`,
+        },
     }];
 }));
 
 // Siegquote (mind. 20 Spiele)
-registerBadge(({ totalMatches, winrate }) => {
+registerBadge(({ playerName, totalMatches, winrate }) => {
     const steps = [
         { value: 60, icon: 'trending_up' },
         { value: 75, icon: 'rocket_launch' },
@@ -260,6 +269,11 @@ registerBadge(({ totalMatches, winrate }) => {
         description: `Siegquote über ${step.value} % (mind. 20 Spiele)`,
         date: null,
         time: 0,
+        award: {
+            title: `Über ${step.value} %`,
+            text: `${playerName} hat jetzt eine Siegquote über ${step.value} %.`,
+            highlight: `über ${step.value} %`,
+        },
     }));
 
     const next = steps.find(step => !reached(step.value));
@@ -282,7 +296,7 @@ registerBadge(({ totalMatches, winrate }) => {
 });
 
 // Zu Null: ein Spiel gewonnen, ohne dass der Gegner getroffen hat
-registerBadge(({ chronological }) => {
+registerBadge(({ playerName, chronological }) => {
     const shutout = chronological.find(entry => entry.won && entry.opponentScore === 0 && entry.ownScore > 0);
     return [{
         id: 'shutout',
@@ -294,11 +308,14 @@ registerBadge(({ chronological }) => {
         date: shutout ? dateStr(shutout.time) : null,
         time: shutout?.time ?? 0,
         locked: !shutout,
+        award: shutout
+            ? { title: 'Zu Null', text: `${playerName} hat ${shutout.ownScore} : 0 gewonnen.`, highlight: `${shutout.ownScore} : 0` }
+            : undefined,
     }];
 });
 
 // Spiele-Meilensteine
-registerBadge(({ chronological, totalMatches }) => getTierBadges('matches', 'star', totalMatches, [
+registerBadge(({ playerName, chronological, totalMatches }) => getTierBadges(playerName, 'matches', 'star', totalMatches, [
     { count: 100, label: 'Stammgast' },
     { count: 200, label: 'Veteran' },
     { count: 300, label: 'Legende' },
@@ -306,20 +323,20 @@ registerBadge(({ chronological, totalMatches }) => getTierBadges('matches', 'sta
 ], 'Spiele', 'absolviert', count => chronological[count - 1] ?? null));
 
 // Sieg-Meilensteine
-registerBadge(({ chronological, totalWins }) => getTierBadges('wins', 'local_fire_department', totalWins, [
+registerBadge(({ playerName, chronological, totalWins }) => getTierBadges(playerName, 'wins', 'local_fire_department', totalWins, [
     { count: 100, label: 'Dominator' },
     { count: 200, label: 'Unbesiegbar' },
 ], 'Siege', 'errungen', count => findCumulativeMatch(chronological, count, entry => entry.won ? 1 : 0)));
 
 // Treffer-Meilensteine
-registerBadge(({ chronological, totalHits }) => getTierBadges('hits', 'track_changes', totalHits, [
+registerBadge(({ playerName, chronological, totalHits }) => getTierBadges(playerName, 'hits', 'track_changes', totalHits, [
     { count: 500, label: 'Präzisionsmaschine' },
     { count: 1000, label: 'Tausender' },
     { count: 2000, label: 'Scharfschütze' },
 ], 'Treffer', 'erzielt', count => findCumulativeMatch(chronological, count, entry => entry.hits)));
 
 // Erstes Spiel
-registerBadge(({ chronological }) => {
+registerBadge(({ playerName, chronological }) => {
     const firstMatch = chronological[0];
     if (!firstMatch) return [];
 
@@ -332,5 +349,6 @@ registerBadge(({ chronological }) => {
         description: 'Erstes Spiel absolviert',
         date: dateStr(firstMatch.time),
         time: firstMatch.time,
+        award: { title: 'Erstes Spiel', text: `${playerName} hat das erste Spiel absolviert. Willkommen!`, highlight: 'erste Spiel' },
     }];
 });
