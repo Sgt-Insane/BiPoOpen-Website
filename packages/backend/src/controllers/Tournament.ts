@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import Tournament from "../models/Tournament";
 import { tournamentAggregation } from "./TournamentAggregate";
+import { notify } from "../util/notify";
 
 const createTournament = (req: Request, res: Response, next: NextFunction) => {
 
@@ -209,6 +210,35 @@ const setGroups = (req: Request, res: Response, next: NextFunction) => {
         });
 }
 
+const hasResult = (match: any) => match?.result?.team1Score != null && match?.result?.team2Score != null;
+
+// Vergleicht alte und neue Matches nach Position und benachrichtigt über neu eingetragene Ergebnisse
+const notifyNewResults = async (tournament: any, oldMatches: any[][], newMatches: any[][], phaseLabel: string, urlSegment: string) => {
+    const teamsByID = new Map<string, any>(tournament.teams.map((team: any) => [String(team._id), team]));
+    const notifications: Promise<void>[] = [];
+
+    newMatches.forEach((matchesForGroup, i) => {
+        matchesForGroup.forEach((match, j) => {
+            const oldMatch = oldMatches?.[i]?.[j];
+            const sameTeams = oldMatch && String(oldMatch.team1ID) === String(match.team1ID) && String(oldMatch.team2ID) === String(match.team2ID);
+            if (!hasResult(match) || (sameTeams && hasResult(oldMatch))) return;
+
+            const team1 = teamsByID.get(String(match.team1ID));
+            const team2 = teamsByID.get(String(match.team2ID));
+            if (!team1 || !team2) return;
+
+            notifications.push(notify('tournamentResults', {
+                title: `${tournament.name} - ${phaseLabel}`,
+                body: `${team1.name} ${match.result.team1Score}:${match.result.team2Score} ${team2.name}`,
+                url: `/${tournament.name}/${urlSegment}`,
+                tag: `tournament-${tournament._id}-${urlSegment}-${i}-${j}`
+            }, [...team1.players, ...team2.players]));
+        });
+    });
+
+    await Promise.all(notifications);
+};
+
 const setMatchesGroupPhase = (req: Request, res: Response, next: NextFunction) => {
     let tournamentID = req.body.tournamentID;
     let matches  = req.body.matches;
@@ -223,10 +253,14 @@ const setMatchesGroupPhase = (req: Request, res: Response, next: NextFunction) =
                     });
                 });
 
+                const oldMatches = JSON.parse(JSON.stringify(tournament.groupPhase.matches ?? []));
                 tournament.groupPhase.matches = matches;
                 tournament
                     .save()
-                    .then((updatedTournament) => res.status(201).json({ message: "Matches Groupphase updated successfully", tournament: updatedTournament }))
+                    .then(async (updatedTournament) => {
+                        await notifyNewResults(updatedTournament, oldMatches, matches, 'Gruppenphase', 'Gruppenphase');
+                        res.status(201).json({ message: "Matches Groupphase updated successfully", tournament: updatedTournament });
+                    })
                     .catch((error) => {
                         console.log(error);
                         res.status(500).json({ message: error });
@@ -256,11 +290,15 @@ const setMatchesKOPhase = (req: Request, res: Response, next: NextFunction) => {
                 });
 
                 // Update group matches
+                const oldMatches = JSON.parse(JSON.stringify(tournament.koPhase.matches ?? []));
                 tournament.koPhase.matches = matches;
 
                 tournament
                     .save()
-                    .then((updatedTournament) => res.status(201).json({ message: "Matches KOPhase updated successfully", tournament: updatedTournament }))
+                    .then(async (updatedTournament) => {
+                        await notifyNewResults(updatedTournament, oldMatches, matches, 'K.o.-Phase', 'K.o.Phase');
+                        res.status(201).json({ message: "Matches KOPhase updated successfully", tournament: updatedTournament });
+                    })
                     .catch((error) => {
                         console.log(error);
                         res.status(500).json({ message: error });

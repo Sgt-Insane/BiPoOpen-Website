@@ -1,0 +1,88 @@
+import webpush from 'web-push';
+import { config } from '../config/config';
+import PushSubscription, { NotificationCategory } from '../models/PushSubscription';
+
+let vapidConfigured = false;
+
+const ensureVapid = () => {
+    if (vapidConfigured) return true;
+    if (!config.vapid.publicKey || !config.vapid.privateKey) {
+        console.warn('VAPID keys missing - push notifications disabled');
+        return false;
+    }
+    webpush.setVapidDetails(config.vapid.subject, config.vapid.publicKey, config.vapid.privateKey);
+    vapidConfigured = true;
+    return true;
+};
+
+export const normalizePlayerName = (name: string) => name.trim().toLowerCase();
+
+interface GameTeam {
+    players: { name: string, score?: number }[];
+}
+
+const teamLabel = (team: GameTeam) => team.players.map((player) => player.name).join(" & ");
+const teamScore = (team: GameTeam) => team.players.reduce((acc, player) => acc + (player.score ?? 0), 0);
+
+// z.B. "Max & Tim 10:7 Lisa & Jan"
+export const describeGame = (team1: GameTeam, team2: GameTeam) =>
+    `${teamLabel(team1)} ${teamScore(team1)}:${teamScore(team2)} ${teamLabel(team2)}`;
+
+export const gamePlayerNames = (team1: GameTeam, team2: GameTeam) =>
+    [...team1.players, ...team2.players].map((player) => player.name);
+
+export interface NotificationPayload {
+    title: string;
+    body: string;
+    url: string;
+    tag?: string;
+}
+
+interface StoredSubscription {
+    endpoint: string;
+    keys: { p256dh: string, auth: string };
+}
+
+export const sendToSubscription = async (subscription: StoredSubscription, payload: NotificationPayload) => {
+    if (!ensureVapid()) return;
+
+    try {
+        await webpush.sendNotification(
+            { endpoint: subscription.endpoint, keys: subscription.keys },
+            JSON.stringify(payload),
+            { TTL: 60 * 60 * 24 }
+        );
+    } catch (error: any) {
+        // Subscription abgelaufen oder vom Nutzer entzogen
+        if (error?.statusCode === 404 || error?.statusCode === 410) {
+            await PushSubscription.deleteOne({ endpoint: subscription.endpoint });
+        } else {
+            console.log('Push error:', error?.statusCode, error?.body);
+        }
+    }
+};
+
+/**
+ * Schickt eine Benachrichtigung an alle Subscriptions, die die Kategorie aktiviert haben
+ * und (falls sie Spielern folgen) mindestens einem der beteiligten Spieler folgen.
+ * Wirft nie - Fehler werden nur geloggt.
+ */
+export const notify = async (category: NotificationCategory, payload: NotificationPayload, playerNames: string[] = []) => {
+    try {
+        if (!ensureVapid()) return;
+
+        const normalizedPlayers = playerNames.filter(Boolean).map(normalizePlayerName);
+
+        const subscriptions = await PushSubscription.find({
+            [`preferences.${category}`]: true,
+            $or: [
+                { followedPlayers: { $size: 0 } },
+                { followedPlayers: { $in: normalizedPlayers } }
+            ]
+        }).lean();
+
+        await Promise.allSettled(subscriptions.map((subscription) => sendToSubscription(subscription as StoredSubscription, payload)));
+    } catch (error) {
+        console.log('Notify error:', error);
+    }
+};

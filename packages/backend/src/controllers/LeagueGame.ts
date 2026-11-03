@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import LeagueGame from "../models/LeagueGame";
+import { describeGame, gamePlayerNames, notify } from "../util/notify";
 
 const createLeagueGame = (req: Request, res: Response, next: NextFunction) => {
     const { team1, team2, time, turns, endTime, season, league, cupId, cupRound } = req.body;
@@ -20,7 +21,16 @@ const createLeagueGame = (req: Request, res: Response, next: NextFunction) => {
 
     leagueGame
         .save()
-        .then((leagueGame) => res.status(201).json({ leagueGame }))
+        .then(async (leagueGame) => {
+            await notify('leagueGames', {
+                title: leagueGame.cupId ? 'Neues League-Cup-Spiel' : 'Neues League-Spiel',
+                body: describeGame(leagueGame.team1, leagueGame.team2),
+                url: leagueGame.season ? `/League/${leagueGame.season}` : '/League',
+                tag: `leagueGame-${leagueGame._id}`
+            }, gamePlayerNames(leagueGame.team1, leagueGame.team2));
+
+            res.status(201).json({ leagueGame });
+        })
         .catch((error) => res.status(500).json({ error }));
 };
 

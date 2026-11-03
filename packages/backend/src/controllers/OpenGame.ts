@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import OpenGame from "../models/OpenGame";
+import { describeGame, gamePlayerNames, notify } from "../util/notify";
 
 const createOpenGame = (req: Request, res: Response, next: NextFunction) => {
     const { team1, team2, time, turns, endTime } = req.body;
@@ -16,7 +17,17 @@ const createOpenGame = (req: Request, res: Response, next: NextFunction) => {
 
     openGame
         .save()
-        .then((openGame) => res.status(201).json({ openGame }))
+        .then(async (openGame) => {
+            // await, damit Vercel die Funktion nicht vor dem Versand einfriert
+            await notify('openGames', {
+                title: 'Neues offenes Spiel',
+                body: describeGame(openGame.team1, openGame.team2),
+                url: '/',
+                tag: `openGame-${openGame._id}`
+            }, gamePlayerNames(openGame.team1, openGame.team2));
+
+            res.status(201).json({ openGame });
+        })
         .catch((error) => res.status(500).json({ error }));
 };
 
