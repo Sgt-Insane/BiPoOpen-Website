@@ -64,7 +64,7 @@ const teamMatches = computed(() => {
     position: sticky;
     top: 0;
     z-index: 7;
-    background: #fff;
+    background: var(--bp-surface);
     min-height: 52px;
     display: flex;
     align-items: flex-end;
@@ -78,7 +78,7 @@ const teamMatches = computed(() => {
     right: 0;
     top: -10px;
     height: 10px;
-    background: #fff;
+    background: var(--bp-surface);
 }
 
 @media (width <= 900px) {

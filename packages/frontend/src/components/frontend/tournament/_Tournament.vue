@@ -215,7 +215,7 @@ const getTournamentPhotos = () => {
    display: flex;
    gap: 24px;
    padding-bottom: 12px;
-   border-bottom: 1px solid #eef0f2;
+   border-bottom: 1px solid var(--bp-border);
 
    .bp-skeleton{
       height: 16px;

@@ -100,7 +100,7 @@ watch(playerName, (name) => {
     max-width: 720px;
     margin: 0 auto;
     padding-top: 8px;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
 }
 
 /* ── Laden ── */
@@ -121,11 +121,11 @@ watch(playerName, (name) => {
     padding: 60px 14px;
     text-align: center;
     font-size: 14px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 
     .pi {
         font-size: 28px;
-        color: #a0a5ad;
+        color: var(--bp-text-faint);
     }
 }
 </style>
@@ -144,7 +144,7 @@ watch(playerName, (name) => {
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 
@@ -153,7 +153,7 @@ watch(playerName, (name) => {
     }
 }
 .PlayerProfile .pp-back-button:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--bp-fill-soft);
 }
 
 .PlayerProfile .pp-hero {
@@ -177,7 +177,7 @@ watch(playerName, (name) => {
 .PlayerProfile .pp-hero-meta {
     margin-top: 3px;
     font-size: 13px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 
 .PlayerProfile .pp-section {
@@ -194,15 +194,15 @@ watch(playerName, (name) => {
     margin: 0;
     font-size: 18px;
     font-weight: 800;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
 }
 .PlayerProfile .pp-section-aside {
     font-size: 13px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 
 .PlayerProfile .pp-card {
-    background: white;
+    background: var(--bp-surface);
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -216,9 +216,9 @@ watch(playerName, (name) => {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 
-.PlayerProfile .pp-win { color: #1f9d55; }
-.PlayerProfile .pp-loss { color: #d64545; }
+.PlayerProfile .pp-win { color: var(--bp-success); }
+.PlayerProfile .pp-loss { color: var(--bp-danger); }
 </style>

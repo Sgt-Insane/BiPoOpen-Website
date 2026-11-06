@@ -8,7 +8,7 @@
             scrollHeight="320px"
             placeholder="Paarung wählen"
             class="cp-select"
-            :pt="{ root: { style: '--p-select-focus-border-color: #1F2328;' } }"
+            :pt="{ root: { style: '--p-select-focus-border-color: var(--bp-text-strong);' } }"
         >
             <template #value="slotProps">
                 <div class="cp-value">
@@ -75,7 +75,7 @@ watch(selectedPairing, (pairing) => {
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: #555B63;
+    color: var(--bp-text-secondary);
 }
 .cp-select{
     width: 100%;
@@ -97,18 +97,18 @@ watch(selectedPairing, (pairing) => {
     white-space: nowrap;
     font-size: 15px;
     font-weight: 600;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .cp-placeholder{
-    color: #9AA0A8;
+    color: var(--bp-text-faint);
     font-weight: 500;
 }
 .cp-count{
     flex-shrink: 0;
     padding: 2px 8px;
     border-radius: 999px;
-    background: #F1F2F4;
-    color: #555B63;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-secondary);
     font-size: 12px;
     font-weight: 600;
 }

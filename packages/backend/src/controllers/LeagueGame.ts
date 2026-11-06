@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import LeagueGame from "../models/LeagueGame";
-import { describeResult, gamePlayerNames, notify } from "../util/notify";
+import { cardTeam, describeResult, gamePlayerNames, notify, resultImageUrl } from "../util/notify";
 
 const createLeagueGame = (req: Request, res: Response, next: NextFunction) => {
     const { team1, team2, time, turns, endTime, season, league, cupId, cupRound } = req.body;
@@ -29,6 +29,7 @@ const createLeagueGame = (req: Request, res: Response, next: NextFunction) => {
                 title: `🏆 ${result.title}`,
                 body: leagueGame.cupId ? 'BiPo League Cup' : `${leagueGame.league ?? 1}. Liga · BiPo League`,
                 url,
+                image: resultImageUrl(cardTeam(leagueGame.team1, true), cardTeam(leagueGame.team2, true), leagueGame.cupId ? 'BiPo League Cup' : `${leagueGame.league ?? 1}. Liga`, true),
                 tag: `leagueGame-${leagueGame._id}`,
                 actions: [{ action: 'table', title: leagueGame.cupId ? 'Pokal ansehen' : 'Tabelle', url }]
             }, gamePlayerNames(leagueGame.team1, leagueGame.team2));

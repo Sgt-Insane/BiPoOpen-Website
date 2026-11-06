@@ -15,12 +15,6 @@
             </div>
         </div>
 
-        <ul class="ni-benefits">
-            <li><i class="pi pi-check"></i>Sofort wissen, wenn ein Spiel eingetragen wird</li>
-            <li><i class="pi pi-check"></i>Nur das, was dich interessiert – z. B. nur deine Freunde</li>
-            <li><i class="pi pi-check"></i>Kein Konto nötig, jederzeit abschaltbar</li>
-        </ul>
-
         <button type="button" class="ni-activate" :disabled="loading" @click="emit('activate')">
             <i v-if="loading" class="pi pi-spin pi-spinner"></i>
             <BellIcon v-else/>
@@ -82,42 +76,22 @@ const followLabel = computed(() => props.followNames.length === 1 ? props.follow
     justify-content: space-between;
     font-size: 12px;
     font-weight: 700;
-    color: #3a3f47;
+    color: var(--bp-text);
 }
 .ni-push-time {
     font-weight: 400;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .ni-push-title {
     margin-top: 1px;
     font-size: 14px;
     font-weight: 800;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
     overflow-wrap: anywhere;
 }
 .ni-push-body {
     font-size: 13px;
-    color: #3a3f47;
-}
-
-.ni-benefits {
-    margin: 20px 0 0;
-    padding: 0;
-    list-style: none;
-
-    li {
-        display: flex;
-        align-items: baseline;
-        gap: 10px;
-        padding: 4px 0;
-        font-size: 14px;
-        color: #3a3f47;
-    }
-    .pi {
-        color: #2ea45f;
-        font-size: 13px;
-        font-weight: 800;
-    }
+    color: var(--bp-text);
 }
 
 .ni-activate {
@@ -147,6 +121,6 @@ const followLabel = computed(() => props.followNames.length === 1 ? props.follow
     margin: 12px 0 0;
     font-size: 12px;
     text-align: center;
-    color: #8a9099;
+    color: var(--bp-text-subtle);
 }
 </style>

@@ -210,9 +210,9 @@ button {
     align-items: center;
     gap: 10px;
     padding: 12px;
-    border: 1px solid #f3dd9b;
+    border: 1px solid var(--bp-gold-border);
     border-radius: 14px;
-    background: linear-gradient(135deg, #fff6dc 0%, #fdeec2 100%);
+    background: var(--bp-gold-card);
 }
 .pp-title-icon {
     display: flex;
@@ -237,7 +237,7 @@ button {
 .pp-title-caption {
     display: block;
     font-size: 12px;
-    color: #7a6326;
+    color: var(--bp-gold);
 }
 
 /* ── Icons je Gruppe ── */
@@ -263,11 +263,11 @@ button {
         font-size: 30px;
     }
 }
-.pp-ach-icon--title { background: #fdf0c8; color: #c48a0e; }
-.pp-ach-icon--record { background: #ede8fb; color: #6d4fd0; }
-.pp-ach-icon--performance { background: #fdecee; color: var(--main-color); }
-.pp-ach-icon--milestone { background: var(--secondary-color-weak); color: #2a8ba1; }
-.pp-ach-icon.is-locked { background: #eef0f2; color: #a0a5ad; }
+.pp-ach-icon--title { background: var(--bp-gold-weak); color: var(--bp-gold-icon); }
+.pp-ach-icon--record { background: var(--bp-violet-weak); color: var(--bp-violet); }
+.pp-ach-icon--performance { background: var(--bp-primary-weak); color: var(--main-color); }
+.pp-ach-icon--milestone { background: var(--secondary-color-weak); color: var(--bp-secondary-text); }
+.pp-ach-icon.is-locked { background: var(--bp-fill); color: var(--bp-text-faint); }
 
 .pp-ach-label {
     display: block;
@@ -277,7 +277,7 @@ button {
     white-space: nowrap;
 }
 .pp-ach-label.is-muted {
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 
 /* ── Leiste ── */
@@ -301,7 +301,7 @@ button {
     padding: 10px 12px;
     border: none;
     border-radius: 14px;
-    background: white;
+    background: var(--bp-surface);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     scroll-snap-align: start;
 }
@@ -315,7 +315,7 @@ button {
 .pp-ach-caption {
     display: block;
     font-size: 12px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -325,7 +325,7 @@ button {
 .pp-ach-sheet-title {
     font-size: 22px;
     font-weight: 800;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
 }
 .pp-ach-group-label {
     margin: 18px 0 6px;
@@ -337,10 +337,10 @@ button {
 .pp-ach-group-label:first-child {
     margin-top: 4px;
 }
-.pp-ach-group-label--title { color: #8a6400; }
-.pp-ach-group-label--record { color: #5b3cc4; }
-.pp-ach-group-label--performance { color: #b3263a; }
-.pp-ach-group-label--milestone { color: #1f6f80; }
+.pp-ach-group-label--title { color: var(--bp-gold); }
+.pp-ach-group-label--record { color: var(--bp-violet); }
+.pp-ach-group-label--performance { color: var(--bp-primary-text); }
+.pp-ach-group-label--milestone { color: var(--bp-secondary-text); }
 
 .pp-ach-row {
     display: flex;
@@ -363,7 +363,7 @@ button {
     flex-shrink: 0;
     max-width: 45%;
     font-size: 13px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
     text-align: right;
 }
 .pp-ach-progress {
@@ -372,12 +372,12 @@ button {
     margin-top: 6px;
     overflow: hidden;
     border-radius: 2px;
-    background: #e3e6ea;
+    background: var(--bp-fill-strong);
 
     span {
         display: block;
         height: 100%;
-        background: #9aa0a8;
+        background: var(--bp-text-faint);
     }
 }
 
@@ -396,17 +396,17 @@ button {
 }
 .pp-badge-detail-text {
     font-size: 13px;
-    color: #3a3f47;
+    color: var(--bp-text);
 }
 .pp-badge-detail-meta {
     font-size: 12px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .pp-badge-detail-holders {
     width: 100%;
     margin-top: 10px;
     padding-top: 12px;
-    border-top: 1px solid #eef0f2;
+    border-top: 1px solid var(--bp-border);
     font-size: 13px;
 }
 .pp-badge-holders-skeleton {

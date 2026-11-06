@@ -58,7 +58,7 @@ const props = defineProps({
    gameType: {type: String as PropType<GameType>, default: undefined},
    // Eigener Chip-Text statt des Spielart-Labels (z.B. Quelle im Spielerprofil).
    chipLabel: {type: String, default: undefined},
-   // Elo nach dem Spiel und Elo-Wechsel klein unter jedem Team
+   // Elo nach dem Spiel klein unter jedem Team
    showElo: {type: Boolean, default: false},
 });
 
@@ -106,8 +106,8 @@ let togglePlayersVisible = () => {
    max-width: 100%;
    padding: 10px 12px;
    margin-bottom: 8px;
-   background: white;
-   border: 1px solid #ECEEF1;
+   background: var(--bp-surface);
+   border: 1px solid var(--bp-border);
    border-radius: 12px;
    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
@@ -128,16 +128,16 @@ let togglePlayersVisible = () => {
    line-height: 18px;
 }
 .mt-chip--cup{
-   background: #fde6e8;
-   color: #b42236;
+   background: var(--bp-primary-weak);
+   color: var(--bp-primary-text);
 }
 .mt-chip--league{
    background: var(--secondary-color-weak);
-   color: #1f7f95;
+   color: var(--bp-secondary-text);
 }
 .mt-chip--open{
-   background: #ECEEF1;
-   color: #4a5058;
+   background: var(--bp-fill);
+   color: var(--bp-text);
 }
 .mt-date{
    font-size: clamp(12px, 3.1vw, 13px);
@@ -160,7 +160,7 @@ let togglePlayersVisible = () => {
    border: 0;
    font-size: 13px;
    font-weight: 600;
-   color: #4a5058;
+   color: var(--bp-text);
    cursor: pointer;
 }
 .mt-toggle .pi{

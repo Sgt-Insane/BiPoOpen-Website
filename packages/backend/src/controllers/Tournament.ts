@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import Tournament from "../models/Tournament";
 import { tournamentAggregation } from "./TournamentAggregate";
-import { notify } from "../util/notify";
+import { notify, resultImageUrl } from "../util/notify";
 
 const createTournament = (req: Request, res: Response, next: NextFunction) => {
 
@@ -241,6 +241,11 @@ const notifyNewResults = async (tournament: any, oldMatches: any[][], newMatches
                 title: `🔥 ${winner.name} ${winnerScore} : ${loserScore} ${loser.name}`,
                 body: `${tournament.name} · ${phaseLabel}`,
                 url,
+                image: resultImageUrl(
+                    { players: team1.players, score: match.result.team1Score, name: team1.name },
+                    { players: team2.players, score: match.result.team2Score, name: team2.name },
+                    phaseLabel
+                ),
                 tag: `tournament-${tournament._id}-${urlSegment}-${i}-${j}`,
                 actions: [{ action: 'phase', title: isGroupPhase ? 'Gruppe ansehen' : 'K.o.-Phase ansehen', url }]
             }, [...team1.players, ...team2.players]));

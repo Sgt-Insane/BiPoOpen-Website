@@ -8,7 +8,7 @@
         scrollHeight="320px"
         placeholder="Team wählen"
         class="LeagueTeamSelect"
-        :pt="{ root: { style: '--p-select-focus-border-color: #1F2328;' } }"
+        :pt="{ root: { style: '--p-select-focus-border-color: var(--bp-text-strong);' } }"
         @update:modelValue="(team: LeaguePlayer | null) => emit('update:modelValue', team?.name ?? '')"
     >
         <template #value="slotProps">
@@ -76,7 +76,7 @@ const options = computed(() => {
     min-width: 0;
     font-size: 15px;
     font-weight: 600;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .lt-name{
     flex: 1;
@@ -86,7 +86,7 @@ const options = computed(() => {
     white-space: nowrap;
 }
 .lt-placeholder{
-    color: #9AA0A8;
+    color: var(--bp-text-faint);
     font-weight: 500;
 }
 .lt-avatar{
@@ -100,8 +100,8 @@ const options = computed(() => {
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    background: #F1F2F4;
-    color: #8A9099;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-subtle);
     font-weight: 700;
 }
 :deep(.p-select-label){

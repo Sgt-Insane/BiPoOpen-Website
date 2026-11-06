@@ -29,7 +29,7 @@ const { now, data, isLoading, hasError } = useWorldRankingData();
 .WorldRanking {
     max-width: 720px;
     margin: 0 auto;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
 }
 
 .wr-skeleton-header {
@@ -42,7 +42,7 @@ const { now, data, isLoading, hasError } = useWorldRankingData();
 .wr-subtitle {
     margin-top: 4px;
     font-size: 13px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .wr-skeleton-chips {
     display: flex;
@@ -59,6 +59,6 @@ const { now, data, isLoading, hasError } = useWorldRankingData();
     padding: 30px 14px;
     text-align: center;
     font-size: 14px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 </style>

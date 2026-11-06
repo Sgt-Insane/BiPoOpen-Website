@@ -70,11 +70,11 @@ const goTo = (path: string) => {
 .tp-title {
 	font-size: 18px;
 	font-weight: bold;
-	color: #222;
+	color: var(--bp-text-strong);
 }
 
 .tp-list {
-	border-top: 1px solid #eee;
+	border-top: 1px solid var(--bp-border);
 }
 .tp-row {
 	display: flex;
@@ -82,12 +82,12 @@ const goTo = (path: string) => {
 	justify-content: space-between;
 	gap: 12px;
 	padding: 12px 20px;
-	border-bottom: 1px solid #f2f2f2;
+	border-bottom: 1px solid var(--bp-border);
 	cursor: pointer;
 	transition: background .2s ease;
 }
 .tp-row:hover {
-	background: #fafafa;
+	background: var(--bp-surface-soft);
 }
 .tp-row-active,
 .tp-row-active:hover {
@@ -96,14 +96,14 @@ const goTo = (path: string) => {
 .tp-year {
 	font-weight: bold;
 	font-size: 16px;
-	color: #222;
+	color: var(--bp-text-strong);
 }
 .tp-row-active .tp-year {
 	color: var(--main-color);
 }
 .tp-sub {
 	font-size: 12px;
-	color: #777;
+	color: var(--bp-text-muted);
 }
 .tp-badge {
 	white-space: nowrap;

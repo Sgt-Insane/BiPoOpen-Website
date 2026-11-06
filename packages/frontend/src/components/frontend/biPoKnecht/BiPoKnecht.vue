@@ -1,5 +1,5 @@
 <template>
-    <div class="absolute w-[100dvw] h-[100dvh] top-0 left-0 z-[1000] bg-white">
+    <div class="absolute w-[100dvw] h-[100dvh] top-0 left-0 z-[1000] bg-(--bp-bg)">
         <ModalGameOver v-if="game.status === 'over'" :match="match" :isLeagueGame="props.isLeagueGame" />
         <ModalStartingPlayer v-if="game.status === 'starting'" :match="match" :startGame="game.startGame"/>
 
@@ -9,16 +9,16 @@
 
         <!-- Fixed bottom nav -->
         <div v-if="game.status !== 'starting'"
-            class="fixed bottom-[5px] left-1/2 -translate-x-1/2 w-auto bg-white rounded-t-2xl px-4 pt-4 pb-3 shadow-sm flex flex-row gap-2 items-center justify-center z-[99999]"
+            class="fixed bottom-[5px] left-1/2 -translate-x-1/2 w-auto bg-(--bp-surface) rounded-t-2xl px-4 pt-4 pb-3 shadow-sm flex flex-row gap-2 items-center justify-center z-[99999]"
         >
             <Button @click="game.undoLastTurn()" :disabled="game.turns.length === 0 && game.reRacks.length === 0" text rounded>
-                <i class="pi pi-undo text-2xl text-gray-600" />
+                <i class="pi pi-undo text-2xl text-(--bp-text-secondary)" />
             </Button>
             <Button @click="showHistory = true" text rounded>
-                <i class="pi pi-clock text-2xl text-gray-600" />
+                <i class="pi pi-clock text-2xl text-(--bp-text-secondary)" />
             </Button>
             <Button @click="showStats = true" text rounded>
-                <i class="pi pi-trophy text-2xl text-gray-600" />
+                <i class="pi pi-trophy text-2xl text-(--bp-text-secondary)" />
             </Button>
         </div>
 

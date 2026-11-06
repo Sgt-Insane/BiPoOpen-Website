@@ -85,7 +85,7 @@ const { addGameVisible, pageContext, presetNames, notifyGameSaved } = useAddGame
 const season = getSeason(CURRENT_SEASON_SLUG) ?? LEAGUE_SEASONS[0];
 
 const modeOptions = [
-    { label: 'Offen', value: 'open', color: '#4B5568' },
+    { label: 'Offen', value: 'open', color: 'var(--bp-text-secondary)' },
     { label: 'Liga', value: 'league', color: '#2AA3B8' },
     ...(season.hasCup ? [{ label: 'Cup', value: 'cup', color: '#EA5160' }] : []),
 ];
@@ -231,8 +231,8 @@ const showNewAwards = async (badgesBefore: Map<string, PlayerBadge[]>, names: st
 .ag-hint{
     padding: 12px;
     border-radius: 12px;
-    background: #F6F7F9;
-    color: #6B7079;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-muted);
     font-size: 14px;
     text-align: center;
 }

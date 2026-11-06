@@ -18,9 +18,9 @@
 }
 .ma-tournament{
     padding: 20px;
-    background: white;
+    background: var(--bp-surface);
     cursor: pointer;
-    color: black;
+    color: var(--bp-text-strong);
     text-align: center;
     margin-bottom: 50px;
     filter: drop-shadow(0px 0px 5px rgba(0, 0, 0, 0.3));

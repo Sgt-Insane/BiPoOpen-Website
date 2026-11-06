@@ -108,8 +108,8 @@ const recentForm = computed(() => props.data.recentForm.slice(0, 5).reverse());
 const bestTime = computed(() => props.data.extraStats.timeOfDayStats.find(block => block.label === props.data.extraStats.bestTimeOfDay));
 
 const CATEGORY_STYLES: Record<string, { label: string; color: string; order: number }> = {
-    'Offene Spiele 1v1': { label: 'Offene Spiele 1v1', color: '#3d4a5c', order: 0 },
-    'Offene Spiele 2v2': { label: 'Offene Spiele 2v2', color: '#3d4a5c', order: 0 },
+    'Offene Spiele 1v1': { label: 'Offene Spiele 1v1', color: 'var(--bp-text)', order: 0 },
+    'Offene Spiele 2v2': { label: 'Offene Spiele 2v2', color: 'var(--bp-text)', order: 0 },
     'BiPo League': { label: 'BiPo League', color: 'var(--main-color)', order: 1 },
     'BiPo League Cup': { label: 'League Cup', color: 'var(--secondary-color)', order: 2 },
     'BiPo Open Turniere': { label: 'BiPo Open', color: '#e3a92b', order: 1 },
@@ -118,7 +118,7 @@ const CATEGORY_STYLES: Record<string, { label: string; color: string; order: num
 const categories = computed(() => props.data.categories
     .map(category => ({
         ...category,
-        ...(CATEGORY_STYLES[category.name] ?? { label: category.name, color: '#a0a5ad', order: 9 }),
+        ...(CATEGORY_STYLES[category.name] ?? { label: category.name, color: 'var(--bp-text-faint)', order: 9 }),
         winrate: category.matches > 0 ? Math.round(category.wins / category.matches * 100) : 0,
     }))
     .sort((a, b) => a.order - b.order));
@@ -152,7 +152,7 @@ const categories = computed(() => props.data.categories
     }
 }
 .pp-ring-track {
-    stroke: #fbe3e6;
+    stroke: var(--bp-primary-weak);
 }
 .pp-ring-value {
     stroke: var(--main-color);
@@ -173,18 +173,18 @@ const categories = computed(() => props.data.categories
     }
     span {
         font-size: 10px;
-        color: #6b717b;
+        color: var(--bp-text-muted);
     }
 }
 .pp-stats-games {
     font-size: 13px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 
     b {
         margin-right: 2px;
         font-size: 26px;
         font-weight: 800;
-        color: #1d1f23;
+        color: var(--bp-text-strong);
     }
 }
 .pp-stats-split {
@@ -225,7 +225,7 @@ const categories = computed(() => props.data.categories
     min-width: 0;
     padding: 10px 12px;
     border-radius: 12px;
-    background: #f6f7f9;
+    background: var(--bp-fill-soft);
 
     b {
         font-size: 17px;
@@ -239,7 +239,7 @@ const categories = computed(() => props.data.categories
     span {
         margin-top: 1px;
         font-size: 12px;
-        color: #6b717b;
+        color: var(--bp-text-muted);
     }
 }
 
@@ -252,7 +252,7 @@ const categories = computed(() => props.data.categories
 }
 .pp-stats-form-label {
     font-size: 12px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .pp-stats-form-results {
     display: flex;
@@ -278,13 +278,13 @@ const categories = computed(() => props.data.categories
     gap: 8px;
     margin-top: 14px;
     padding: 9px 12px;
-    border: 1px solid #eef0f2;
+    border: 1px solid var(--bp-border);
     border-radius: 12px;
     font-size: 13px;
-    color: #3a3f47;
+    color: var(--bp-text);
 
     .pi {
-        color: #6b717b;
+        color: var(--bp-text-muted);
     }
 }
 
@@ -296,7 +296,7 @@ const categories = computed(() => props.data.categories
     padding: 11px 0;
 }
 .pp-category + .pp-category {
-    border-top: 1px solid #eef0f2;
+    border-top: 1px solid var(--bp-border);
 }
 .pp-category-head {
     display: flex;
@@ -321,7 +321,7 @@ const categories = computed(() => props.data.categories
 .pp-category-meta {
     flex-shrink: 0;
     font-size: 12px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .pp-category-rate {
     flex-shrink: 0;
@@ -333,7 +333,7 @@ const categories = computed(() => props.data.categories
     margin-top: 7px;
     overflow: hidden;
     border-radius: 2px;
-    background: #eef0f2;
+    background: var(--bp-fill);
 
     span {
         display: block;

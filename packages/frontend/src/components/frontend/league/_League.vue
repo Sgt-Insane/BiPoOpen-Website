@@ -283,7 +283,7 @@ const showDivisionTabs = computed(() => !isCupActive.value && division.value.tea
 }
 :deep(.lg-season-select .p-select-label){
     font-weight: 700;
-    color: #1f2328;
+    color: var(--bp-text-strong);
     padding-right: 0;
 }
 

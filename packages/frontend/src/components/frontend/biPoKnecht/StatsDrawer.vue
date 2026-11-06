@@ -20,15 +20,15 @@
                     {{ team.name || `Team ${teamIndex + 1}` }}
                 </div>
 
-                <div class="flex flex-col divide-y divide-gray-100">
+                <div class="flex flex-col divide-y divide-(--bp-border)">
                     <div
                         v-for="(player, playerIndex) in team.players"
                         :key="player._id"
                         class="flex items-center justify-between gap-3 px-4 py-3"
                     >
                         <div class="flex flex-col min-w-0">
-                            <span class="font-semibold text-gray-900 truncate">{{ player.name }}</span>
-                            <span class="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                            <span class="font-semibold text-(--bp-text-strong) truncate">{{ player.name }}</span>
+                            <span class="text-xs text-(--bp-text-muted) mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                                 <span>Treffer: {{ statsFor(teamIndex, playerIndex).hits }}</span>
                                 <span>Bouncer: {{ statsFor(teamIndex, playerIndex).bouncers }}</span>
                                 <span>Bomben: {{ statsFor(teamIndex, playerIndex).bombs }}</span>
@@ -40,7 +40,7 @@
                             <span class="text-2xl font-bold leading-none" :style="{ color: teamColor(teamIndex) }">
                                 {{ statsFor(teamIndex, playerIndex).total }}
                             </span>
-                            <span class="text-[10px] text-gray-400 uppercase tracking-wide">Becher</span>
+                            <span class="text-[10px] text-(--bp-text-faint) uppercase tracking-wide">Becher</span>
                         </div>
                     </div>
                 </div>

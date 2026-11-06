@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import OpenGame from "../models/OpenGame";
-import { describeResult, gamePlayerNames, notify, playerProfilePath } from "../util/notify";
+import { cardTeam, describeResult, gamePlayerNames, notify, playerProfilePath, resultImageUrl } from "../util/notify";
 
 const createOpenGame = (req: Request, res: Response, next: NextFunction) => {
     const { team1, team2, time, turns, endTime } = req.body;
@@ -24,6 +24,7 @@ const createOpenGame = (req: Request, res: Response, next: NextFunction) => {
                 title: `🍺 ${result.title}`,
                 body: result.isDraw ? 'Unentschieden · Offenes Spiel' : `gegen ${result.opponents} · Offenes Spiel`,
                 url: '/',
+                image: resultImageUrl(cardTeam(openGame.team1), cardTeam(openGame.team2), 'Offenes Spiel'),
                 tag: `openGame-${openGame._id}`,
                 actions: [
                     { action: 'game', title: 'Spiel ansehen', url: '/' },

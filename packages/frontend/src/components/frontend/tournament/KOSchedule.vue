@@ -174,7 +174,7 @@ const getKOPlaceholderName = (tournament:Tournament, stageIndex:number, matchInd
     left: -15px;
     width: 15px;
     height: 2px;
-    background: #ccc;
+    background: var(--bp-border-strong);
     z-index: 1;
 }
 
@@ -202,7 +202,7 @@ const getKOPlaceholderName = (tournament:Tournament, stageIndex:number, matchInd
     right: -15px;
     width: 15px;
     height: 2px;
-    background: #ccc;
+    background: var(--bp-border-strong);
 }
 
 /* Vertical connector: top slot → down to pair center */
@@ -213,7 +213,7 @@ const getKOPlaceholderName = (tournament:Tournament, stageIndex:number, matchInd
     bottom: 0;
     right: -15px;
     width: 2px;
-    background: #ccc;
+    background: var(--bp-border-strong);
 }
 
 /* Vertical connector: bottom slot → up to pair center */
@@ -224,14 +224,14 @@ const getKOPlaceholderName = (tournament:Tournament, stageIndex:number, matchInd
     bottom: 50%;
     right: -15px;
     width: 2px;
-    background: #ccc;
+    background: var(--bp-border-strong);
 }
 
 /* ── MatchElement overrides ── */
 .tb-match :deep(.Match) {
     margin-bottom: 0;
     padding: 5px 8px;
-    border-color: #e0e0e0;
+    border-color: var(--bp-border);
 }
 .tb-match :deep(.mt-team) {
     font-size: 13px;

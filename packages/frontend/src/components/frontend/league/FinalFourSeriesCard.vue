@@ -71,8 +71,8 @@ const rows = computed(() => [
     flex-direction: column;
     width: 100%;
     padding: 4px 8px 0;
-    background: white;
-    border: 1px solid #ECEEF1;
+    background: var(--bp-surface);
+    border: 1px solid var(--bp-border);
     border-radius: 10px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     font: inherit;
@@ -84,7 +84,7 @@ const rows = computed(() => [
     transition: border-color .2s ease;
 }
 .ffc-card--clickable:hover {
-    border-color: #d8dbe0;
+    border-color: var(--bp-border-strong);
 }
 .ffc-card--clickable:focus-visible {
     outline: 2px solid var(--main-color);
@@ -101,10 +101,10 @@ const rows = computed(() => [
     gap: 8px;
     min-height: 34px;
     font-size: 13px;
-    color: #4a5058;
+    color: var(--bp-text);
     /* graue Initialen statt roter Avatare */
-    --avatar-background: #EEF0F3;
-    --avatar-color: #6B717B;
+    --avatar-background: var(--bp-fill);
+    --avatar-color: var(--bp-text-muted);
 }
 .ffc-team-name {
     flex: 1;
@@ -115,13 +115,13 @@ const rows = computed(() => [
 }
 .ffc-team--win .ffc-team-name {
     font-weight: 700;
-    color: #1f2328;
+    color: var(--bp-text-strong);
 }
 .ffc-team--loose .ffc-team-name {
-    color: #8a9099;
+    color: var(--bp-text-subtle);
 }
 .ffc-team--placeholder .ffc-team-name {
-    color: #8a9099;
+    color: var(--bp-text-subtle);
     font-style: italic;
     font-size: 12px;
 }
@@ -132,8 +132,8 @@ const rows = computed(() => [
     height: 22px;
     padding: 0 5px;
     border-radius: 6px;
-    background: #ECEEF1;
-    color: #1f2328;
+    background: var(--bp-fill);
+    color: var(--bp-text-strong);
     font-size: 13px;
     font-weight: 600;
     line-height: 22px;
@@ -153,9 +153,9 @@ const rows = computed(() => [
     gap: 4px;
     margin: 2px -8px 0;
     padding: 5px 0;
-    border-top: 1px solid #ECEEF1;
+    border-top: 1px solid var(--bp-border);
     font-size: 11px;
-    color: #8a9099;
+    color: var(--bp-text-subtle);
 }
 .ffc-footer .pi {
     font-size: 9px;

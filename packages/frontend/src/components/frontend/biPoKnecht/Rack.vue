@@ -10,11 +10,11 @@
   >
 
     <!-- ACTIVE TEAM: Control card -->
-    <div v-show="isActiveTeam" class="w-[80%] bg-white rounded-t-2xl px-4 pt-4 pb-3 shadow-sm flex flex-col gap-2">
+    <div v-show="isActiveTeam" class="w-[80%] bg-(--bp-surface) rounded-t-2xl px-4 pt-4 pb-3 shadow-sm flex flex-col gap-2">
       <!-- Player name + throw indicator -->
       <div class="flex flex-col align-items justify-center pb-3">
-        <span class="text-center text-lg font-bold text-base text-gray-900">{{ game.infoText }}</span>
-        <span class="text-center text-xs text-gray-400 ml-2 shrink-0">Wurf {{ game.activePlayerIndex + 1 }}/{{ game.activeTeam.players.length }}</span>
+        <span class="text-center text-lg font-bold text-base text-(--bp-text-strong)">{{ game.infoText }}</span>
+        <span class="text-center text-xs text-(--bp-text-faint) ml-2 shrink-0">Wurf {{ game.activePlayerIndex + 1 }}/{{ game.activeTeam.players.length }}</span>
       </div>
 
       <!-- Re-Rack button -->
@@ -33,7 +33,7 @@
             'flex-1 !rounded-full !text-sm !py-[6px]',
             game.modifier === 'bouncer'
               ? '!bg-orange-500 !border-orange-500 !text-white'
-              : '!bg-white !border-gray-300 !text-gray-700'
+              : '!bg-(--bp-surface) !border-(--bp-border-strong) !text-(--bp-text)'
           ]"
           outlined
         >
@@ -50,7 +50,7 @@
             'flex-1 !rounded-full !text-sm !py-[6px]',
             game.modifier === 'trickshot'
               ? '!bg-orange-500 !border-orange-500 !text-white'
-              : '!bg-white !border-gray-300 !text-gray-700'
+              : '!bg-(--bp-surface) !border-(--bp-border-strong) !text-(--bp-text)'
           ]"
           outlined
         >
@@ -158,7 +158,7 @@ const getCupColor = (row: number, position: number) => {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  background-color: white;
-  border: 1px solid black;
+  background-color: var(--bp-surface);
+  border: 1px solid var(--bp-text-strong);
 }
 </style>

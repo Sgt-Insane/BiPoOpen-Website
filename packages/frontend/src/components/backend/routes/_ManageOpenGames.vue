@@ -74,7 +74,7 @@ let getGameTime = (dateNumber:number) => {
     position: sticky;
     top: 218px;
     padding-top: 20px;
-    background: white;
+    background: var(--bp-surface);
     z-index: 2;
 }
 .nav-link{

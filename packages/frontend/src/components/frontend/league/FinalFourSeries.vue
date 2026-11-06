@@ -160,7 +160,7 @@ const toggleExpanded = () => {
     align-items: center;
     width: 100%;
     padding: 5px 8px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--bp-border);
     border-radius: 4px;
 }
 
@@ -230,7 +230,7 @@ const toggleExpanded = () => {
 .ff-series-games {
     margin-top: 6px;
     padding-left: 10px;
-    border-left: 2px solid #e0e0e0;
+    border-left: 2px solid var(--bp-border);
 }
 .ff-series-game {
     margin-bottom: 6px;

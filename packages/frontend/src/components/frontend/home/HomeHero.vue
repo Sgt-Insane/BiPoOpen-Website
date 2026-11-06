@@ -297,7 +297,7 @@ const onClickCapture = (event: MouseEvent) => {
 .hh-progress-fill{
     display: block;
     height: 100%;
-    background: white;
+    background: var(--bp-surface);
     border-radius: 999px;
     transform: scaleX(0);
     transform-origin: left;

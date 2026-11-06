@@ -71,7 +71,7 @@ const visibleGames = computed(() => allGames.value
     margin: 0;
     font-size: 22px;
     font-weight: 800;
-    color: #1f2328;
+    color: var(--bp-text-strong);
 }
 :deep(.hr-filter){
     padding: 0;

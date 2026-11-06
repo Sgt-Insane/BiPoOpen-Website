@@ -5,7 +5,7 @@
         </button>
 
         <h1 class="nt-title">Benachrichtigungen</h1>
-        <p class="nt-subtitle">Push aufs Handy – auch wenn die App zu ist</p>
+        <p class="nt-subtitle">Push-Benachrichtigungen {{ status === 'active' ? 'verwalten' : 'einrichten' }}</p>
 
         <div v-if="status === 'loading' || (status === 'active' && !settingsLoaded)" aria-busy="true">
             <div class="bp-skeleton" style="height: 64px"></div>
@@ -38,14 +38,14 @@ import NotificationsUnavailable from './NotificationsUnavailable.vue';
 // Einstiege von aussen per Query:
 // ?folgen=Name1,Name2  (Folgen-Button im Profil, Hinweis nach dem ersten Spiel) -> nach dem Aktivieren gefolgt
 // ?kategorie=tournamentResults  (Hinweis auf der Turnierseite) -> Kategorie wird eingeschaltet
-const CATEGORIES: PushCategory[] = ['openGames', 'leagueGames', 'tournamentResults', 'registrations'];
+const CATEGORIES: PushCategory[] = ['openGames', 'leagueGames', 'tournamentResults'];
 
 useGrayPage();
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
-const { status, settingsLoaded, loadSettings, activate, followPlayer, setPreference, preferences } = usePushNotifications();
+const { status, settingsLoaded, loadSettings, activate, followPlayer, followToastDetail, setPreference, preferences, allCategoriesOff } = usePushNotifications();
 
 const requestedFollows = computed(() => String(route.query.folgen ?? '').split(',').map(name => name.trim()).filter(Boolean));
 const requestedCategory = computed(() => CATEGORIES.find(category => category === route.query.kategorie));
@@ -76,10 +76,12 @@ const onActivate = async () => {
     try {
         const activated = await activate({ follow: requestedFollows.value, category: requestedCategory.value });
         if (activated) {
+            const follows = requestedFollows.value;
             toast.add({
                 severity: 'success',
-                summary: requestedFollows.value.length ? `Du folgst jetzt ${followText(requestedFollows.value)}` : 'Benachrichtigungen aktiv',
-                life: 3000,
+                summary: follows.length ? `Du folgst jetzt ${followText(follows)}` : 'Benachrichtigungen aktiv',
+                detail: follows.length ? followToastDetail(followText(follows)) : undefined,
+                life: follows.length ? 5000 : 3000,
             });
             clearQuery();
         }
@@ -100,9 +102,17 @@ const applyQueryWhenActive = async () => {
     const category = requestedCategory.value;
     if (!follows.length && !category) return;
 
+    const wasAllOff = follows.length > 0 && allCategoriesOff.value;
     for (const name of follows) await followPlayer(name);
     if (category && !preferences[category]) await setPreference(category, true);
-    if (follows.length) toast.add({ severity: 'success', summary: `Du folgst jetzt ${followText(follows)}`, life: 3000 });
+    if (follows.length) toast.add({
+        severity: 'success',
+        summary: `Du folgst jetzt ${followText(follows)}`,
+        detail: wasAllOff
+            ? `Benachrichtigungen sind wieder an. ${followToastDetail(followText(follows))}`
+            : followToastDetail(followText(follows)),
+        life: wasAllOff ? 6000 : 5000,
+    });
     clearQuery();
 };
 
@@ -115,7 +125,7 @@ watch(status, applyQueryWhenActive, { immediate: true });
     max-width: 560px;
     margin: 0 auto;
     padding-top: 8px;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
 }
 
 .nt-back {
@@ -128,7 +138,7 @@ watch(status, applyQueryWhenActive, { immediate: true });
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 
@@ -137,7 +147,7 @@ watch(status, applyQueryWhenActive, { immediate: true });
     }
 }
 .nt-back:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--bp-fill-soft);
 }
 
 .nt-title {
@@ -149,7 +159,7 @@ watch(status, applyQueryWhenActive, { immediate: true });
 .nt-subtitle {
     margin: 4px 0 20px;
     font-size: 14px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 
 /* Ohne App-Header (route meta detailPage): Abstand zur Statusleiste */
@@ -166,11 +176,11 @@ watch(status, applyQueryWhenActive, { immediate: true });
     margin: 26px 0 10px;
     font-size: 17px;
     font-weight: 800;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
 }
 .Notifications .nt-card {
     overflow: hidden;
-    background: white;
+    background: var(--bp-surface);
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -193,6 +203,6 @@ watch(status, applyQueryWhenActive, { immediate: true });
     margin-top: 2px;
     font-size: 13px;
     line-height: 1.3;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 </style>

@@ -109,7 +109,7 @@ const resizeCanvas = (source: HTMLCanvasElement, maxWidth: number, maxHeight: nu
 .cropper :deep(.vue-advanced-cropper__background),
 .cropper :deep(.vue-circle-stencil__preview),
 .cropper :deep(.vue-rectangle-stencil__preview) {
-    background-color: #fff;
+    background-color: var(--bp-surface);
     background-image:
         linear-gradient(45deg, #ccc 25%, transparent 25%),
         linear-gradient(-45deg, #ccc 25%, transparent 25%),

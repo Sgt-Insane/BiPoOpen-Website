@@ -73,7 +73,7 @@ const closeModal = () => showModal.value = false;
     border: 0;
     border-radius: 10px;
     overflow: hidden;
-    background: #ECEEF1;
+    background: var(--bp-fill);
     cursor: pointer;
 }
 .hp-tile img{

@@ -159,13 +159,13 @@ const previewPhotos = computed(() => {
     align-items: center;
     gap: 12px;
     padding: 10px 14px;
-    background: #fafafa;
-    border: 1px solid #eee;
+    background: var(--bp-surface-soft);
+    border: 1px solid var(--bp-border);
     border-radius: 8px;
 }
 .to-podium-entry:first-child {
-    background: linear-gradient(135deg, #fff8e1, #fffdf5);
-    border-color: #ffe082;
+    background: var(--bp-gold-card);
+    border-color: var(--bp-gold-border);
 }
 .to-podium-icon {
     font-size: 28px;
@@ -177,7 +177,7 @@ const previewPhotos = computed(() => {
 }
 .to-podium-place {
     font-size: 11px;
-    color: #888;
+    color: var(--bp-text-subtle);
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -185,11 +185,11 @@ const previewPhotos = computed(() => {
 .to-podium-team {
     font-size: 15px;
     font-weight: bold;
-    color: #333;
+    color: var(--bp-text-strong);
 }
 .to-podium-players {
     font-size: 12px;
-    color: #888;
+    color: var(--bp-text-subtle);
     margin-top: 2px;
 }
 
@@ -238,7 +238,7 @@ const previewPhotos = computed(() => {
     left: 0;
     right: 0;
     height: 50px;
-    background: linear-gradient(transparent, white);
+    background: linear-gradient(transparent, var(--bp-surface));
     pointer-events: none;
 }
 
@@ -256,8 +256,8 @@ const previewPhotos = computed(() => {
 .to-mvp-table th {
     padding: 6px 8px;
     font-size: 12px;
-    color: #888;
-    border-bottom: 1px solid #eee;
+    color: var(--bp-text-subtle);
+    border-bottom: 1px solid var(--bp-border);
     text-align: center;
 }
 .to-mvp-table th.text-left {
@@ -266,7 +266,7 @@ const previewPhotos = computed(() => {
 .to-mvp-table td {
     padding: 8px;
     text-align: center;
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 1px solid var(--bp-border);
 }
 .to-mvp-table td.text-left {
     text-align: left;

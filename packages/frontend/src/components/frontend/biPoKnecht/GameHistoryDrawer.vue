@@ -7,7 +7,7 @@
         </template>
 
         <!-- Leerzustand -->
-        <div v-if="history.length === 0" class="flex justify-center items-center h-[200px] text-gray-400">
+        <div v-if="history.length === 0" class="flex justify-center items-center h-[200px] text-(--bp-text-faint)">
             Noch keine Spielzüge.
         </div>
 
@@ -16,11 +16,11 @@
             <template v-for="entry in history" :key="entry.key">
                 <!-- Re-Rack: dezenter Trenner -->
                 <div v-if="entry.kind === 'rerack'" class="flex items-center gap-3 py-1 px-1">
-                    <div class="flex-1 h-px bg-gray-200" />
+                    <div class="flex-1 h-px bg-(--bp-border)" />
                     <span class="text-xs font-medium uppercase tracking-wide" :style="{ color: teamColor(entry.teamIndex) }">
                         Neu zusammengestellt
                     </span>
-                    <div class="flex-1 h-px bg-gray-200" />
+                    <div class="flex-1 h-px bg-(--bp-border)" />
                 </div>
 
                 <!-- Spielzug -->
@@ -34,7 +34,7 @@
                 >
                     <div class="flex flex-col">
                         <span class="font-semibold" :style="{ color: teamColor(entry.turn.teamIndex) }">{{ playerName(entry.turn) }}</span>
-                        <span class="text-sm text-gray-500">{{ TURN_LABELS[entry.turn.type] }}</span>
+                        <span class="text-sm text-(--bp-text-muted)">{{ TURN_LABELS[entry.turn.type] }}</span>
                     </div>
                     <span
                         v-if="points(entry.turn, entry.index) > 0"
@@ -97,7 +97,7 @@ const playerName = (turn: Turn) => teamFor(turn.teamIndex).players[turn.playerIn
 // Team 1 (index 0) nutzt --main-color, Team 2 (index 1) --secondary-color (wie im Rack).
 const teamColor = (teamIndex: number) => (teamIndex === 0 ? 'var(--main-color)' : 'var(--secondary-color)');
 const teamBgColor = (teamIndex: number) =>
-    `color-mix(in srgb, ${teamColor(teamIndex)} 10%, white)`;
+    `color-mix(in srgb, ${teamColor(teamIndex)} 10%, var(--bp-surface))`;
 
 const points = (turn: Turn, index: number) => props.game.scoreTurn(turn, index, props.game.turns);
 </script>

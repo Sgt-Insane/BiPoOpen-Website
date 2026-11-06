@@ -237,7 +237,7 @@ const potTeamCount = computed(() =>
     gap: 8px;
     padding: 10px 0;
     margin-bottom: 10px;
-    background: white;
+    background: var(--bp-surface);
 }
 .lc-round-select{
     flex: 1;
@@ -254,7 +254,7 @@ const potTeamCount = computed(() =>
     width: 40px;
     min-width: 40px;
     height: 40px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--bp-border);
     border-radius: 4px;
     color: var(--main-color);
     cursor: pointer;
@@ -315,7 +315,7 @@ const potTeamCount = computed(() =>
     align-items: center;
     gap: 8px;
     padding: 5px 8px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--bp-border);
     border-radius: 4px;
     color: var(--main-color);
     font-size: 14px;

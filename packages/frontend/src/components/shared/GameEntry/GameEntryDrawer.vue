@@ -58,6 +58,7 @@
                     <GameEntryScorePicker
                         v-model="player.score"
                         :max="maxScore"
+                        :chances="getScoreChances(sides, sideIndex, playerIndex, maxScore)"
                         :disabled="!player.name.trim()"
                         :label="`Treffer ${player.name || sideLabels[sideIndex]}`"
                     />
@@ -118,7 +119,7 @@ import { ELO_START, getEloSideDeltas } from '@/components/frontend/worldRanking/
 import { getPlayerForLeagueTeam } from '@/components/frontend/league/LeaguePlayersData';
 import GameEntryPlayerSearch from './GameEntryPlayerSearch.vue';
 import GameEntryScorePicker from './GameEntryScorePicker.vue';
-import { createEmptySides, getSideName, getSideScore, type GameEntrySide } from './gameEntry';
+import { createEmptySides, getScoreChances, getSideName, getSideScore, type GameEntrySide } from './gameEntry';
 import { PUSH_SETTINGS_PATH, usePushNotifications } from '@/components/shared/usePushNotifications';
 
 const MAX_PLAYERS_PER_SIDE = 4;
@@ -295,12 +296,12 @@ const onDelete = () => {
 .ge-title{
     font-size: 20px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
     line-height: 1.2;
 }
 .ge-subtitle{
     font-size: 13px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 
 .GameEntryDrawer{
@@ -316,14 +317,14 @@ const onDelete = () => {
     flex-direction: column;
     gap: 10px;
     padding: 12px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--bp-border);
     border-radius: 16px;
-    background: white;
+    background: var(--bp-surface);
     transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
 }
 .ge-side--winner{
     border-color: var(--main-color);
-    background: #FFF7F8;
+    background: var(--bp-primary-faint);
     box-shadow: 0 0 0 1px var(--main-color);
 }
 
@@ -339,7 +340,7 @@ const onDelete = () => {
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: #555B63;
+    color: var(--bp-text-secondary);
 }
 .ge-team-avatar{
     width: 32px !important;
@@ -352,8 +353,8 @@ const onDelete = () => {
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    background: #F1F2F4;
-    color: #8A9099;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-subtle);
     font-weight: 700;
 }
 .ge-team-name{
@@ -364,10 +365,10 @@ const onDelete = () => {
     white-space: nowrap;
     font-size: 15px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .ge-team-name--empty{
-    color: #9AA0A8;
+    color: var(--bp-text-faint);
     font-weight: 600;
 }
 .ge-win-badge{
@@ -385,10 +386,10 @@ const onDelete = () => {
     text-align: right;
     font-size: 20px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .ge-side-score--empty{
-    color: #B5B9C0;
+    color: var(--bp-text-faint);
     font-weight: 600;
 }
 
@@ -400,7 +401,7 @@ const onDelete = () => {
 }
 .ge-player + .ge-player{
     padding-top: 10px;
-    border-top: 1px dashed #E6E8EB;
+    border-top: 1px dashed var(--bp-border);
 }
 .ge-player-name{
     display: flex;
@@ -408,7 +409,7 @@ const onDelete = () => {
     gap: 8px;
     font-size: 14px;
     font-weight: 600;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .ge-player-avatar{
     width: 24px !important;
@@ -423,17 +424,17 @@ const onDelete = () => {
     justify-content: center;
     gap: 6px;
     height: 38px;
-    border: 1px dashed #D3D6DB;
+    border: 1px dashed var(--bp-border-strong);
     border-radius: 10px;
     background: transparent;
-    color: #3A3F46;
+    color: var(--bp-text);
     font: inherit;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
 }
 .ge-add-player:hover{
-    background: #F6F7F9;
+    background: var(--bp-fill-soft);
 }
 .ge-add-player .pi{
     font-size: 11px;
@@ -446,7 +447,7 @@ const onDelete = () => {
     gap: 6px;
     padding: 12px 14px;
     border-radius: 14px;
-    background: #F4F5F7;
+    background: var(--bp-fill-soft);
 }
 .ge-elo-header{
     display: flex;
@@ -458,7 +459,7 @@ const onDelete = () => {
 .ge-elo-title{
     font-size: 16px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .ge-elo-info{
     display: flex;
@@ -468,14 +469,14 @@ const onDelete = () => {
     height: 22px;
     min-width: 22px;
     padding: 0;
-    border: 1.5px solid #8A9099;
+    border: 1.5px solid var(--bp-text-subtle);
     border-radius: 50%;
     background: none;
-    color: #6B7079;
+    color: var(--bp-text-muted);
     cursor: pointer;
 }
 .ge-elo-info:hover{
-    background: #E9EBEE;
+    background: var(--bp-fill);
 }
 .ge-elo-info .pi{
     font-size: 9px;
@@ -486,7 +487,7 @@ const onDelete = () => {
     align-items: baseline;
     gap: 12px;
     font-size: 16px;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .ge-elo-name{
     flex: 1;
@@ -496,12 +497,12 @@ const onDelete = () => {
     white-space: nowrap;
 }
 .ge-elo-rating{
-    color: #6B7079;
+    color: var(--bp-text-muted);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
 .ge-elo-rating b{
-    color: #1F2328;
+    color: var(--bp-text-strong);
     font-weight: 800;
 }
 .ge-elo-delta{
@@ -510,8 +511,8 @@ const onDelete = () => {
     font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
-.ge-elo-up{ color: #1f9d55; }
-.ge-elo-down{ color: #d64545; }
+.ge-elo-up{ color: var(--bp-success); }
+.ge-elo-down{ color: var(--bp-danger); }
 
 /* ─── Footer ─── */
 .ge-footer{
@@ -522,7 +523,7 @@ const onDelete = () => {
     gap: 8px;
     margin-top: auto;
     padding-top: 12px;
-    background: white;
+    background: var(--bp-surface);
 }
 .ge-button{
     display: flex;
@@ -543,24 +544,24 @@ const onDelete = () => {
     color: white;
 }
 .ge-button-save:disabled{
-    background: #CDD0D6;
+    background: var(--bp-border-strong);
     cursor: default;
 }
 .ge-button-delete{
     width: 52px;
     min-width: 52px;
-    border: 1px solid #F3C4C9;
-    background: #FFF5F6;
+    border: 1px solid var(--bp-primary-weak);
+    background: var(--bp-primary-faint);
     color: var(--main-color);
 }
 .ge-button-delete:hover:not(:disabled){
-    background: #FDE6E9;
+    background: var(--bp-primary-weak);
 }
 .ge-button:disabled{
     cursor: default;
 }
 .ge-button:focus-visible{
-    outline: 2px solid #1F2328;
+    outline: 2px solid var(--bp-text-strong);
     outline-offset: 2px;
 }
 </style>

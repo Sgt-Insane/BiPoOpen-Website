@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:league-logos": "node scripts/generate-league-logos.mjs"
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",

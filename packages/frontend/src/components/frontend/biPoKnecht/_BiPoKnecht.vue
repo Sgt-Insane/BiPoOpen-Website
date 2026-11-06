@@ -27,6 +27,6 @@ let setMatch = (newMatch: Match) => {
     top: 0%;
     left: 0%;
     z-index: 1000;
-    background-color: white;
+    background-color: var(--bp-surface);
 }
 </style>

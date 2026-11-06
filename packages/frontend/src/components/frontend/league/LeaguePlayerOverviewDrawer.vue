@@ -72,15 +72,6 @@
                     </div>
                 </template>
             </div>
-
-            <div class="lpo-legend">
-                <div class="lpo-legend-items">
-                    <span><span class="lpo-swatch lpo-result--win"></span>Sieg</span>
-                    <span><span class="lpo-swatch lpo-result--loss"></span>Niederlage</span>
-                    <span><span class="lpo-swatch lpo-result--open"></span>offen</span>
-                </div>
-                <div>Ergebnis immer aus Sicht von {{ selectedPlayer.name }}</div>
-            </div>
         </div>
     </BottomSheet>
 </template>
@@ -186,8 +177,8 @@ const addGame = (opponentName: string) => {
     font-size: 16px;
     font-weight: 700;
     opacity: 1;
-    --avatar-background: #EEF0F3;
-    --avatar-color: #6B717B;
+    --avatar-background: var(--bp-fill);
+    --avatar-color: var(--bp-text-muted);
 }
 .lpo-head-text {
     min-width: 0;
@@ -196,14 +187,14 @@ const addGame = (opponentName: string) => {
     overflow: hidden;
     font-size: 22px;
     font-weight: 800;
-    color: #16181D;
+    color: var(--bp-text-strong);
     line-height: 1.2;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 .lpo-subtitle {
     font-size: 13px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 
 /* ─── Fortschritt ─── */
@@ -216,10 +207,10 @@ const addGame = (opponentName: string) => {
     gap: 12px;
     margin-bottom: 8px;
     font-size: 13px;
-    color: #4B5260;
+    color: var(--bp-text);
 }
 .lpo-progress-text b {
-    color: #16181D;
+    color: var(--bp-text-strong);
 }
 .lpo-progress-bars {
     display: flex;
@@ -229,7 +220,7 @@ const addGame = (opponentName: string) => {
     flex: 1;
     height: 6px;
     border-radius: 3px;
-    background: #E8EAED;
+    background: var(--bp-fill);
     overflow: hidden;
 }
 .lpo-progress-fill {
@@ -248,7 +239,7 @@ const addGame = (opponentName: string) => {
     min-height: 46px;
     padding: 6px 0;
     border: none;
-    border-bottom: 1px solid #EEF0F3;
+    border-bottom: 1px solid var(--bp-border);
     background: none;
     color: inherit;
     font: inherit;
@@ -267,7 +258,7 @@ const addGame = (opponentName: string) => {
     font-weight: 700;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: #6B7079;
+    color: var(--bp-text-muted);
     cursor: default;
 }
 
@@ -287,7 +278,7 @@ const addGame = (opponentName: string) => {
 .lpo-rank {
     flex: 0 0 18px;
     font-size: 12px;
-    color: #9AA0A9;
+    color: var(--bp-text-faint);
     text-align: right;
 }
 .lpo-avatar {
@@ -298,14 +289,14 @@ const addGame = (opponentName: string) => {
     font-size: 10px;
     font-weight: 700;
     opacity: 1;
-    --avatar-background: #EEF0F3;
-    --avatar-color: #6B717B;
+    --avatar-background: var(--bp-fill);
+    --avatar-color: var(--bp-text-muted);
 }
 .lpo-name {
     overflow: hidden;
     font-size: 14px;
     font-weight: 700;
-    color: #16181D;
+    color: var(--bp-text-strong);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -321,16 +312,16 @@ const addGame = (opponentName: string) => {
     font-weight: 700;
 }
 .lpo-result--win {
-    background: #E5F4EA;
-    color: #1F7A43;
+    background: var(--bp-success-weak);
+    color: var(--bp-success-strong);
 }
 .lpo-result--loss {
-    background: #FBE7E8;
-    color: #B3323C;
+    background: var(--bp-danger-weak);
+    color: var(--bp-danger-strong);
 }
 .lpo-result--open {
-    border: 1px dashed #CDD1D6;
-    color: #9AA0A9;
+    border: 1px dashed var(--bp-border-strong);
+    color: var(--bp-text-faint);
     font-weight: 600;
 }
 
@@ -342,7 +333,7 @@ const addGame = (opponentName: string) => {
     margin: 8px 0;
     padding: 12px 14px;
     border-radius: 12px;
-    background: #F4F5F7;
+    background: var(--bp-fill-soft);
     font-size: 13px;
 }
 .lpo-detail-row {
@@ -353,17 +344,17 @@ const addGame = (opponentName: string) => {
     min-height: 28px;
 }
 .lpo-detail-label {
-    color: #4B5260;
+    color: var(--bp-text);
 }
 .lpo-detail-value {
-    color: #16181D;
+    color: var(--bp-text-strong);
     text-align: right;
 }
 .lpo-detail-open {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .lpo-add {
     padding: 6px 12px;
@@ -378,27 +369,5 @@ const addGame = (opponentName: string) => {
 .lpo-add:focus-visible {
     outline: 2px solid var(--main-color);
     outline-offset: 2px;
-}
-
-/* ─── Legende ─── */
-.lpo-legend {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-top: 16px;
-    font-size: 12px;
-    color: #6B7079;
-}
-.lpo-legend-items {
-    display: flex;
-    gap: 14px;
-}
-.lpo-swatch {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    margin-right: 6px;
-    border-radius: 3px;
-    vertical-align: -2px;
 }
 </style>

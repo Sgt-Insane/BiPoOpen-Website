@@ -347,12 +347,12 @@ onBeforeUnmount(() => clearTimeout(revealTimeout));
 .ld-title{
     font-size: 20px;
     font-weight: 700;
-    color: #222222;
+    color: var(--bp-text-strong);
     line-height: 1.2;
 }
 .ld-subtitle{
     font-size: 13px;
-    color: #777777;
+    color: var(--bp-text-muted);
 }
 .ld-header-back{
     display: flex;
@@ -369,12 +369,12 @@ onBeforeUnmount(() => clearTimeout(revealTimeout));
     padding: 0;
     border: none;
     border-radius: 50%;
-    background: #F1F2F4;
-    color: #222222;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-strong);
     cursor: pointer;
 }
 .ld-back:hover{
-    background: #E4E6E9;
+    background: var(--bp-fill-strong);
 }
 
 /* Chips */
@@ -389,10 +389,10 @@ onBeforeUnmount(() => clearTimeout(revealTimeout));
     gap: 8px;
     height: 36px;
     padding: 0 14px;
-    border: 1px solid #DDDFE3;
+    border: 1px solid var(--bp-border-strong);
     border-radius: 999px;
-    background: white;
-    color: #222222;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 14px;
     font-weight: 600;
@@ -400,7 +400,7 @@ onBeforeUnmount(() => clearTimeout(revealTimeout));
     transition: background .2s ease;
 }
 button.ld-chip:hover{
-    background: #F6F7F9;
+    background: var(--bp-fill-soft);
 }
 .ld-chip .pi{
     font-size: 13px;
@@ -419,11 +419,11 @@ button.ld-chip:hover{
 }
 .ld-select :deep(.p-select-label){
     padding: 0;
-    color: #222222;
+    color: var(--bp-text-strong);
 }
 .ld-select :deep(.p-select-dropdown){
     width: 26px;
-    color: #222222;
+    color: var(--bp-text-strong);
 }
 
 /* Rad */
@@ -435,7 +435,7 @@ button.ld-chip:hover{
 .ld-empty,
 .ld-hint{
     text-align: center;
-    color: #777777;
+    color: var(--bp-text-muted);
 }
 .ld-empty{
     padding: 50px 20px;
@@ -450,7 +450,7 @@ button.ld-chip:hover{
     margin-top: 22px;
     padding: 16px 12px 12px;
     border-radius: 16px;
-    background: #F6F7F9;
+    background: var(--bp-fill-soft);
 }
 .ld-card-label{
     text-align: center;
@@ -458,7 +458,7 @@ button.ld-chip:hover{
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
-    color: #777777;
+    color: var(--bp-text-muted);
 }
 .ld-matchup{
     display: flex;
@@ -477,12 +477,12 @@ button.ld-chip:hover{
 .ld-slot-name{
     max-width: 100%;
     font-weight: 700;
-    color: #222222;
+    color: var(--bp-text-strong);
     text-align: center;
     overflow-wrap: anywhere;
 }
 .ld-slot-empty .ld-slot-name{
-    color: #AAAAAA;
+    color: var(--bp-text-faint);
 }
 .ld-vs{
     font-weight: 700;
@@ -497,8 +497,8 @@ button.ld-chip:hover{
     align-items: center;
     justify-content: center;
     border-radius: 10px;
-    background: #ECEEF1;
-    color: #999999;
+    background: var(--bp-fill);
+    color: var(--bp-text-subtle);
     font-weight: 700;
     overflow: hidden;
 }
@@ -514,7 +514,7 @@ button.ld-chip:hover{
     overflow: visible;
 }
 .ld-slot-empty .ld-avatar{
-    border: 2px dashed #D4D6DA;
+    border: 2px dashed var(--bp-border-strong);
     background: transparent;
 }
 
@@ -546,12 +546,12 @@ button.ld-chip:hover{
     cursor: default;
 }
 .ld-button-secondary{
-    border-color: #DDDFE3;
-    background: white;
-    color: #222222;
+    border-color: var(--bp-border-strong);
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
 }
 .ld-button-secondary:hover:not(:disabled){
-    background: #F6F7F9;
+    background: var(--bp-fill-soft);
 }
 .ld-button-large{
     width: 100%;
@@ -565,17 +565,17 @@ button.ld-chip:hover{
 }
 .ld-pill{
     padding: 6px 12px;
-    border: 1px solid #DDDFE3;
+    border: 1px solid var(--bp-border-strong);
     border-radius: 999px;
-    background: white;
-    color: #222222;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
 }
 .ld-pill:hover:not(:disabled){
-    background: #F6F7F9;
+    background: var(--bp-fill-soft);
 }
 .ld-pill:disabled{
     opacity: .45;
@@ -595,14 +595,14 @@ button.ld-chip:hover{
 .ld-section-title,
 .ld-count{
     font-weight: 700;
-    color: #222222;
+    color: var(--bp-text-strong);
 }
 .ld-pairing{
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 8px 0;
-    border-bottom: 1px solid #F0F0F0;
+    border-bottom: 1px solid var(--bp-border);
 }
 .ld-pairing img{
     width: 32px;
@@ -614,7 +614,7 @@ button.ld-chip:hover{
     flex: 1;
     min-width: 0;
     font-size: 14px;
-    color: #222222;
+    color: var(--bp-text-strong);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -647,7 +647,7 @@ button.ld-chip:hover{
     padding: 10px 6px;
     border: 2px solid var(--main-color);
     border-radius: 12px;
-    background: #FEF2F3;
+    background: var(--bp-primary-faint);
     cursor: pointer;
     user-select: none;
     transition: opacity .2s ease, background .2s ease;
@@ -657,8 +657,8 @@ button.ld-chip:hover{
     outline-offset: 2px;
 }
 .ld-team-off{
-    border: 2px dashed #D4D6DA;
-    background: white;
+    border: 2px dashed var(--bp-border-strong);
+    background: var(--bp-surface);
     opacity: .5;
 }
 .ld-team-check{
@@ -679,8 +679,8 @@ button.ld-chip:hover{
     font-weight: 700;
 }
 .ld-team-off .ld-team-check{
-    border: 1.5px solid #AAAAAA;
-    background: white;
+    border: 1.5px solid var(--bp-text-faint);
+    background: var(--bp-surface);
 }
 .ld-team-off .ld-team-check .pi{
     display: none;
@@ -691,7 +691,7 @@ button.ld-chip:hover{
     font-weight: 700;
     line-height: 1.2;
     text-align: center;
-    color: #222222;
+    color: var(--bp-text-strong);
     overflow-wrap: anywhere;
 }
 .ld-team-tag{
@@ -704,13 +704,13 @@ button.ld-chip:hover{
     bottom: 0;
     margin-top: auto;
     padding-top: 20px;
-    background: white;
+    background: var(--bp-surface);
     text-align: center;
 }
 .ld-footer-hint{
     margin-bottom: 12px;
     font-size: 13px;
-    color: #777777;
+    color: var(--bp-text-muted);
 }
 
 @media (min-width: 600px){

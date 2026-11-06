@@ -139,7 +139,7 @@ const openSeries = (index: number) => {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     --ff-line-length: 12px;
-    --ff-line-color: #d5d8dd;
+    --ff-line-color: var(--bp-border-strong);
     /* Platz fuer die Verbindungslinien: aus dem Halbfinale raus und ins Finale rein */
     column-gap: calc(2 * var(--ff-line-length));
     max-width: 640px;
@@ -230,7 +230,7 @@ const openSeries = (index: number) => {
     font-weight: 800;
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    color: #8a6400;
+    color: var(--bp-gold);
 }
 .ff-champion-label .pi {
     font-size: 11px;

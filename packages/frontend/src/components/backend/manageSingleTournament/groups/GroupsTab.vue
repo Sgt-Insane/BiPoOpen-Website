@@ -180,7 +180,7 @@ const initSortable = () => {
 .lt-handle div{
    height: 2px;
    width: 25px;
-   background-color: black;
+   background-color: var(--bp-text-strong);
 }
 
 .gt-skeleton-group{
@@ -197,7 +197,7 @@ table{
 caption{
    font-size: 28px;
    font-weight: bold;
-   color: black;
+   color: var(--bp-text-strong);
 }
 
 table th{

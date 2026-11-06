@@ -84,7 +84,7 @@ const lastRun = computed(() => {
 }
 .sn-progress-fill{
     height: 100%;
-    background: white;
+    background: var(--bp-surface);
     border-radius: 999px;
 }
 .sn-progress-label{

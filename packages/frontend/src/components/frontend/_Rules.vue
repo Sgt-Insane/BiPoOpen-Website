@@ -29,6 +29,15 @@
                             <ul class="ru-points">
                                 <li v-for="point in rule.points" :key="point">{{ point }}</li>
                             </ul>
+
+                            <div v-if="rule.formations" class="ru-formations">
+                                <figure v-for="formation in rule.formations" :key="formation.label" class="ru-formation">
+                                    <svg viewBox="0 0 36 30" aria-hidden="true">
+                                        <circle v-for="(cup, i) in formationCups(formation.rows)" :key="i" :cx="cup.x" :cy="cup.y" r="4.6" />
+                                    </svg>
+                                    <figcaption>{{ formation.label }}</figcaption>
+                                </figure>
+                            </div>
                         </div>
                     </div>
                 </article>
@@ -56,6 +65,7 @@ const toggleRule = (title: string) => {
 // Strich-Icons im 24er Raster (Lucide-Stil)
 const icons = {
     flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+    user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
     throw: '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
     bounce: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
     back: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
@@ -69,12 +79,32 @@ const icons = {
     clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 };
 
+// Becher pro Reihe, von der Spitze aus gezaehlt
+type Formation = {
+    label: string;
+    rows: number[];
+}
+
 type Rule = {
     icon: keyof typeof icons;
     title: string;
     key: string;
     summary: string;
     points: string[];
+    formations?: Formation[];
+}
+
+// Becher-Mittelpunkte im 36x30-Feld, Reihen zentriert und dicht gepackt
+const formationCups = (rows: number[]) => {
+    const dx = 10.4;
+    const dy = 9;
+    const top = (30 - (rows.length - 1) * dy) / 2;
+    return rows.flatMap((count, r) =>
+        Array.from({ length: count }, (_, c) => ({
+            x: 18 + (c - (count - 1) / 2) * dx,
+            y: top + r * dy,
+        }))
+    );
 }
 
 type Section = {
@@ -99,6 +129,17 @@ const sections: Section[] = [
                     'Getroffene Becher werden getrunken.',
                 ],
             },
+            {
+                icon: 'user',
+                title: '1 gegen 1',
+                key: 'Beide Bälle',
+                summary: 'wirft ein Spieler, kein On-Fire',
+                points: [
+                    'Ein Spieler wirft beide Bälle des Zugs.',
+                    'Kein Heating Up und kein On-Fire.',
+                    'Alle anderen Regeln gelten unverändert.',
+                ],
+            },
         ],
     },
     {
@@ -113,7 +154,7 @@ const sections: Section[] = [
                 points: [
                     'Ball verlässt die Hand = geworfen.',
                     'Becher umgekippt durch den Ball = getroffen.',
-                    'Eigene Becher vom Tisch gestoßen = getroffen.',
+                    'Eigene Becher vom Tisch gestoßen = getroffen, im 2 gegen 2 je 0,5 Treffer pro Becher für beide Gegner.',
                     'Gegner fängt den Ball vor Tisch/Becher = Treffer, Werfer wählt den Becher.',
                 ],
             },
@@ -133,9 +174,9 @@ const sections: Section[] = [
                 icon: 'back',
                 title: 'Balls-Back',
                 key: 'Bälle zurück',
-                summary: 'wenn beide Werfer treffen',
+                summary: 'wenn beide Bälle treffen',
                 points: [
-                    'Beide Spieler dürfen sofort noch einmal werfen.',
+                    'Beide Bälle dürfen sofort noch einmal geworfen werden.',
                     'Ein Trickshot-Treffer zählt mit.',
                 ],
             },
@@ -154,6 +195,7 @@ const sections: Section[] = [
                     'Die Werfer wählen die Becher aus.',
                     'Zusätzlich gilt Balls-Back.',
                     'Zählt je 1,5 Treffer pro Werfer.',
+                    'Ein Bouncer in den Bombenbecher bringt 1 Becher und 1 Treffer extra (z. B. 4 Becher: 2,5 + 1,5).',
                 ],
             },
             {
@@ -167,6 +209,7 @@ const sections: Section[] = [
                     'Jeder Treffer zählt zur Serie, auch Bouncer, Bombe, gefangene Bälle und umgekippte Becher.',
                     'Trickshot setzt die Serie nicht fort, startet aber eine neue: nach 2 weiteren Treffern On-Fire.',
                     'Mit Balls-Back: erst On-Fire, danach je ein Extra-Wurf.',
+                    'Gilt nicht im 1 gegen 1.',
                 ],
             },
             {
@@ -178,6 +221,8 @@ const sections: Section[] = [
                     'Solange der Ball auf dem Tisch ist, dürfen ihn beide Teams nehmen.',
                     'Fällt er auf den Boden, ist er aus dem Spiel.',
                     'Nimmt ihn das Wurfteam, wirft, wer ihn hat – und zwar einen Trickshot.',
+                    'Wer so zwei Bälle hat, wirft beide, in beliebiger Reihenfolge.',
+                    'Trickshots stapeln: Bleibt auch der Trickshot auf dem Tisch und man holt ihn, folgt ein weiterer.',
                     'Schwache Hand zählt nicht als Trickshot.',
                     'Verteidigt wird wie bei einem normalen Wurf.',
                     'Ein Treffer zählt für Balls-Back.',
@@ -186,21 +231,28 @@ const sections: Section[] = [
             {
                 icon: 'rerack',
                 title: 'Re-Rack',
-                key: '2× pro Spiel',
+                key: '2× pro Team',
                 summary: 'bei 3, 4 oder 6 Bechern',
                 points: [
+                    'Das werfende Team verlangt ihn, der Gegner stellt um.',
                     'Nur vor dem ersten Wurf des Zugs.',
                     'Neue Formation mittig vorne an der Spitze.',
                     'Geworfen wird erst nach Freigabe.',
+                ],
+                formations: [
+                    { label: '6 Becher', rows: [1, 2, 3] },
+                    { label: '4 Becher', rows: [1, 2, 1] },
+                    { label: '3 Becher', rows: [1, 2] },
                 ],
             },
             {
                 icon: 'skull',
                 title: 'Deathcup',
                 key: 'Sofort verloren',
-                summary: 'Treffer in vollen, getroffenen Becher',
+                summary: 'Treffer in alten, nicht getrunkenen Becher',
                 points: [
-                    'Gilt für Becher, die getroffen, aber noch nicht ausgetrunken sind.',
+                    'Gilt für Becher aus einem vorherigen Zug, die getroffen, aber noch nicht ausgetrunken sind.',
+                    'Ein zweiter Treffer in denselben Becher im laufenden Zug ist kein Deathcup, sondern eine Bombe.',
                     'Alle Restbecher zählen als Treffer für den Werfer.',
                 ],
             },
@@ -217,8 +269,8 @@ const sections: Section[] = [
                 summary: 'muss direkt getroffen werden',
                 points: [
                     'Wird automatisch an die Spitze gestellt (kein Re-Rack), nur vor dem Wurf.',
-                    'Bouncer oder Bombe bei 2–3 Restbechern: Ein Becher bleibt immer stehen.',
-                    'Jeder direkte Treffer in den letzten Becher zählt, auch ein Bouncer.',
+                    'Bouncer oder Bombe räumen nie den letzten Becher mit ab – einer bleibt immer stehen.',
+                    'Als direkter Treffer zählen auch Bouncer, gefangene Bälle und Becher, die der Gegner selbst umstößt.',
                     'Beide Bälle im letzten Becher = direkt gewonnen, ohne Gentleman\'s Rule.',
                 ],
             },
@@ -228,9 +280,9 @@ const sections: Section[] = [
                 key: 'Nachwerfen',
                 summary: 'nach dem letzten Becher des Gegners',
                 points: [
-                    'Nachwerfen, bis man verfehlt.',
+                    'Jeder Spieler wirft für sich: Wer trifft, bekommt den Ball zurück, bis er verfehlt.',
                     'Beide Bälle im letzten Becher beim Nachwerfen = Sieg.',
-                    'Extra-Würfe (On-Fire, Balls-Back) werden nicht addiert.',
+                    'Alle Regeln gelten weiter, auch Trickshot, Bombe, Balls-Back und On-Fire – Extra-Würfe stapeln sich.',
                     'Fallen alle Becher, geht es in die Verlängerung.',
                 ],
             },
@@ -257,10 +309,10 @@ const sections: Section[] = [
 }
 
 /* Farbton je Abschnitt: Akzent fuer Label/Kernaussage/Punkte, Grund fuer das Icon-Feld */
-.ru-section--gray{ --ru-accent: #6B7280; --ru-label: #374151; --ru-icon-bg: #EEF0F3; }
+.ru-section--gray{ --ru-accent: var(--bp-text-muted); --ru-label: var(--bp-text); --ru-icon-bg: var(--bp-fill); }
 .ru-section--blue{ --ru-accent: #2A9DB8; --ru-label: #2A9DB8; --ru-icon-bg: var(--secondary-color-weak); }
-.ru-section--red{ --ru-accent: var(--main-color); --ru-label: var(--main-color); --ru-icon-bg: #FDE6E8; }
-.ru-section--gold{ --ru-accent: #C98A0B; --ru-label: #C98A0B; --ru-icon-bg: #FDF3DC; }
+.ru-section--red{ --ru-accent: var(--main-color); --ru-label: var(--main-color); --ru-icon-bg: var(--bp-primary-weak); }
+.ru-section--gold{ --ru-accent: #C98A0B; --ru-label: #C98A0B; --ru-icon-bg: var(--bp-gold-weak); }
 
 .ru-section{
     margin-bottom: 24px;
@@ -274,7 +326,7 @@ const sections: Section[] = [
     color: var(--ru-label);
 }
 .ru-card{
-    background: white;
+    background: var(--bp-surface);
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
     overflow: hidden;
@@ -285,7 +337,7 @@ const sections: Section[] = [
     --ru-gap: 12px;
 }
 .ru-rule + .ru-rule{
-    border-top: 1px solid #ECEEF1;
+    border-top: 1px solid var(--bp-border);
 }
 
 .ru-head{
@@ -311,7 +363,7 @@ const sections: Section[] = [
 .ru-chevron{
     flex: 0 0 auto;
     font-size: 12px;
-    color: #9CA3AF;
+    color: var(--bp-text-faint);
     transition: transform .25s ease;
 }
 .ru-rule--open .ru-chevron{
@@ -360,14 +412,14 @@ const sections: Section[] = [
     font-size: 16px;
     font-weight: 700;
     line-height: 1.3;
-    color: #111827;
+    color: var(--bp-text-strong);
 }
 .ru-summary{
     display: block;
     margin-top: 1px;
     font-size: 12px;
     line-height: 1.4;
-    color: #6B7280;
+    color: var(--bp-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -394,7 +446,7 @@ const sections: Section[] = [
     margin-bottom: 4px;
     font-size: 13px;
     line-height: 1.45;
-    color: #374151;
+    color: var(--bp-text);
 }
 .ru-points li::before{
     content: '';
@@ -405,6 +457,37 @@ const sections: Section[] = [
     height: 5px;
     border-radius: 50%;
     background: var(--ru-accent);
+}
+
+/* Formations-Skizzen, buendig mit den Punkten */
+.ru-formations{
+    display: flex;
+    gap: 10px;
+    padding: 0 var(--ru-pad) 14px calc(var(--ru-pad) + 36px + var(--ru-gap));
+}
+.ru-formation{
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 10px 6px;
+    border-radius: 10px;
+    background: var(--ru-icon-bg);
+}
+.ru-formation svg{
+    width: 44px;
+    height: 37px;
+}
+.ru-formation circle{
+    fill: white;
+    stroke: var(--ru-accent);
+    stroke-width: 1.4;
+}
+.ru-formation figcaption{
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ru-accent);
 }
 
 /*DESKTOP*/

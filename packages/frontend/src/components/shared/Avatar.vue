@@ -7,7 +7,7 @@
         :shape="resolvedShape"
         :pt="{
             root: {
-                class: `!outline-none !border-none ${isTeamLogo ? '!rounded-none' : ''} ${avatarImageComputed ? '!bg-transparent' : (grayscale ? '!bg-gray-300 !text-gray-700' : '!bg-[var(--avatar-background,var(--main-color))] opacity-70 !text-[var(--avatar-color,white)]')}`
+                class: `!outline-none !border-none ${isTeamLogo ? '!rounded-none' : ''} ${avatarImageComputed ? '!bg-transparent' : (grayscale ? '!bg-(--bp-fill-strong) !text-(--bp-text)' : '!bg-[var(--avatar-background,var(--main-color))] opacity-70 !text-[var(--avatar-color,white)]')}`
             },
             image: {
                 class: `${resolvedShape === 'square' ? 'object-contain' : 'object-cover'} ${isTeamLogo ? '!rounded-none' : ''} bg-transparent ${grayscale ? 'grayscale' : ''}`

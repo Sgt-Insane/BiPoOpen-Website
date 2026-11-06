@@ -77,8 +77,8 @@ defineProps<{
     align-items: center;
     gap: 2px;
     padding: 9px 14px 9px 16px;
-    background: white;
-    color: #1f2328;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     border-radius: 999px;
     font-size: 14px;
     font-weight: 800;
@@ -86,7 +86,7 @@ defineProps<{
     transition: opacity 0.2s;
 }
 .hs-cta:hover{
-    color: #1f2328;
+    color: var(--bp-text-strong);
     opacity: 0.9;
 }
 .hs-cta .pi{

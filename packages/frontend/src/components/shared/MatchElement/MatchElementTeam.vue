@@ -28,7 +28,7 @@
                         shape="circle"
                         size="normal"
                         :grayscale="isLoser"
-                        class="mt-avatar border-[2px] border-[--p-surface-0] box-content"
+                        class="mt-avatar border-[2px] border-(--bp-surface) box-content"
                     />
                 </template>
             </div>
@@ -49,9 +49,6 @@
                 <!-- Elo nach dem Spiel, im Doppel der Durchschnitt -->
                 <div v-if="elo" class="mt-team-elo">
                     {{ elo.players > 1 ? 'Ø ' : '' }}{{ elo.rating.toLocaleString('de-DE') }} Elo
-                    <span class="mt-team-elo-delta" :class="elo.delta > 0 ? 'mt-elo-up' : 'mt-elo-down'">
-                        {{ elo.delta > 0 ? '▲' : '▼' }} {{ elo.delta > 0 ? `+${elo.delta}` : `−${-elo.delta}` }}
-                    </span>
                 </div>
             </div>
         </div>
@@ -142,7 +139,7 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
 
     display: flex;
     flex-direction: column;
-    color: #4a5058;
+    color: var(--bp-text);
 }
 .mt-team{
     display: flex;
@@ -196,14 +193,12 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     margin-top: min(0px, calc((var(--mt-font) * 1.25 - var(--mt-score-height)) / 2 + 1px));
     font-size: var(--mt-elo-font);
     line-height: 1.3;
-    color: #B3B8BF;
+    color: var(--bp-text-faint);
     font-variant-numeric: tabular-nums;
 }
-.mt-elo-up{ color: #7DBD98; }
-.mt-elo-down{ color: #DDA0A0; }
 .mt-team-win .mt-team-name{
     font-weight: 700;
-    color: #1f2328;
+    color: var(--bp-text-strong);
 }
 
 /* Ergebnis-Box: Sieger rot, sonst neutral grau */
@@ -212,8 +207,8 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     height: var(--mt-score-height);
     padding: 0 6px;
     border-radius: 6px;
-    background: #ECEEF1;
-    color: #1f2328;
+    background: var(--bp-fill);
+    color: var(--bp-text-strong);
     font-size: var(--mt-score-font);
     font-weight: 600;
     line-height: var(--mt-score-height);
@@ -240,7 +235,7 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     gap: var(--mt-gap);
     min-height: calc(var(--mt-player-avatar) + 2px);
     font-size: calc(var(--mt-font) - 2px);
-    color: #4a5058;
+    color: var(--bp-text);
 }
 .mt-team-player-name{
     flex: 1;
@@ -250,7 +245,7 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
 .mt-team-player-score{
     min-width: calc(var(--mt-score-height) + 4px);
     text-align: center;
-    color: #1f2328;
+    color: var(--bp-text-strong);
     flex-shrink: 0;
 }
 </style>

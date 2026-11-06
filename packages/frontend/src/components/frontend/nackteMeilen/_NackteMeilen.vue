@@ -283,11 +283,11 @@ const goBack = () => {
     margin: 0;
     font-size: 17px;
     font-weight: 800;
-    color: #16181D;
+    color: var(--bp-text-strong);
 }
 .nm-section-meta{
     font-size: 12px;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
 }
 .nm-section-link{
     padding: 0;
@@ -304,13 +304,13 @@ const goBack = () => {
 
 .nm-card{
     overflow: hidden;
-    border: 1px solid #ECEEF1;
+    border: 1px solid var(--bp-border);
     border-radius: 14px;
-    background: white;
+    background: var(--bp-surface);
 }
 .nm-empty{
     padding: 16px;
-    color: #6B717B;
+    color: var(--bp-text-muted);
     font-size: 14px;
     text-align: center;
 }
@@ -318,7 +318,7 @@ const goBack = () => {
 /* ─── Zeilen ─── */
 .nm-entry + .nm-entry,
 .nm-row-static + .nm-row-static{
-    border-top: 1px solid #EEF0F2;
+    border-top: 1px solid var(--bp-border);
 }
 .nm-row{
     display: flex;
@@ -343,12 +343,12 @@ const goBack = () => {
     font-size: 12px;
     font-weight: 700;
     opacity: 1;
-    --avatar-background: #EEF0F3;
-    --avatar-color: #6B717B;
+    --avatar-background: var(--bp-fill);
+    --avatar-color: var(--bp-text-muted);
 }
 .nm-avatar-done{
-    --avatar-background: #E3F5FA;
-    --avatar-color: #1F97B0;
+    --avatar-background: var(--secondary-color-weak);
+    --avatar-color: var(--bp-secondary-text);
 }
 .nm-main{
     flex: 1;
@@ -358,7 +358,7 @@ const goBack = () => {
     overflow: hidden;
     font-size: 15px;
     font-weight: 700;
-    color: #16181D;
+    color: var(--bp-text-strong);
     white-space: nowrap;
     text-overflow: ellipsis;
 }
@@ -366,7 +366,7 @@ const goBack = () => {
     margin-top: 2px;
     font-size: 12px;
     line-height: 1.35;
-    color: #6B717B;
+    color: var(--bp-text-muted);
 }
 .nm-dashes{
     display: flex;
@@ -377,16 +377,16 @@ const goBack = () => {
     width: 14px;
     height: 4px;
     border-radius: 2px;
-    background: #13235B;
+    background: var(--bp-navy);
 }
 .nm-count{
     font-size: 17px;
     font-weight: 800;
-    color: #16181D;
+    color: var(--bp-text-strong);
 }
 .nm-chevron{
     font-size: 11px;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
 }
 .nm-done-date{
     flex-shrink: 0;
@@ -405,23 +405,23 @@ const goBack = () => {
 .nm-game{
     padding: 8px 10px;
     border-radius: 10px;
-    background: #F4F5F7;
+    background: var(--bp-fill-soft);
     font-size: 13px;
     line-height: 1.35;
-    color: #16181D;
+    color: var(--bp-text-strong);
 }
 .nm-game-date{
     font-size: 12px;
-    color: #6B717B;
+    color: var(--bp-text-muted);
 }
 
 .nm-more{
     width: 100%;
     padding: 12px 14px;
     border: none;
-    border-top: 1px solid #EEF0F2;
+    border-top: 1px solid var(--bp-border);
     background: none;
-    color: #6B717B;
+    color: var(--bp-text-muted);
     font-size: 13px;
     text-align: left;
     cursor: pointer;

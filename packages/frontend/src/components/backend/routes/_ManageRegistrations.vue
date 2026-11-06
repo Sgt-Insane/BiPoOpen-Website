@@ -18,14 +18,14 @@
 
                 <div>Teamlogo (optional)</div>
                 <label
-                    style="display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid #d1d5db; border-radius: 6px; padding: 10px 14px; width: fit-content; margin-bottom: 12px;"
+                    style="display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid var(--bp-border-strong); border-radius: 6px; padding: 10px 14px; width: fit-content; margin-bottom: 12px;"
                 >
                     <span class="material-icons" style="color: var(--main-color); font-size: 20px;">upload</span>
                     <span style="font-size: 14px;">Datei auswählen</span>
                     <input type="file" accept="image/png,image/jpeg,image/webp" style="display: none;" @change="onLogoChange" />
                 </label>
                 <div v-if="editLogo" style="margin-bottom: 12px;">
-                    <img :src="editLogo" alt="Vorschau" style="max-width: 120px; max-height: 120px; border-radius: 8px; border: 1px solid #eee; object-fit: contain;" />
+                    <img :src="editLogo" alt="Vorschau" style="max-width: 120px; max-height: 120px; border-radius: 8px; border: 1px solid var(--bp-border); object-fit: contain;" />
                     <button
                         @click="editLogo = undefined"
                         style="display: block; margin-top: 6px; background: none; border: none; color: var(--main-color); cursor: pointer; font-size: 13px; padding: 0;"

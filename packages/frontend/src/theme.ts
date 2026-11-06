@@ -2,6 +2,53 @@ import { definePreset } from '@primevue/themes';
 import Aura from '@primevue/themes/aura';
 
 // Brand colors: --main-color: #EA5160, --secondary-color: #61C3D9
+// Farben in den Komponenten ueber die --bp-* Tokens aus App.vue, die schalten selbst zwischen hell und dunkel um
+
+const tabsColors = {
+    tablist: {
+        background: 'var(--bp-surface)',
+        borderColor: 'var(--bp-border)'
+    },
+    // Inhalt unter den Reitern liegt immer auf dem grauen Seitengrund
+    tabpanel: {
+        background: 'var(--page-gray)'
+    },
+    tab: {
+        background: 'transparent',
+        hoverBackground: 'transparent',
+        activeBackground: 'transparent',
+        color: 'var(--bp-text-muted)',
+        hoverColor: 'var(--bp-text-strong)',
+        activeColor: '{primary.color}'
+    },
+    activeBar: {
+        background: '{primary.color}'
+    }
+};
+
+const datatableColors = {
+    root: {
+        borderColor: 'var(--bp-border)'
+    },
+    headerCell: {
+        background: 'var(--bp-surface)',
+        hoverBackground: 'var(--bp-surface)',
+        selectedBackground: 'var(--bp-surface)',
+        color: 'var(--bp-text-subtle)',
+        hoverColor: 'var(--bp-text-strong)',
+        selectedColor: 'var(--bp-text-strong)'
+    },
+    row: {
+        background: 'var(--bp-surface)',
+        hoverBackground: 'var(--bp-fill-soft)',
+        color: 'var(--bp-text)',
+        hoverColor: 'var(--bp-text)'
+    },
+    footer: {
+        background: 'var(--bp-surface)',
+        color: 'var(--bp-text-subtle)'
+    }
+};
 const BiPoPreset = definePreset(Aura, {
     semantic: {
         primary: {
@@ -31,6 +78,35 @@ const BiPoPreset = definePreset(Aura, {
                     color: '#b42236',
                     focusColor: '#961f32'
                 }
+            },
+            // Flaechen passend zu den --bp-* Tokens in App.vue, Markenrot bleibt auch im Dark Mode
+            dark: {
+                surface: {
+                    0:   '#ffffff',
+                    50:  '#ECEEF1',
+                    100: '#C9CDD3',
+                    200: '#ADB2BA',
+                    300: '#979DA6',
+                    400: '#858B94',
+                    500: '#6E747D',
+                    600: '#3A3F46',
+                    700: '#31353C',
+                    800: '#282C32',
+                    900: '#1B1E22',
+                    950: '#121417'
+                },
+                primary: {
+                    color: '#EA5160',
+                    contrastColor: '#ffffff',
+                    hoverColor: '#f37a88',
+                    activeColor: '#f8a9b2'
+                },
+                highlight: {
+                    background: 'rgba(234, 81, 96, 0.18)',
+                    focusBackground: 'rgba(234, 81, 96, 0.26)',
+                    color: '#f37a88',
+                    focusColor: '#f8a9b2'
+                }
             }
         }
     },
@@ -52,27 +128,8 @@ const BiPoPreset = definePreset(Aura, {
                 bottom: '0'
             },
             colorScheme: {
-                light: {
-                    tablist: {
-                        background: '#ffffff',
-                        borderColor: '#ECEEF1'
-                    },
-                    // Inhalt unter den Reitern liegt immer auf dem grauen Seitengrund
-                    tabpanel: {
-                        background: '#F6F7F9'
-                    },
-                    tab: {
-                        background: 'transparent',
-                        hoverBackground: 'transparent',
-                        activeBackground: 'transparent',
-                        color: '{surface.500}',
-                        hoverColor: '{surface.800}',
-                        activeColor: '{primary.color}'
-                    },
-                    activeBar: {
-                        background: '{primary.color}'
-                    }
-                }
+                light: tabsColors,
+                dark: tabsColors
             },
             css: `
                 .p-tablist-tab-list {
@@ -94,14 +151,14 @@ const BiPoPreset = definePreset(Aura, {
                     padding: 0.4rem 0.9rem;
                     font-size: 13px;
                     line-height: 1.2;
-                    color: var(--p-surface-900);
-                    background: #ffffff;
-                    border: 1px solid var(--p-surface-300);
+                    color: var(--bp-text-strong);
+                    background: var(--bp-surface);
+                    border: 1px solid var(--bp-border-strong);
                     border-radius: 999px;
                 }
                 .p-tabs-chips .p-tab:not(.p-tab-active):not(.p-disabled):hover {
-                    color: var(--p-surface-900);
-                    background: var(--p-surface-100);
+                    color: var(--bp-text-strong);
+                    background: var(--bp-fill-soft);
                 }
                 .p-tabs-chips .p-tab.p-tab-active {
                     color: var(--p-primary-contrast-color);
@@ -148,34 +205,13 @@ const BiPoPreset = definePreset(Aura, {
                 borderWidth: '1px 0 0 0'
             },
             colorScheme: {
-                light: {
-                    root: {
-                        borderColor: '#ECEEF1'
-                    },
-                    headerCell: {
-                        background: '#ffffff',
-                        hoverBackground: '#ffffff',
-                        selectedBackground: '#ffffff',
-                        color: '#8A9099',
-                        hoverColor: '#16181D',
-                        selectedColor: '#16181D'
-                    },
-                    row: {
-                        background: '#ffffff',
-                        hoverBackground: '#F6F7F9',
-                        color: '#3B4048',
-                        hoverColor: '#3B4048'
-                    },
-                    footer: {
-                        background: '#ffffff',
-                        color: '#8A9099'
-                    }
-                }
+                light: datatableColors,
+                dark: datatableColors
             },
             css: `
                 .p-datatable {
                     overflow: hidden;
-                    background: #ffffff;
+                    background: var(--bp-surface);
                     border: 1px solid var(--p-datatable-border-color);
                     border-radius: 14px;
                 }
@@ -242,7 +278,7 @@ const BiPoPreset = definePreset(Aura, {
                 }
                 .p-datatable td.bp-col-strong {
                     font-weight: 700;
-                    color: #16181D;
+                    color: var(--bp-text-strong);
                 }
 
                 /* Sortierung als kleiner Pfeil am Spaltentitel statt Icon */
@@ -258,7 +294,7 @@ const BiPoPreset = definePreset(Aura, {
 
                 /* Gestrichelte Linie zwischen zwei Tabellenzonen: rowClass "bp-row-divider" */
                 .p-datatable-tbody > tr.bp-row-divider > td {
-                    border-bottom: 1px dashed #CFD3D9;
+                    border-bottom: 1px dashed var(--bp-border-strong);
                 }
 
                 /* Name mit Avatar */
@@ -271,7 +307,7 @@ const BiPoPreset = definePreset(Aura, {
                     overflow: hidden;
                     max-width: 9rem;
                     font-weight: 700;
-                    color: #16181D;
+                    color: var(--bp-text-strong);
                     text-align: start;
                     text-overflow: ellipsis;
                 }
@@ -284,21 +320,21 @@ const BiPoPreset = definePreset(Aura, {
                     font-size: calc(var(--bp-avatar-size) * 0.35);
                     font-weight: 700;
                     opacity: 1;
-                    --avatar-background: #EEF0F3;
-                    --avatar-color: #6B717B;
+                    --avatar-background: var(--bp-fill);
+                    --avatar-color: var(--bp-text-muted);
                 }
 
                 /* Platz: Podium 1-3 (bp-rank-1..3) oder Tabellenzone (bp-zone-*) mit Pfeil */
                 .bp-rank {
                     font-weight: 700;
-                    color: #16181D;
+                    color: var(--bp-text-strong);
                 }
                 .bp-rank-1 { color: #C9A227; }
                 .bp-rank-2 { color: #8E949C; }
                 .bp-rank-3 { color: #B0703C; }
                 .bp-zone-qualify { --bp-zone-color: #1F97B0; --bp-zone-marker: '▲'; }
-                .bp-zone-promotion { --bp-zone-color: #1F9D55; --bp-zone-marker: '▲'; }
-                .bp-zone-relegation { --bp-zone-color: #D64545; --bp-zone-marker: '▼'; }
+                .bp-zone-promotion { --bp-zone-color: var(--bp-success); --bp-zone-marker: '▲'; }
+                .bp-zone-relegation { --bp-zone-color: var(--bp-danger); --bp-zone-marker: '▼'; }
                 .bp-rank[class*="bp-zone-"] {
                     color: var(--bp-zone-color);
                 }
@@ -310,8 +346,8 @@ const BiPoPreset = definePreset(Aura, {
                 }
 
                 /* Positive / negative Werte, z.B. Trefferdifferenz */
-                .bp-value-up { color: #1F9D55; }
-                .bp-value-down { color: #D64545; }
+                .bp-value-up { color: var(--bp-success); }
+                .bp-value-down { color: var(--bp-danger); }
 
                 /* Wert mit Tooltip (v-tooltip.focus + tabindex): gepunktet unterstrichen */
                 .bp-tooltip-target {

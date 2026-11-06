@@ -34,7 +34,7 @@ const { canInstall, isInstalled, installPwa } = usePwaInstall();
 	max-width: 600px;
 	margin: 0 auto;
 	padding: 24px 0 30px;
-	border-top: 1px solid #e5e5e5;
+	border-top: 1px solid var(--bp-border);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -48,7 +48,7 @@ const { canInstall, isInstalled, installPwa } = usePwaInstall();
 	justify-content: center;
 	gap: 10px;
 	padding: 12px;
-	background: white;
+	background: var(--bp-surface);
 	border: 1px solid var(--main-color);
 	border-radius: 12px;
 	color: var(--main-color);
@@ -65,11 +65,11 @@ const { canInstall, isInstalled, installPwa } = usePwaInstall();
 	align-items: center;
 	gap: 10px;
 	padding: 10px 16px;
-	background: white;
-	border: 1px solid #eee;
+	background: var(--bp-surface);
+	border: 1px solid var(--bp-border);
 	border-radius: 999px;
 	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-	color: #222;
+	color: var(--bp-text-strong);
 	font-weight: 600;
 	font-size: 14px;
 	text-decoration: none;
@@ -79,12 +79,12 @@ const { canInstall, isInstalled, installPwa } = usePwaInstall();
 	font-size: 17px;
 }
 .af-insta:hover{
-	color: #222;
-	border-color: #ccc;
+	color: var(--bp-text-strong);
+	border-color: var(--bp-border-strong);
 }
 
 .af-imprint{
-	color: #777;
+	color: var(--bp-text-muted);
 	font-size: 13px;
 	text-decoration: none;
 }

@@ -3,7 +3,7 @@
         <h1 class="bp-title">Weck BiPo Open 2026 – Anmeldung</h1>
 
         <!-- Eckdaten -->
-        <div style="background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 32px; margin-bottom: 32px; width: 100%; max-width: 700px;">
+        <div style="background: var(--bp-surface); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 32px; margin-bottom: 32px; width: 100%; max-width: 700px;">
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                     <span style="color: var(--main-color); font-weight: bold; min-width: 130px;">Datum</span>
@@ -64,7 +64,7 @@
                 </div>
             </div>
 
-            <div style="margin-top: 24px; background: #fff8f8; border-left: 4px solid var(--main-color); border-radius: 4px; padding: 14px 16px;">
+            <div style="margin-top: 24px; background: var(--bp-primary-faint); border-left: 4px solid var(--main-color); border-radius: 4px; padding: 14px 16px;">
                 <p style="font-weight: bold; margin-bottom: 6px;">⚠️ Wichtig</p>
                 <p style="margin: 0; line-height: 1.6;">
                     Pünktliches Erscheinen um 14:00 Uhr, sonst droht Disqualifikation.
@@ -76,7 +76,7 @@
         </div>
 
         <!-- Formular -->
-        <div style="background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 32px; width: 100%; max-width: 700px;">
+        <div style="background: var(--bp-surface); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 32px; width: 100%; max-width: 700px;">
             <h2 style="font-size: 22px; font-weight: bold; margin-bottom: 24px; color: var(--main-color);">Team anmelden</h2>
 
             <div style="display: flex; flex-direction: column; gap: 20px;">
@@ -100,18 +100,18 @@
 
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <label style="font-weight: bold; font-size: 14px;">Teamlogo (optional)</label>
-                    <p style="font-size: 13px; color: #666; margin: 0 0 8px;">Logo als freigestelltes PNG hochladen. Es sollte auch klein gut wirken (Tipp: einfach per ChatGPT generieren).</p>
+                    <p style="font-size: 13px; color: var(--bp-text-secondary); margin: 0 0 8px;">Logo als freigestelltes PNG hochladen. Es sollte auch klein gut wirken (Tipp: einfach per ChatGPT generieren).</p>
                     <label
-                        style="display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid #d1d5db; border-radius: 6px; padding: 10px 14px; width: fit-content; transition: border-color 0.2s;"
+                        style="display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid var(--bp-border-strong); border-radius: 6px; padding: 10px 14px; width: fit-content; transition: border-color 0.2s;"
                         @mouseenter="(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--main-color)'"
-                        @mouseleave="(e) => (e.currentTarget as HTMLElement).style.borderColor = '#d1d5db'"
+                        @mouseleave="(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--bp-border-strong)'"
                     >
                         <span class="material-icons" style="color: var(--main-color); font-size: 20px;">upload</span>
                         <span style="font-size: 14px;">{{ logoFileName || 'Datei auswählen' }}</span>
                         <input type="file" accept="image/png,image/jpeg,image/webp" style="display: none;" @change="onLogoChange" />
                     </label>
                     <div v-if="logoPreview" style="margin-top: 10px;">
-                        <img :src="logoPreview" alt="Vorschau" style="max-width: 120px; max-height: 120px; border-radius: 8px; border: 1px solid #eee; object-fit: contain;" />
+                        <img :src="logoPreview" alt="Vorschau" style="max-width: 120px; max-height: 120px; border-radius: 8px; border: 1px solid var(--bp-border); object-fit: contain;" />
                         <button
                             @click="clearLogo"
                             style="display: block; margin-top: 6px; background: none; border: none; color: var(--main-color); cursor: pointer; font-size: 13px; padding: 0;"

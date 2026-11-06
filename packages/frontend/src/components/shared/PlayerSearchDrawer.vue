@@ -108,7 +108,7 @@ const openFirst = () => {
 .ps-title {
 	font-size: 18px;
 	font-weight: bold;
-	color: #222;
+	color: var(--bp-text-strong);
 }
 
 .ps-input-wrap {
@@ -118,15 +118,15 @@ const openFirst = () => {
 	height: 46px;
 	margin: 0 1.25rem 12px;
 	padding: 0 6px 0 14px;
-	border: 1px solid #DCDFE4;
+	border: 1px solid var(--bp-border-strong);
 	border-radius: 12px;
-	background: white;
+	background: var(--bp-surface);
 }
 .ps-input-wrap:focus-within {
-	border-color: #1F2328;
+	border-color: var(--bp-text-strong);
 }
 .ps-search-icon {
-	color: #8A9099;
+	color: var(--bp-text-subtle);
 	font-size: 15px;
 }
 .ps-input {
@@ -137,12 +137,12 @@ const openFirst = () => {
 	border: none;
 	outline: none;
 	background: transparent;
-	color: #1F2328;
+	color: var(--bp-text-strong);
 	font: inherit;
 	font-size: 16px; /* iOS zoomt bei kleinerer Schrift ins Feld */
 }
 .ps-input::placeholder {
-	color: #9AA0A8;
+	color: var(--bp-text-faint);
 }
 .ps-input::-webkit-search-cancel-button {
 	display: none;
@@ -157,11 +157,11 @@ const openFirst = () => {
 	border: none;
 	border-radius: 50%;
 	background: none;
-	color: #8A9099;
+	color: var(--bp-text-subtle);
 	cursor: pointer;
 }
 .ps-clear:hover {
-	background: #F1F2F4;
+	background: var(--bp-fill-soft);
 }
 .ps-clear .pi {
 	font-size: 12px;
@@ -169,7 +169,7 @@ const openFirst = () => {
 
 .ps-section-label {
 	padding: 4px 20px 6px;
-	color: #8A9099;
+	color: var(--bp-text-subtle);
 	font-size: 12px;
 	font-weight: 700;
 	text-transform: uppercase;
@@ -177,7 +177,7 @@ const openFirst = () => {
 }
 
 .ps-list {
-	border-top: 1px solid #eee;
+	border-top: 1px solid var(--bp-border);
 }
 .ps-row {
 	display: flex;
@@ -186,16 +186,16 @@ const openFirst = () => {
 	width: 100%;
 	padding: 10px 20px;
 	border: none;
-	border-bottom: 1px solid #f2f2f2;
-	background: white;
-	color: #222;
+	border-bottom: 1px solid var(--bp-border);
+	background: var(--bp-surface);
+	color: var(--bp-text-strong);
 	font: inherit;
 	text-align: left;
 	cursor: pointer;
 	transition: background .2s ease;
 }
 .ps-row:hover {
-	background: #fafafa;
+	background: var(--bp-surface-soft);
 }
 .ps-avatar {
 	width: 34px !important;
@@ -214,17 +214,17 @@ const openFirst = () => {
 }
 .ps-count {
 	white-space: nowrap;
-	color: #777;
+	color: var(--bp-text-muted);
 	font-size: 12px;
 }
 .ps-arrow {
-	color: #B0B5BC;
+	color: var(--bp-text-faint);
 	font-size: 14px;
 }
 
 .ps-hint {
 	padding: 24px 20px;
-	color: #777;
+	color: var(--bp-text-muted);
 	font-size: 14px;
 	text-align: center;
 }

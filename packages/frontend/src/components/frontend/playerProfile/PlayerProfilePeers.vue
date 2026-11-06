@@ -85,17 +85,17 @@ const rows = computed(() => {
     -webkit-tap-highlight-color: transparent;
 }
 .pp-peer + .pp-peer {
-    border-top: 1px solid #eef0f2;
+    border-top: 1px solid var(--bp-border);
 }
 .pp-peer.is-clickable {
     cursor: pointer;
 }
 .pp-peer.is-clickable:hover {
-    background: #fafbfc;
+    background: var(--bp-surface-soft);
 }
 .pp-peer-avatar {
-    --avatar-background: #e9ebee;
-    --avatar-color: #3a3f47;
+    --avatar-background: var(--bp-fill);
+    --avatar-color: var(--bp-text);
     flex-shrink: 0;
     font-size: 13px !important;
     font-weight: 700;
@@ -123,19 +123,19 @@ const rows = computed(() => {
 .pp-peer-meta {
     margin-top: 1px;
     font-size: 12px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 
     b {
-        color: #1d1f23;
+        color: var(--bp-text-strong);
     }
     b.pp-loss {
-        color: #d64545;
+        color: var(--bp-danger);
     }
 }
 .pp-peer-score {
     flex-shrink: 0;
     font-size: 14px;
     font-weight: 800;
-    color: #a0a5ad;
+    color: var(--bp-text-faint);
 }
 </style>

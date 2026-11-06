@@ -19,11 +19,11 @@ export const convertNumberToCharacter = (num:number) => {
       .join('');     // join values together
 }
 
-// "Heute, 15:37" / "Gestern, 21:10" / "18.10., 0:04" / "18.10.2025, 0:04"
+// "Heute, 15:37 Uhr" / "Gestern, 21:10 Uhr" / "18.10., 0:04 Uhr" / "18.10.2025, 0:04 Uhr"
 export const formatGameTime = (time: number) => {
     const date = new Date(time);
     const now = new Date();
-    const clock = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const clock = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')} Uhr`;
 
     const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
     const dayDiff = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);

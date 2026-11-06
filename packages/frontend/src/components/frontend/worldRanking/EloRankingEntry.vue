@@ -107,13 +107,13 @@ const getTrendClass = (trend: number | null) => {
 
 <style scoped>
 .elo-entry {
-    border-bottom: 1px solid #eef0f2;
+    border-bottom: 1px solid var(--bp-border);
 }
 .elo-entry:last-child {
     border-bottom: none;
 }
 .elo-entry-top {
-    background: #fffcf0;
+    background: var(--bp-gold-faint);
 }
 
 .elo-row {
@@ -144,9 +144,9 @@ const getTrendClass = (trend: number | null) => {
     font-weight: 700;
     line-height: 1.3;
 }
-.elo-up { color: #1f9d55; }
-.elo-down { color: #d64545; }
-.elo-same { color: #a0a5ad; }
+.elo-up { color: var(--bp-success); }
+.elo-down { color: var(--bp-danger); }
+.elo-same { color: var(--bp-text-faint); }
 .elo-trend-new { color: var(--secondary-color); font-weight: 600; }
 
 .elo-avatars {
@@ -166,7 +166,7 @@ const getTrendClass = (trend: number | null) => {
     width: 28px !important;
     height: 28px !important;
     font-size: 11px;
-    box-shadow: 0 0 0 2px white;
+    box-shadow: 0 0 0 2px var(--bp-surface);
 }
 .elo-avatars-team .elo-avatar + .elo-avatar {
     margin-left: -16px;
@@ -196,7 +196,7 @@ const getTrendClass = (trend: number | null) => {
 .elo-meta {
     margin-top: 2px;
     font-size: 12px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 
 .elo-col-rating {
@@ -217,7 +217,7 @@ const getTrendClass = (trend: number | null) => {
 .elo-details {
     margin: 0 14px 14px;
     padding: 12px 14px;
-    background: #f4f5f7;
+    background: var(--bp-fill-soft);
     border-radius: 12px;
 }
 .elo-stats {
@@ -225,11 +225,11 @@ const getTrendClass = (trend: number | null) => {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #e3e5e9;
+    border-bottom: 1px solid var(--bp-border);
 }
 .elo-stat-label {
     font-size: 11px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .elo-stat-value {
     font-size: 15px;
@@ -247,7 +247,7 @@ const getTrendClass = (trend: number | null) => {
     align-items: center;
     gap: 10px;
     padding: 8px 0;
-    border-bottom: 1px solid #e3e5e9;
+    border-bottom: 1px solid var(--bp-border);
 }
 .elo-game:last-of-type {
     border-bottom: none;
@@ -276,7 +276,7 @@ const getTrendClass = (trend: number | null) => {
 }
 .elo-game-context {
     font-size: 11px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .elo-game-delta {
     flex-shrink: 0;
@@ -289,7 +289,7 @@ const getTrendClass = (trend: number | null) => {
     justify-content: flex-end;
     margin-top: 4px;
     padding-top: 8px;
-    border-top: 1px solid #e3e5e9;
+    border-top: 1px solid var(--bp-border);
 }
 .elo-profile-link {
     display: flex;

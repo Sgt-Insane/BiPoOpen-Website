@@ -6,7 +6,7 @@ import { getAllPlayerNames } from '@/components/frontend/playerProfile/PlayerPro
 // Push-Benachrichtigungen, geteilt ueber alle Komponenten (Glocke, Einstellungsseite, Folgen-Button).
 // Backend: packages/backend/src/controllers/Push.ts, Anzeige im Service Worker: public/push-sw.js
 
-export type PushCategory = 'openGames' | 'leagueGames' | 'tournamentResults' | 'registrations';
+export type PushCategory = 'openGames' | 'leagueGames' | 'tournamentResults';
 export type PushFollowMode = 'all' | 'followed';
 
 // unsupported: Browser kann kein Push; iosInstall: iPhone im Safari-Tab (Push nur als installierte App);
@@ -19,15 +19,26 @@ const DEFAULT_PREFERENCES: Record<PushCategory, boolean> = {
 	openGames: true,
 	leagueGames: true,
 	tournamentResults: true,
-	registrations: false,
+};
+
+const CATEGORIES = Object.keys(DEFAULT_PREFERENCES) as PushCategory[];
+
+const DEFAULT_FOLLOW_MODES: Record<PushCategory, PushFollowMode> = {
+	openGames: 'all',
+	leagueGames: 'all',
+	tournamentResults: 'all',
 };
 
 const status = ref<PushStatus>('loading');
 const preferences = reactive({ ...DEFAULT_PREFERENCES });
-const followMode = ref<PushFollowMode>('all');
+const followModes = reactive({ ...DEFAULT_FOLLOW_MODES });
 // Anzeigenamen; das Backend speichert lowercase
 const followedPlayers = ref<string[]>([]);
 const settingsLoaded = ref(false);
+
+// Mindestens eine aktive Kategorie ist auf "Nur meine Spieler"
+const usesFollowedPlayers = computed(() => CATEGORIES.some(category => preferences[category] && followModes[category] === 'followed'));
+const allCategoriesOff = computed(() => CATEGORIES.every(category => !preferences[category]));
 
 let subscription: PushSubscription | null = null;
 let initialized = false;
@@ -58,16 +69,16 @@ const resolvePlayerNames = async (names: string[]) => {
 		?? name.replace(/(^|[\s-])(\p{L})/gu, (_, separator, letter) => separator + letter.toUpperCase()));
 };
 
-const applySettings = async (data: { preferences?: Partial<Record<PushCategory, boolean>>, followMode?: PushFollowMode, followedPlayers?: string[] }) => {
+const applySettings = async (data: { preferences?: Partial<Record<PushCategory, boolean>>, followModes?: Partial<Record<PushCategory, PushFollowMode>>, followedPlayers?: string[] }) => {
 	Object.assign(preferences, DEFAULT_PREFERENCES, data.preferences);
-	followMode.value = data.followMode ?? 'all';
+	Object.assign(followModes, DEFAULT_FOLLOW_MODES, data.followModes);
 	followedPlayers.value = await resolvePlayerNames(data.followedPlayers ?? []);
 	settingsLoaded.value = true;
 };
 
 const settingsBody = () => ({
 	preferences: { ...preferences },
-	followMode: followMode.value,
+	followModes: { ...followModes },
 	followedPlayers: followedPlayers.value,
 });
 
@@ -159,7 +170,7 @@ const activate = async (options: { follow?: string[], category?: PushCategory } 
 
 	if (options.category) preferences[options.category] = true;
 	if (options.follow?.length) {
-		followMode.value = 'followed';
+		CATEGORIES.forEach(category => { followModes[category] = 'followed'; });
 		followedPlayers.value = [...new Set([...followedPlayers.value, ...options.follow])];
 	}
 
@@ -177,7 +188,7 @@ const deactivate = async () => {
 	}
 	subscription = null;
 	Object.assign(preferences, DEFAULT_PREFERENCES);
-	followMode.value = 'all';
+	Object.assign(followModes, DEFAULT_FOLLOW_MODES);
 	followedPlayers.value = [];
 	settingsLoaded.value = false;
 	status.value = 'inactive';
@@ -200,14 +211,38 @@ const setPreference = (category: PushCategory, enabled: boolean) => {
 	return saveSettings();
 };
 
-const setFollowMode = (mode: PushFollowMode) => {
-	followMode.value = mode;
+const setFollowMode = (category: PushCategory, mode: PushFollowMode) => {
+	followModes[category] = mode;
 	return saveSettings();
+};
+
+// Bezeichnungen fuer den Folgen-Toast: "Benachrichtigungen fuer offene Spiele von Jonas"
+const FOLLOW_TOAST_LABELS: Record<PushCategory, string> = {
+	openGames: 'offene Spiele',
+	leagueGames: 'League- & Cup-Spiele',
+	tournamentResults: 'Turnier-Ergebnisse',
+};
+
+// Zweite Zeile im Folgen-Toast; undefined, wenn Folgen gerade nichts bewirkt (ueberall "Alle Spiele")
+const followToastDetail = (name: string) => {
+	const followedCategories = CATEGORIES.filter(category => preferences[category] && followModes[category] === 'followed');
+	if (!followedCategories.length) return undefined;
+	const what = followedCategories.length === CATEGORIES.length
+		? 'jedes Spiel'
+		: followedCategories.map(category => FOLLOW_TOAST_LABELS[category]).join(' und ');
+	return `Du bekommst ab jetzt Benachrichtigungen für ${what} von ${name}.`;
 };
 
 const isFollowing = (name: string) => followedPlayers.value.some(entry => normalize(entry) === normalize(name));
 
+// Alles aus: Folgen schaltet alle Kategorien wieder ein, aber nur fuer die eigenen Spieler
 const followPlayer = (name: string) => {
+	if (allCategoriesOff.value) {
+		CATEGORIES.forEach(category => {
+			preferences[category] = true;
+			followModes[category] = 'followed';
+		});
+	}
 	if (!isFollowing(name)) followedPlayers.value = [...followedPlayers.value, name.trim()];
 	return saveSettings();
 };
@@ -233,7 +268,9 @@ export const usePushNotifications = () => {
 		status,
 		isActive: computed(() => status.value === 'active'),
 		preferences,
-		followMode,
+		followModes,
+		usesFollowedPlayers,
+		allCategoriesOff,
 		followedPlayers,
 		settingsLoaded,
 		loadSettings,
@@ -243,6 +280,7 @@ export const usePushNotifications = () => {
 		setFollowMode,
 		isFollowing,
 		followPlayer,
+		followToastDetail,
 		unfollowPlayer,
 		sendTest,
 	};

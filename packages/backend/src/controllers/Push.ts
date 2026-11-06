@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { config } from "../config/config";
 import PushSubscription, { FOLLOW_MODES, NOTIFICATION_CATEGORIES } from "../models/PushSubscription";
-import { normalizePlayerName, sendToSubscription } from "../util/notify";
+import { cardTeam, describeResult, normalizePlayerName, playerProfilePath, resultImageUrl, sendToSubscription } from "../util/notify";
 
 // Baut ein $set-Update aus den erlaubten Feldern im Body
-const buildUpdate = (preferences: any, followMode: any, followedPlayers: any) => {
+const buildUpdate = (preferences: any, followModes: any, followedPlayers: any) => {
     const update: Record<string, unknown> = {};
 
     if (preferences && typeof preferences === 'object') {
@@ -13,7 +13,11 @@ const buildUpdate = (preferences: any, followMode: any, followedPlayers: any) =>
         });
     }
 
-    if (FOLLOW_MODES.includes(followMode)) update.followMode = followMode;
+    if (followModes && typeof followModes === 'object') {
+        NOTIFICATION_CATEGORIES.forEach((category) => {
+            if (FOLLOW_MODES.includes(followModes[category])) update[`followModes.${category}`] = followModes[category];
+        });
+    }
 
     if (Array.isArray(followedPlayers)) {
         update.followedPlayers = [...new Set(
@@ -28,7 +32,7 @@ const buildUpdate = (preferences: any, followMode: any, followedPlayers: any) =>
 
 const toResponse = (subscription: any) => ({
     preferences: subscription.preferences,
-    followMode: subscription.followMode ?? 'all',
+    followModes: subscription.followModes,
     followedPlayers: subscription.followedPlayers
 });
 
@@ -37,7 +41,7 @@ const getVapidPublicKey = (req: Request, res: Response, next: NextFunction) => {
 };
 
 const subscribe = (req: Request, res: Response, next: NextFunction) => {
-    const { subscription, preferences, followMode, followedPlayers } = req.body;
+    const { subscription, preferences, followModes, followedPlayers } = req.body;
 
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
         res.status(400).json({ message: 'Ungültige Subscription' });
@@ -47,7 +51,7 @@ const subscribe = (req: Request, res: Response, next: NextFunction) => {
     const update = {
         endpoint: subscription.endpoint,
         keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth },
-        ...buildUpdate(preferences, followMode, followedPlayers)
+        ...buildUpdate(preferences, followModes, followedPlayers)
     };
 
     PushSubscription.findOneAndUpdate({ endpoint: subscription.endpoint }, { $set: update }, { upsert: true, new: true, setDefaultsOnInsert: true })
@@ -56,14 +60,14 @@ const subscribe = (req: Request, res: Response, next: NextFunction) => {
 };
 
 const updatePreferences = (req: Request, res: Response, next: NextFunction) => {
-    const { endpoint, preferences, followMode, followedPlayers } = req.body;
+    const { endpoint, preferences, followModes, followedPlayers } = req.body;
 
     if (!endpoint) {
         res.status(400).json({ message: 'endpoint ist erforderlich' });
         return;
     }
 
-    PushSubscription.findOneAndUpdate({ endpoint }, { $set: buildUpdate(preferences, followMode, followedPlayers) }, { new: true })
+    PushSubscription.findOneAndUpdate({ endpoint }, { $set: buildUpdate(preferences, followModes, followedPlayers) }, { new: true })
         .then((saved) => {
             if (saved) res.status(200).json(toResponse(saved));
             else res.status(404).json({ message: 'Subscription not found' });
@@ -100,11 +104,20 @@ const sendTest = async (req: Request, res: Response, next: NextFunction) => {
             return;
         }
 
+        // Sieht aus wie ein echtes offenes Spiel (gleicher Aufbau wie in OpenGame.createOpenGame), mit Beispieldaten
+        const team1 = { players: [{ name: 'Jonas Weck', score: 6 }, { name: 'Leon Rose', score: 4 }] };
+        const team2 = { players: [{ name: 'Simon Weck', score: 5 }, { name: 'Patrick Pohlmann', score: 4 }] };
+        const result = describeResult(team1, team2);
         await sendToSubscription(subscription as any, {
-            title: '🔔 Benachrichtigungen funktionieren!',
-            body: 'So sieht ein Push von Weck BiPo Open aus',
-            url: '/Benachrichtigungen',
-            tag: 'test'
+            title: `🍺 ${result.title}`,
+            body: `gegen ${result.opponents} · Offenes Spiel`,
+            url: '/',
+            image: resultImageUrl(cardTeam(team1), cardTeam(team2), 'Offenes Spiel'),
+            tag: 'test',
+            actions: [
+                { action: 'game', title: 'Spiel ansehen', url: '/' },
+                { action: 'profile', title: `Profil von ${result.winnerName.split(' ')[0]}`, url: playerProfilePath(result.winnerName) }
+            ]
         });
         res.status(200).json({ message: 'Sent' });
     } catch (error) {

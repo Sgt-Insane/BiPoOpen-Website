@@ -580,6 +580,7 @@ export const buildPlayerProfileData = (data: GameData, playerName: string, trend
         leagueStandings: getLeagueStandingsForPlayer(data.leagueGames, playerName),
         firstGameTime,
         allTimeMatches: matchHistory.length,
+        allMatchHistory: matchHistory,
         elo: getPlayerElo(data, playerName),
         ...summarizeHistory(filteredHistory, playerName, leagueTeam),
         badges: matchHistory.length ? getPlayerBadges(data, playerName, matchHistory) : [],

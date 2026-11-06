@@ -9,6 +9,19 @@
     <meta property="og:title" content="Weck BiPo Open" />
     <meta property="og:description" content="Weck BiPo Open" />
     <title>Weck BiPo Open</title>
+
+    <!-- Farbschema vor dem ersten Rendern setzen, sonst blitzt die helle Seite kurz auf (Logik: src/components/shared/useColorScheme.ts) -->
+    <script>
+      (function () {
+        var scheme = null;
+        try { scheme = localStorage.getItem('colorScheme'); } catch (e) {}
+        var dark = scheme ? scheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var root = document.documentElement;
+        root.classList.toggle('bp-dark', dark);
+        root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+        root.style.colorScheme = dark ? 'dark' : 'light';
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

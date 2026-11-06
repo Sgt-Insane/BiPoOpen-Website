@@ -91,7 +91,7 @@ const lastGame = computed(() => {
 }
 .sc-progress-fill{
     height: 100%;
-    background: white;
+    background: var(--bp-surface);
     border-radius: 999px;
     transition: width 0.6s ease;
 }

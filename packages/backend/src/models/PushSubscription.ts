@@ -2,7 +2,7 @@ import mongoose, { InferSchemaType, Schema } from 'mongoose';
 
 export type IPushSubscriptionModel = InferSchemaType<typeof PushSubscriptionSchema>;
 
-export const NOTIFICATION_CATEGORIES = ['openGames', 'leagueGames', 'registrations', 'tournamentResults'] as const;
+export const NOTIFICATION_CATEGORIES = ['openGames', 'leagueGames', 'tournamentResults'] as const;
 export type NotificationCategory = typeof NOTIFICATION_CATEGORIES[number];
 
 export const FOLLOW_MODES = ['all', 'followed'] as const;
@@ -17,12 +17,15 @@ const PushSubscriptionSchema = new Schema(
         preferences: {
             openGames: { type: Boolean, default: true },
             leagueGames: { type: Boolean, default: true },
-            registrations: { type: Boolean, default: false },
             tournamentResults: { type: Boolean, default: true }
         },
-        // 'all' = alle Spiele, 'followed' = nur Spiele mit followedPlayers.
+        // Je Kategorie: 'all' = alle Spiele, 'followed' = nur Spiele mit followedPlayers.
         // Eigenes Feld, damit die Liste beim Zurueckschalten auf 'all' erhalten bleibt.
-        followMode: { type: String, enum: FOLLOW_MODES, default: 'all' },
+        followModes: {
+            openGames: { type: String, enum: FOLLOW_MODES, default: 'all' },
+            leagueGames: { type: String, enum: FOLLOW_MODES, default: 'all' },
+            tournamentResults: { type: String, enum: FOLLOW_MODES, default: 'all' }
+        },
         // lowercase gespeichert
         followedPlayers: { type: [String], default: [] }
     },

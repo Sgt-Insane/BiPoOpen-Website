@@ -169,7 +169,7 @@ const labels = useTableLabels();
     width: 1rem;
     height: 1rem;
     border-radius: 0.1875rem;
-    background: #EEF0F3;
+    background: var(--bp-fill);
     color: white;
     font-size: 0.5625rem;
     font-weight: 700;

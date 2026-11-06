@@ -37,7 +37,7 @@
 }
 .mo-container{
     position: absolute;
-    background: white;
+    background: var(--bp-surface);
     padding: 50px;
     width: 50%;
 }
@@ -52,11 +52,11 @@
     font-size: 18px;
 }
 .mo-template input{
-    color: black;
+    color: var(--bp-text-strong);
     margin-bottom: 20px;
     width: 100%;     /* Padding left & right 5 px */
     padding: 5px;
-    border: 1px solid black;
+    border: 1px solid var(--bp-text-strong);
     border-radius: 2px;
     font-size: 18px;
     outline: none;

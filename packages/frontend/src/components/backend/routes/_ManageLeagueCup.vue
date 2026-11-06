@@ -366,7 +366,7 @@ const deleteMatch = async () => {
 .mc-panel{
     padding: 15px;
     margin-bottom: 30px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--bp-border);
     border-radius: 4px;
 }
 .mc-skeleton-panel{

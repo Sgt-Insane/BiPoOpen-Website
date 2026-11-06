@@ -230,6 +230,7 @@ declare global {
         categories: CategoryStats[];
         recentForm: ('W' | 'L')[];
         matchHistory: MatchHistoryEntry[];
+        allMatchHistory: MatchHistoryEntry[]; // unabhaengig von Zeitraum und Spielart, fuer die Aktivitaet
         rivals: RivalData[];
         partners: PartnerData[];
         extraStats: ExtraStats;

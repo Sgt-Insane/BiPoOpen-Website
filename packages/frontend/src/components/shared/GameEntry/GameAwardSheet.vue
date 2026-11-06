@@ -96,8 +96,8 @@ watch([visible, index], () => { confetti.value = createConfetti(); });
     gap: 6px;
     padding: 4px 12px;
     border-radius: 999px;
-    background: #E6F6EC;
-    color: #1E7A44;
+    background: var(--bp-success-weak);
+    color: var(--bp-success-strong);
     font-size: 13px;
     font-weight: 700;
 }
@@ -156,19 +156,19 @@ watch([visible, index], () => { confetti.value = createConfetti(); });
 }
 .ga-icon--milestone{
     background: linear-gradient(160deg, #7FD6EA 0%, #36AFC8 100%);
-    box-shadow: 0 0 0 10px #E3F6FA, 0 8px 20px rgba(54, 175, 200, .35);
+    box-shadow: 0 0 0 10px var(--secondary-color-weak), 0 8px 20px rgba(54, 175, 200, .35);
 }
 .ga-icon--title{
     background: linear-gradient(160deg, #F6CF6B 0%, #E3A92B 100%);
-    box-shadow: 0 0 0 10px #FDF3D6, 0 8px 20px rgba(227, 169, 43, .35);
+    box-shadow: 0 0 0 10px var(--bp-gold-weak), 0 8px 20px rgba(227, 169, 43, .35);
 }
 .ga-icon--record{
     background: linear-gradient(160deg, #A48DF0 0%, #6D4FD0 100%);
-    box-shadow: 0 0 0 10px #EFEAFC, 0 8px 20px rgba(109, 79, 208, .35);
+    box-shadow: 0 0 0 10px var(--bp-violet-weak), 0 8px 20px rgba(109, 79, 208, .35);
 }
 .ga-icon--performance{
     background: linear-gradient(160deg, #F58A95 0%, #EA5160 100%);
-    box-shadow: 0 0 0 10px #FDECEE, 0 8px 20px rgba(234, 81, 96, .35);
+    box-shadow: 0 0 0 10px var(--bp-primary-weak), 0 8px 20px rgba(234, 81, 96, .35);
 }
 @keyframes ga-pop{
     0%{ transform: scale(.5); opacity: 0; }
@@ -181,26 +181,26 @@ watch([visible, index], () => { confetti.value = createConfetti(); });
     letter-spacing: .1em;
     text-transform: uppercase;
 }
-.ga-kicker--milestone{ color: #1F7F93; }
-.ga-kicker--title{ color: #8A6400; }
-.ga-kicker--record{ color: #5B3CC4; }
-.ga-kicker--performance{ color: #B3263A; }
+.ga-kicker--milestone{ color: var(--bp-secondary-text); }
+.ga-kicker--title{ color: var(--bp-gold); }
+.ga-kicker--record{ color: var(--bp-violet); }
+.ga-kicker--performance{ color: var(--bp-primary-text); }
 
 .ga-title{
     margin-top: 10px;
     font-size: 26px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
     line-height: 1.2;
 }
 .ga-text{
     margin-top: 12px;
     font-size: 15px;
-    color: #555B63;
+    color: var(--bp-text-secondary);
     line-height: 1.5;
 }
 .ga-text strong{
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 
 .ga-button{
@@ -217,7 +217,7 @@ watch([visible, index], () => { confetti.value = createConfetti(); });
     cursor: pointer;
 }
 .ga-button:focus-visible{
-    outline: 2px solid #1F2328;
+    outline: 2px solid var(--bp-text-strong);
     outline-offset: 2px;
 }
 

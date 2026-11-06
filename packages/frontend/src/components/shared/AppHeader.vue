@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import router from '@/router.js';
 import { MAIN_NAV_ITEMS, MainNavItem, isMainNavItemActive } from './mainNav';
@@ -7,6 +8,7 @@ import { usePwaInstall } from './usePwaInstall';
 import { useAddGame } from './GameEntry/useAddGame';
 import { usePlayerSearch } from './usePlayerSearch';
 import { PUSH_SETTINGS_PATH, usePushNotifications } from './usePushNotifications';
+import { useColorScheme } from './useColorScheme';
 import BellIcon from './BellIcon.vue';
 
 const route = useRoute();
@@ -15,6 +17,7 @@ const { openAddGame } = useAddGame();
 const { openPlayerSearch } = usePlayerSearch();
 const { canInstall, isInstalled, installPwa } = usePwaInstall();
 const { isActive: isPushActive } = usePushNotifications();
+const { isDark, toggleColorScheme } = useColorScheme();
 
 const scrollToTop = () => {
 	if((router as any).path == "/"){
@@ -31,7 +34,10 @@ const onNavClick = (item: MainNavItem) => {
 		openTournamentPicker();
 }
 
-let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
+// Dark Mode: Schriftzug hell statt dunkelblau
+const logoLight = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
+const logoDark = new URL(`/src/assets/Logo_Website_Dark.svg`, import.meta.url).href;
+const logo = computed(() => isDark.value ? logoDark : logoLight);
 </script>
 
 <template>
@@ -77,6 +83,16 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 					App
 				</button>
 
+				<!-- Hell / Dunkel: ohne Klick folgt die Seite dem System, die Wahl bleibt gespeichert -->
+				<button
+					type="button"
+					class="ap-round-btn"
+					:aria-label="isDark ? 'Helles Design' : 'Dunkles Design'"
+					@click="toggleColorScheme()"
+				>
+					<i class="pi" :class="isDark ? 'pi-sun' : 'pi-moon'"></i>
+				</button>
+
 				<!-- Benachrichtigungen: Kontur = aus, gefuellt = aktiv.
 				     Spaeter: roter Punkt bei Neuem und Liste der letzten Pushes, bis dahin direkt die Einstellungen -->
 				<router-link
@@ -107,9 +123,13 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 	top: 0px;
 	filter: drop-shadow(0px 0px 100px rgba(255, 255, 255, 0.295));
 	padding: 0 5%;
-	background: white;
+	background: var(--bp-surface);
 	display: flex;
 	align-items: center;
+}
+/* Heller Schein unter dem Header wirkt im Dark Mode wie ein grauer Schleier */
+:global(html.bp-dark .AppHeader){
+	filter: none;
 }
 
 .ap-header{
@@ -143,13 +163,13 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 	border: none;
 	border-radius: 999px;
 	background: transparent;
-	color: #444;
+	color: var(--bp-text);
 	font-weight: 600;
 	font-size: 15px;
 	transition: .2s background ease, .2s color ease;
 }
 .ap-nav-item:hover{
-	background: #f5f5f5;
+	background: var(--bp-fill-soft);
 }
 .ap-nav-item-active,
 .ap-nav-item-active:hover{
@@ -233,13 +253,13 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 	padding: 0;
 	border: none;
 	border-radius: 50%;
-	background: #f1f2f4;
-	color: #222;
+	background: var(--bp-fill-soft);
+	color: var(--bp-text-strong);
 	transition: .2s background ease;
 }
 .ap-round-btn:hover{
-	background: #e4e6e9;
-	color: #222;
+	background: var(--bp-fill-strong);
+	color: var(--bp-text-strong);
 }
 .ap-round-btn .pi{
 	font-size: 15px;
@@ -281,6 +301,17 @@ let logo = new URL(`/src/assets/Logo_Website.svg`, import.meta.url).href;
 	}
 	.ap-round-btn .BellIcon{
 		font-size: 17px;
+	}
+}
+
+/*MOBILE S: Platz fuer App-Button und drei runde Buttons*/
+@media (width <= 360px){
+	.ap-logo img{
+		width: 128px;
+		height: 21px;
+	}
+	.ap-actions{
+		gap: 6px;
 	}
 }
 </style>

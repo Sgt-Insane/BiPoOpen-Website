@@ -341,7 +341,7 @@ const onTouchEnd = () => {
 	width: 36px;
 	height: 4px;
 	border-radius: 2px;
-	background: #d4d4d4;
+	background: var(--bp-border-strong);
 }
 .bs-handle:focus-visible {
 	outline: 2px solid var(--main-color);
@@ -373,13 +373,13 @@ const onTouchEnd = () => {
 	padding: 0;
 	border: none;
 	border-radius: 50%;
-	background: #f1f2f4;
-	color: #222;
+	background: var(--bp-fill-soft);
+	color: var(--bp-text-strong);
 	cursor: pointer;
 	transition: background .2s ease;
 }
 .bs-close:hover {
-	background: #e4e6e9;
+	background: var(--bp-fill-strong);
 }
 .bs-close:focus-visible {
 	outline: 2px solid var(--main-color);

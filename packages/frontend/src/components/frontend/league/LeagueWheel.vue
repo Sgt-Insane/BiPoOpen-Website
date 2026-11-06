@@ -191,7 +191,7 @@ onBeforeUnmount(() => clearTimeout(spinTimeout));
     height: 18%;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: white;
+    background: var(--bp-surface);
     border: 3px solid var(--lw-navy);
     display: flex;
     align-items: center;

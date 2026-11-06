@@ -148,19 +148,19 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     gap: 10px;
     height: 44px;
     padding: 0 6px 0 12px;
-    border: 1px solid #DCDFE4;
+    border: 1px solid var(--bp-border-strong);
     border-radius: 10px;
-    background: white;
+    background: var(--bp-surface);
 }
 .gp-input-wrap:focus-within{
-    border-color: #1F2328;
+    border-color: var(--bp-text-strong);
 }
 .gp-input-wrap--open{
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 .gp-search-icon{
-    color: #8A9099;
+    color: var(--bp-text-subtle);
     font-size: 15px;
 }
 .gp-input{
@@ -171,12 +171,12 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     border: none;
     outline: none;
     background: transparent;
-    color: #1F2328;
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 15px;
 }
 .gp-input::placeholder{
-    color: #9AA0A8;
+    color: var(--bp-text-faint);
 }
 
 .gp-chip{
@@ -188,7 +188,7 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #1F2328;
+    color: var(--bp-text-strong);
     font-size: 15px;
     font-weight: 600;
 }
@@ -209,11 +209,11 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     border: none;
     border-radius: 50%;
     background: none;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
     cursor: pointer;
 }
 .gp-icon-button:hover{
-    background: #F1F2F4;
+    background: var(--bp-fill-soft);
 }
 .gp-icon-button .pi{
     font-size: 12px;
@@ -227,10 +227,10 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     z-index: 5; /* ueber Score-Auswahl und Speichern-Leiste */
     display: flex;
     flex-direction: column;
-    border: 1px solid #1F2328;
+    border: 1px solid var(--bp-text-strong);
     border-top: none;
     border-radius: 0 0 10px 10px;
-    background: white;
+    background: var(--bp-surface);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
     overflow: hidden;
 }
@@ -241,16 +241,16 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     min-height: 42px;
     padding: 6px 12px;
     border: none;
-    border-top: 1px solid #F1F2F4;
-    background: white;
-    color: #1F2328;
+    border-top: 1px solid var(--bp-border);
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 14px;
     text-align: left;
     cursor: pointer;
 }
 .gp-result:hover{
-    background: #F6F7F9;
+    background: var(--bp-fill-soft);
 }
 .gp-result-name{
     flex: 1;
@@ -271,7 +271,7 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     height: 28px;
     min-width: 28px;
     border-radius: 50%;
-    background: #FDECEE;
+    background: var(--bp-primary-weak);
 }
 .gp-new-icon .pi{
     font-size: 11px;

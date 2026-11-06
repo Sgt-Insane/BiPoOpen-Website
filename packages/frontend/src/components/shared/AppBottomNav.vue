@@ -62,8 +62,8 @@ const onAddClick = () => {
 		display: flex;
 		height: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom));
 		padding-bottom: env(safe-area-inset-bottom);
-		background: white;
-		border-top: 1px solid #dcdfe4;
+		background: var(--bp-surface);
+		border-top: 1px solid var(--bp-border-strong);
 		box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
 	}
 }
@@ -78,7 +78,7 @@ const onAddClick = () => {
 	background: none;
 	border: none;
 	padding: 0;
-	color: #666;
+	color: var(--bp-text-secondary);
 	text-decoration: none;
 	-webkit-tap-highlight-color: transparent;
 }
@@ -122,7 +122,7 @@ const onAddClick = () => {
 	border-radius: 50%;
 	background: var(--main-color);
 	color: white;
-	box-shadow: 0 0 0 4px white, 0 4px 12px rgba(234, 81, 96, 0.4);
+	box-shadow: 0 0 0 4px var(--bp-surface), 0 4px 12px rgba(234, 81, 96, 0.4);
 	transition: transform .15s ease;
 }
 .bn-add:active .bn-add-circle {

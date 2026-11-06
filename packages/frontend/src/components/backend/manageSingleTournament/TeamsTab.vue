@@ -20,11 +20,11 @@
 
                <div>Team Logo</div>
                <div
-                  style="flex-shrink: 0; width: 80px; height: 80px; margin-bottom: 20px; border: 1px solid #eee; display: flex; align-items: center; justify-content: center; background: #f9f9f9; overflow: hidden; cursor: pointer;"
+                  style="flex-shrink: 0; width: 80px; height: 80px; margin-bottom: 20px; border: 1px solid var(--bp-border); display: flex; align-items: center; justify-content: center; background: #f9f9f9; overflow: hidden; cursor: pointer;"
                   @click="triggerLogoUpload()"
                >
                   <img v-if="teamLogoPreview" :src="teamLogoPreview" style="width: 100%; height: 100%; object-fit: contain;" />
-                  <span v-else class="material-icons" style="color: #ccc; font-size: 28px;">groups</span>
+                  <span v-else class="material-icons" style="color: var(--bp-text-faint); font-size: 28px;">groups</span>
                </div>
 
             </template>
@@ -53,11 +53,11 @@
 
                <div>Team Logo</div>
                <div
-                  style="flex-shrink: 0; width: 80px; height: 80px; margin-bottom: 20px; border: 1px solid #eee; display: flex; align-items: center; justify-content: center; background: #f9f9f9; overflow: hidden; cursor: pointer;"
+                  style="flex-shrink: 0; width: 80px; height: 80px; margin-bottom: 20px; border: 1px solid var(--bp-border); display: flex; align-items: center; justify-content: center; background: #f9f9f9; overflow: hidden; cursor: pointer;"
                   @click="triggerLogoUpload()"
                >
                   <img v-if="teamLogoPreview" :src="teamLogoPreview" style="width: 100%; height: 100%; object-fit: contain;" />
-                  <span v-else class="material-icons" style="color: #ccc; font-size: 28px;">groups</span>
+                  <span v-else class="material-icons" style="color: var(--bp-text-faint); font-size: 28px;">groups</span>
                </div>
 
                <button @click="toggleModalConfirmDelete();">Team löschen</button>

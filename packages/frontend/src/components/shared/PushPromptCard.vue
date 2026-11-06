@@ -49,7 +49,7 @@ const dismiss = () => {
 .PushPromptCard {
     position: relative;
     border-radius: 16px;
-    background: white;
+    background: var(--bp-surface);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .ppc-link {
@@ -57,7 +57,7 @@ const dismiss = () => {
     align-items: center;
     gap: 12px;
     padding: 12px 44px 12px 14px;
-    color: #1d1f23;
+    color: var(--bp-text-strong);
     text-decoration: none;
 }
 .ppc-icon {
@@ -68,7 +68,7 @@ const dismiss = () => {
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: #fde9eb;
+    background: var(--bp-primary-weak);
     color: var(--main-color);
     font-size: 18px;
 }
@@ -82,7 +82,7 @@ const dismiss = () => {
     display: block;
     margin-top: 1px;
     font-size: 13px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .ppc-arrow {
     color: var(--main-color);
@@ -101,7 +101,7 @@ const dismiss = () => {
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: #8a9099;
+    color: var(--bp-text-subtle);
     transform: translateY(-50%);
 
     .pi {
@@ -109,6 +109,6 @@ const dismiss = () => {
     }
 }
 .ppc-close:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--bp-fill-soft);
 }
 </style>

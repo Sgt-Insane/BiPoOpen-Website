@@ -127,14 +127,14 @@ const lastGameDate = computed(() => {
 .ffs-headline {
     font-size: 18px;
     font-weight: 800;
-    color: #1f2328;
+    color: var(--bp-text-strong);
     line-height: 1.25;
 }
 
 .ffs-card {
     padding: 4px 12px;
-    background: white;
-    border: 1px solid #ECEEF1;
+    background: var(--bp-surface);
+    border: 1px solid var(--bp-border);
     border-radius: 12px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
@@ -145,17 +145,17 @@ const lastGameDate = computed(() => {
     align-items: center;
     min-height: 44px;
     font-size: 14px;
-    color: #8a9099;
+    color: var(--bp-text-subtle);
 }
 .ffs-row + .ffs-row {
-    border-top: 1px solid #ECEEF1;
+    border-top: 1px solid var(--bp-border);
 }
 .ffs-row--head {
     min-height: 28px;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    color: #8a9099;
+    color: var(--bp-text-subtle);
 }
 
 .ffs-team {
@@ -164,22 +164,22 @@ const lastGameDate = computed(() => {
     gap: 10px;
     min-width: 0;
     /* graue Initialen statt roter Avatare */
-    --avatar-background: #EEF0F3;
-    --avatar-color: #6B717B;
+    --avatar-background: var(--bp-fill);
+    --avatar-color: var(--bp-text-muted);
 }
 .ffs-team-name {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #4a5058;
+    color: var(--bp-text);
 }
 .ffs-row--win .ffs-team-name {
     font-weight: 700;
-    color: #1f2328;
+    color: var(--bp-text-strong);
 }
 .ffs-row--loose .ffs-team-name {
-    color: #8a9099;
+    color: var(--bp-text-subtle);
 }
 
 .ffs-cell {
@@ -187,7 +187,7 @@ const lastGameDate = computed(() => {
 }
 .ffs-cell--game-win {
     font-weight: 700;
-    color: #1f2328;
+    color: var(--bp-text-strong);
 }
 .ffs-cell--series {
     display: flex;
@@ -200,8 +200,8 @@ const lastGameDate = computed(() => {
     height: 26px;
     padding: 0 6px;
     border-radius: 6px;
-    background: #ECEEF1;
-    color: #1f2328;
+    background: var(--bp-fill);
+    color: var(--bp-text-strong);
     font-weight: 600;
     line-height: 26px;
     text-align: center;
@@ -215,7 +215,7 @@ const lastGameDate = computed(() => {
 .ffs-meta {
     margin-top: 10px;
     font-size: 12px;
-    color: #8a9099;
+    color: var(--bp-text-subtle);
 }
 
 @media (width <= 360px) {

@@ -89,9 +89,9 @@ let tournamentName = ref();
 }
 .ma-tournament{
     padding: 20px;
-    background: white;
+    background: var(--bp-surface);
     cursor: pointer;
-    color: black;
+    color: var(--bp-text-strong);
     text-align: center;
     margin-bottom: 50px;
     filter: drop-shadow(0px 0px 5px rgba(0, 0, 0, 0.3));
@@ -99,7 +99,7 @@ let tournamentName = ref();
     width: 50%;
 }
 .ma-tournament:hover{
-    background: rgb(207, 207, 207);
+    background: var(--bp-fill-strong);
 }
 .bp-button{
     width: 50%;

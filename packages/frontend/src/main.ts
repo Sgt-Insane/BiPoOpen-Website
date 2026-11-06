@@ -9,6 +9,7 @@ import "bootstrap/dist/css/bootstrap.min.css"
 import "primeicons/primeicons.css"
 import "material-icons/iconfont/material-icons.css"
 import { registerSW } from 'virtual:pwa-register';
+import '@/components/shared/useColorScheme';
 
 registerSW({ immediate: true });
 
@@ -18,7 +19,8 @@ app.use(PrimeVue, {
     theme: {
         preset: BiPoPreset,
         options: {
-            darkModeSelector: false
+            // Gesetzt ueber useColorScheme
+            darkModeSelector: '.bp-dark'
         }
     }
 });

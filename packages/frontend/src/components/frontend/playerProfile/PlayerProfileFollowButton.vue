@@ -1,5 +1,6 @@
 <template>
     <button
+        v-if="visible"
         type="button"
         class="pp-follow"
         :class="{ 'pp-follow--active': following }"
@@ -20,13 +21,16 @@ import BellIcon from '@/components/shared/BellIcon.vue';
 import { PUSH_SETTINGS_PATH, usePushNotifications } from '@/components/shared/usePushNotifications';
 
 // Push aktiv: Spieler direkt zur Liste. Sonst erst die Aktivieren-Seite, die folgt danach automatisch.
+// Ausgeblendet, wenn ohnehin alle Spiele kommen (alle aktiven Kategorien auf "Alle Spiele").
 const props = defineProps<{ playerName: string }>();
 
 const router = useRouter();
 const toast = useToast();
-const { isActive, followMode, loadSettings, isFollowing, followPlayer, unfollowPlayer } = usePushNotifications();
+const { isActive, settingsLoaded, usesFollowedPlayers, allCategoriesOff, loadSettings, isFollowing, followPlayer, followToastDetail, unfollowPlayer } = usePushNotifications();
 
 const busy = ref(false);
+// Bis die Einstellungen da sind ausgeblendet, sonst blitzt der Button kurz auf
+const visible = computed(() => !isActive.value || (settingsLoaded.value && (usesFollowedPlayers.value || allCategoriesOff.value)));
 const following = computed(() => isActive.value && isFollowing(props.playerName));
 const firstName = computed(() => props.playerName.split(' ')[0]);
 
@@ -44,16 +48,17 @@ const onClick = async () => {
         await unfollowPlayer(props.playerName);
         toast.add({ severity: 'info', summary: `Du folgst ${firstName.value} nicht mehr`, life: 3000 });
     } else {
+        const wasAllOff = allCategoriesOff.value;
         await followPlayer(props.playerName);
         toast.add({
             severity: 'success',
             summary: `Du folgst jetzt ${firstName.value}`,
-            // Bei "Alle Spiele" aendert Folgen nichts an den Pushes, darauf hinweisen
-            ...(followMode.value === 'all' && {
-                detail: 'Du bekommst gerade noch alle Spiele',
-                action: { label: 'Nur gefolgte Spieler ›', to: PUSH_SETTINGS_PATH },
-            }),
-            life: followMode.value === 'all' ? 6000 : 3000,
+            // Alles war aus: followPlayer hat alle Kategorien fuer die eigenen Spieler eingeschaltet
+            detail: wasAllOff
+                ? `Benachrichtigungen sind wieder an. ${followToastDetail(firstName.value)}`
+                : followToastDetail(firstName.value),
+            ...(wasAllOff && { action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH } }),
+            life: wasAllOff ? 6000 : 5000,
         });
     }
     busy.value = false;
@@ -68,10 +73,10 @@ const onClick = async () => {
     gap: 6px;
     margin-left: auto;
     padding: 8px 14px;
-    border: 1px solid #dfe2e6;
+    border: 1px solid var(--bp-border-strong);
     border-radius: 999px;
-    background: white;
-    color: #1d1f23;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font-size: 13px;
     font-weight: 700;
     line-height: 1;
@@ -83,11 +88,11 @@ const onClick = async () => {
     }
 }
 .pp-follow:hover {
-    border-color: #c9cdd3;
+    border-color: var(--bp-border-strong);
 }
 .pp-follow--active {
     border-color: var(--main-color);
-    background: #fff1f2;
+    background: var(--bp-primary-faint);
     color: var(--main-color);
 }
 .pp-follow:disabled {

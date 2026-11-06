@@ -33,7 +33,7 @@ const NAME_WIDTHS = [55, 70, 45, 62, 50, 75];
 <style scoped>
 .SkeletonList {
     overflow: hidden;
-    background: white;
+    background: var(--bp-surface);
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -42,7 +42,7 @@ const NAME_WIDTHS = [55, 70, 45, 62, 50, 75];
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-bottom: 1px solid #eef0f2;
+    border-bottom: 1px solid var(--bp-border);
 }
 .sl-row:last-child {
     border-bottom: none;

@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import TournamentRegistration from '../models/TournamentRegistration';
-import { notify } from '../util/notify';
 
 const IMAGE_DATA_PATTERN = /^data:image\/(png|jpeg|webp|jpg);base64,/;
 const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // base64 overhead ~33%, so 2MB file → ~2.7MB string
@@ -48,14 +47,7 @@ const createRegistration = (req: Request, res: Response, next: NextFunction) => 
                 teamLogo: teamLogo || undefined,
             });
 
-            return registration.save().then(async (saved) => {
-                await notify('registrations', {
-                    title: `📝 Neue Anmeldung: ${saved.teamName}`,
-                    body: `${saved.player1} & ${saved.player2} sind fürs BiPo Open angemeldet`,
-                    url: '/',
-                    tag: `registration-${saved._id}`
-                }, [player1, player2]);
-
+            return registration.save().then((saved) => {
                 res.status(201).json({ message: 'Anmeldung erfolgreich', teamName: saved.teamName });
             });
         })

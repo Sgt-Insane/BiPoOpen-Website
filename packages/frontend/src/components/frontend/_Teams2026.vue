@@ -1,7 +1,7 @@
 <template>
     <div class="Page">
         <h1 class="bp-title">Angemeldete Teams 2026</h1>
-        <p style="color: #888; font-size: 15px; margin-bottom: 32px; text-align: center;">Weck BiPo Open · 11. Juli 2026</p>
+        <p style="color: var(--bp-text-subtle); font-size: 15px; margin-bottom: 32px; text-align: center;">Weck BiPo Open · 11. Juli 2026</p>
 
         <div style="width: 100%; max-width: 900px;">
             <RegistrationsList />

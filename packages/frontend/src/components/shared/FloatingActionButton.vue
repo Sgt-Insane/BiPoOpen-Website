@@ -89,12 +89,12 @@ const emit = defineEmits<{ click: [] }>();
 }
 
 .fab-light{
-    background: white;
+    background: var(--bp-surface);
     color: var(--main-color);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }
 .fab-light:hover{
-    background: #f3f3f3;
+    background: var(--bp-fill-soft);
 }
 
 .fab-round{

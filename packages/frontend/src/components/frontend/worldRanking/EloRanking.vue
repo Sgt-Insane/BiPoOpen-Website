@@ -104,7 +104,7 @@ const ranking = computed(() => getEloRanking(records.value, props.now));
 
 <style scoped>
 .EloRanking {
-    color: #1d1f23;
+    color: var(--bp-text-strong);
 }
 
 /* ── Header ── */
@@ -122,7 +122,7 @@ const ranking = computed(() => getEloRanking(records.value, props.now));
 .elo-subtitle {
     margin-top: 4px;
     font-size: 13px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .elo-info-button {
     flex-shrink: 0;
@@ -130,16 +130,16 @@ const ranking = computed(() => getEloRanking(records.value, props.now));
     align-items: center;
     gap: 6px;
     padding: 8px 14px;
-    border: 1px solid #dcdfe4;
+    border: 1px solid var(--bp-border-strong);
     border-radius: 999px;
-    background: white;
-    color: #1d1f23;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
 }
 .elo-info-button:hover {
-    background: #f4f5f7;
+    background: var(--bp-fill-soft);
 }
 
 /* ── Filter ── */
@@ -149,7 +149,7 @@ const ranking = computed(() => getEloRanking(records.value, props.now));
 
 /* ── Liste ── */
 .elo-card {
-    background: white;
+    background: var(--bp-surface);
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -163,12 +163,12 @@ const ranking = computed(() => getEloRanking(records.value, props.now));
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-bottom: 1px solid #eef0f2;
+    border-bottom: 1px solid var(--bp-border);
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .elo-col-rank {
     flex-shrink: 0;
@@ -193,15 +193,15 @@ const ranking = computed(() => getEloRanking(records.value, props.now));
     padding: 14px;
     border: none;
     border-radius: 16px;
-    background: white;
+    background: var(--bp-surface);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    color: #3a3f47;
+    color: var(--bp-text);
     font-size: 13px;
     text-align: left;
     cursor: pointer;
 
     b {
-        color: #1d1f23;
+        color: var(--bp-text-strong);
     }
 }
 
@@ -209,13 +209,13 @@ const ranking = computed(() => getEloRanking(records.value, props.now));
     padding: 30px 14px;
     text-align: center;
     font-size: 14px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .elo-footnote {
     margin: 12px 2px 10px;
     font-size: 12px;
     line-height: 1.5;
-    color: #8a909a;
+    color: var(--bp-text-subtle);
 }
 
 @media (width <= 360px) {

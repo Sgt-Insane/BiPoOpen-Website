@@ -22,6 +22,8 @@
 
         <PlayerProfileAchievements v-if="profileData.badges.length" :badges="profileData.badges" :playerName="profileData.name"/>
 
+        <PlayerProfileActivity v-if="profileData.firstGameTime" :matchHistory="profileData.allMatchHistory"/>
+
         <!-- Statistik je Spielart -->
         <section class="pp-section">
             <div class="pp-section-head">
@@ -72,6 +74,7 @@ import Avatar from '@/components/shared/Avatar.vue';
 import PlayerProfileEloCard from './PlayerProfileEloCard.vue';
 import PlayerProfileLeagueCard from './PlayerProfileLeagueCard.vue';
 import PlayerProfileAchievements from './PlayerProfileAchievements.vue';
+import PlayerProfileActivity from './PlayerProfileActivity.vue';
 import PlayerProfileStats from './PlayerProfileStats.vue';
 import PlayerProfilePeers from './PlayerProfilePeers.vue';
 import PlayerProfileHistory from './PlayerProfileHistory.vue';
@@ -129,10 +132,10 @@ const heroMeta = computed(() => {
     justify-content: center;
     width: 24px;
     height: 24px;
-    border: 1px solid #e3e5e8;
+    border: 1px solid var(--bp-border);
     border-radius: 50%;
-    background: white;
-    color: #1d1f23;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 
     i {
@@ -156,22 +159,22 @@ const heroMeta = computed(() => {
     padding: 4px;
     margin-bottom: 10px;
     border-radius: 12px;
-    background: #e9ebee;
+    background: var(--bp-fill);
 
     button {
         padding: 8px 0;
         border: none;
         border-radius: 9px;
         background: transparent;
-        color: #6b717b;
+        color: var(--bp-text-muted);
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
     }
     button.is-active {
-        background: white;
-        color: #1d1f23;
+        background: var(--bp-surface);
+        color: var(--bp-text-strong);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     }
 }
@@ -180,6 +183,6 @@ const heroMeta = computed(() => {
     padding: 30px 14px;
     text-align: center;
     font-size: 14px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 </style>

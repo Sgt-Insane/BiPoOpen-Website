@@ -60,15 +60,15 @@ const getLeaguePath = (standing: LeagueStanding) => `/League/${standing.seasonSl
 }
 .pp-league-team:hover,
 .pp-league-row:hover {
-    background: #fafbfc;
+    background: var(--bp-surface-soft);
 }
 
 .pp-league-team {
     padding: 12px 14px;
 }
 .pp-league-logo {
-    --avatar-background: #e9ebee;
-    --avatar-color: #3a3f47;
+    --avatar-background: var(--bp-fill);
+    --avatar-color: var(--bp-text);
     flex-shrink: 0;
     width: 40px !important;
     height: 40px !important;
@@ -78,7 +78,7 @@ const getLeaguePath = (standing: LeagueStanding) => `/League/${standing.seasonSl
 }
 .pp-league-hint {
     font-size: 12px;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .pp-league-name {
     font-size: 16px;
@@ -90,7 +90,7 @@ const getLeaguePath = (standing: LeagueStanding) => `/League/${standing.seasonSl
 
 .pp-league-row {
     padding: 11px 14px;
-    border-top: 1px solid #eef0f2;
+    border-top: 1px solid var(--bp-border);
     font-size: 14px;
 }
 .pp-league-season {
@@ -98,7 +98,7 @@ const getLeaguePath = (standing: LeagueStanding) => `/League/${standing.seasonSl
     width: 56px;
     font-size: 13px;
     font-weight: 700;
-    color: #6b717b;
+    color: var(--bp-text-muted);
 }
 .pp-league-placement {
     flex: 1;
@@ -108,18 +108,18 @@ const getLeaguePath = (standing: LeagueStanding) => `/League/${standing.seasonSl
     flex-shrink: 0;
     padding: 2px 9px;
     border-radius: 999px;
-    background: #eef0f2;
-    color: #6b717b;
+    background: var(--bp-fill);
+    color: var(--bp-text-muted);
     font-size: 11px;
     font-weight: 700;
 }
 .pp-league-tag--champion {
-    background: #fdf0c8;
-    color: #8a6400;
+    background: var(--bp-gold-weak);
+    color: var(--bp-gold);
 }
 .pp-league-chevron {
     flex-shrink: 0;
     font-size: 12px;
-    color: #a0a5ad;
+    color: var(--bp-text-faint);
 }
 </style>
