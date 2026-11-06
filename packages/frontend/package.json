@@ -7,7 +7,8 @@
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "generate:league-logos": "node scripts/generate-league-logos.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:knecht": "vitest run src/components/frontend/biPoKnecht"
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",
