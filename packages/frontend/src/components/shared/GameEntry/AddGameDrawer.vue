@@ -11,6 +11,16 @@
         :hideScores="knechtSetup"
     >
         <template #top="{ setTeams }">
+            <!-- BiPo Knecht: laufendes Spiel fortsetzen oder Knecht oeffnen -->
+            <button v-if="!knechtSetup" type="button" class="ag-knecht" :class="{ 'ag-knecht--running': runningGameTitle }" @click="openKnecht">
+                <span class="ag-knecht-icon">🎯</span>
+                <span class="ag-knecht-text">
+                    <span class="ag-knecht-title">{{ runningGameTitle ? 'Laufendes Knecht-Spiel' : 'BiPo Knecht' }}</span>
+                    <span class="ag-knecht-subtitle">{{ runningGameTitle ?? 'Spiel live Wurf für Wurf zählen' }}</span>
+                </span>
+                <span class="ag-knecht-action">{{ runningGameTitle ? 'Fortsetzen' : 'Öffnen' }}</span>
+            </button>
+
             <!-- Spieltyp -->
             <SelectButton
                 v-model="mode"
@@ -74,6 +84,8 @@ import { CURRENT_SEASON_SLUG, LEAGUE_SEASONS, getSeason, toLeaguePlayers } from 
 import { clearPlayerCaches, getUnlockedBadges } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
 import { clearGameDataCache, getGameData } from '@/util/gameDataCache';
 import { useKnechtLaunch } from '@/components/frontend/biPoKnecht/useKnechtLaunch';
+import { runningGameTitle } from '@/components/frontend/biPoKnecht/knechtStorage';
+import router from '@/router.js';
 
 // Drawer-Einstellungen je Spieltyp
 const TEAM_LABELS: [string, string] = ['Team 1', 'Team 2'];
@@ -190,6 +202,16 @@ const sidesToMatch = (sides: GameEntrySide[]) => {
     return sidesToNewMatch(sides);
 };
 
+// Laufendes Spiel: zurueck in den Knecht. Sonst wird der Drawer zur Knecht-Einrichtung.
+const openKnecht = () => {
+    if (runningGameTitle.value) {
+        addGameVisible.value = false;
+        router.push('/Knecht?Fortsetzen');
+        return;
+    }
+    knechtSetup.value = true;
+};
+
 // Liga-Teams bringen ihr Logo mit, damit der Knecht es anzeigen kann
 const launch = (sides: GameEntrySide[]) => {
     const match = sidesToMatch(sides);
@@ -259,5 +281,56 @@ const showNewAwards = async (badgesBefore: Map<string, PlayerBadge[]>, names: st
     color: var(--bp-text-muted);
     font-size: 14px;
     text-align: center;
+}
+
+/* ─── BiPo Knecht ─── */
+.ag-knecht{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid #E6E8EB;
+    border-radius: 14px;
+    background: white;
+    color: #1F2328;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.ag-knecht--running{
+    border-color: var(--main-color);
+    background: #FFF7F8;
+}
+.ag-knecht-icon{
+    font-size: 20px;
+}
+.ag-knecht-text{
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+.ag-knecht-title{
+    font-size: 14px;
+    font-weight: 700;
+}
+.ag-knecht-subtitle{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: #6B7079;
+}
+.ag-knecht-action{
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #F1F2F4;
+    color: #3A3F46;
+    font-size: 13px;
+    font-weight: 700;
+}
+.ag-knecht--running .ag-knecht-action{
+    background: var(--main-color);
+    color: white;
 }
 </style>

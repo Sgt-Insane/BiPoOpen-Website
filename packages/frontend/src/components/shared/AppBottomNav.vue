@@ -3,7 +3,11 @@
 		<template v-for="(item, index) in MAIN_NAV_ITEMS" :key="item.label">
 			<!-- Plus zum Spiel eintragen in der Mitte -->
 			<button v-if="index === ADD_BUTTON_INDEX" type="button" class="bn-item bn-add" @click="onAddClick()">
-				<span class="bn-add-circle"><i class="pi pi-plus"></i></span>
+				<span class="bn-add-circle">
+					<i class="pi pi-plus"></i>
+					<!-- Laufendes BiPo-Knecht-Spiel -->
+					<span v-if="runningGameTitle" class="bn-add-badge" aria-label="Laufendes Knecht-Spiel">🎯</span>
+				</span>
 				<span class="bn-label">Eintragen</span>
 			</button>
 
@@ -27,6 +31,7 @@ import { useRoute } from 'vue-router';
 import { MAIN_NAV_ITEMS, MainNavItem, isMainNavItemActive } from './mainNav';
 import { useTournamentPicker } from './useTournamentPicker';
 import { useAddGame } from './GameEntry/useAddGame';
+import { runningGameTitle } from '@/components/frontend/biPoKnecht/knechtStorage';
 
 const ADD_BUTTON_INDEX = Math.floor(MAIN_NAV_ITEMS.length / 2);
 
@@ -131,5 +136,22 @@ const onAddClick = () => {
 .bn-add-circle .pi {
 	font-size: 16px;
 	font-weight: 700;
+}
+.bn-add-circle {
+	position: relative;
+}
+.bn-add-badge {
+	position: absolute;
+	top: -6px;
+	right: -8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: white;
+	font-size: 12px;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 </style>

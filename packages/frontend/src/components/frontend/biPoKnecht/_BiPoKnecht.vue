@@ -50,12 +50,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import router from '@/router.js';
 import BiPoKnecht from './BiPoKnecht.vue';
 import type { KnechtAction } from './knechtEngine';
-import { clearStoredGame, formatPoints, getResultPath, getTeamName, loadStoredGame, normalizeTeams, storeGame, type StoredKnechtGame } from './KnechtUtilFunctions';
+import { formatPoints, getResultPath, getTeamName, normalizeTeams } from './KnechtUtilFunctions';
+import { clearStoredGame, loadStoredGame, storeGame, type StoredKnechtGame } from './knechtStorage';
 import { useKnechtLaunch } from './useKnechtLaunch';
 import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
 
@@ -68,7 +69,7 @@ type ActiveGame = {
 };
 
 const toast = useToast();
-const { pendingMatch, consumeLaunch } = useKnechtLaunch();
+const { consumeLaunch, hasLaunch, onLaunch } = useKnechtLaunch();
 const { openAddGame } = useAddGame();
 
 const game = ref<ActiveGame | null>(null);
@@ -165,10 +166,13 @@ const takeLaunch = () => {
     if (match) newGame(match);
 };
 
-watch(pendingMatch, (match) => { if (match) takeLaunch(); });
+const stopListening = onLaunch(takeLaunch);
+onUnmounted(stopListening);
 
 onMounted(() => {
-    if (pendingMatch.value) takeLaunch();
+    if (hasLaunch()) takeLaunch();
+    // /Knecht?Fortsetzen (z.B. aus dem Eintragen-Drawer): laufendes Spiel direkt oeffnen
+    else if (stored.value && 'Fortsetzen' in router.currentRoute.value.query) resume();
     else if (!stored.value) openSetup();
 });
 </script>

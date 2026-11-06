@@ -243,31 +243,3 @@ export const getAwards = (stats: KnechtPlayerStats[]): KnechtAward[] => {
 // Lustiger Text fuer den Speichern-Knopf
 const SAVE_LABELS = ['Ab in die Tabelle!', 'Spiel eintragen – Prost!', 'Für die Ewigkeit speichern', 'Ergebnis ins Buch der Legenden'];
 export const getSaveLabel = (seed: number) => SAVE_LABELS[Math.abs(seed) % SAVE_LABELS.length];
-
-// ─── Laufendes Spiel (ueberlebt Neuladen und gesperrten Bildschirm) ───
-const STORAGE_KEY = 'bipo_knecht_game';
-
-export type StoredKnechtGame = {
-    match: Match;
-    startTeamIndex: number | null;
-    actions: import('./knechtEngine').KnechtAction[];
-    refereeUsed: boolean;
-    savedAt: number;
-};
-
-export const loadStoredGame = (): StoredKnechtGame | null => {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) as StoredKnechtGame : null;
-    } catch {
-        return null;
-    }
-};
-
-export const storeGame = (game: StoredKnechtGame) => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(game)); } catch { /* Speicher voll oder gesperrt */ }
-};
-
-export const clearStoredGame = () => {
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignorieren */ }
-};
