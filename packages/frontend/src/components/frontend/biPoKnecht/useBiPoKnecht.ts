@@ -1,4 +1,4 @@
-import { computed, ref, shallowRef, watch } from 'vue';
+import { computed, ref, shallowRef, toRaw, watch } from 'vue';
 import {
     applyAction, canReRack, getAllowedThrowers, getHittableCups, getPlayersDone, previewHit, replay,
     type BannerEvent, type KnechtAction, type KnechtConfig, type KnechtState,
@@ -22,10 +22,14 @@ export type CupPick = {
 };
 
 const BANNER_DURATION = 1800;
+const BALL_DURATION = 1500;
+
+export type BallMark = { id: number; kind: 'miss' | 'airball' | 'hit'; x: number; y: number };
 
 export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null = null, initialActions: KnechtAction[] = []) => {
     const startTeamIndex = ref<number | null>(initialStartTeamIndex);
-    const actions = shallowRef<KnechtAction[]>(initialActions);
+    // Fortgesetzte Spiele kommen als reaktive Proxys an - die Engine klont mit structuredClone und braucht reine Objekte
+    const actions = shallowRef<KnechtAction[]>(toRaw(initialActions).map(action => toRaw(action)));
     const sound = useBiPoSound();
 
     const config = computed<KnechtConfig>(() => ({
@@ -65,13 +69,15 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         if (event) bannerTimer = setTimeout(() => { banner.value = null; }, BANNER_DURATION);
     };
 
+    const FANFARE_EVENTS: BannerEvent[] = ['on-fire', 'overtime', 'win', 'nachwurf'];
+
+    // Erst das Geraeusch des Wurfs, bei besonderen Momenten danach die Fanfare
     const playFeedback = (next: KnechtState, action: KnechtAction) => {
-        const turn = next.turns.at(-1);
-        if (next.banner === 'bomb' || next.banner === 'deathcup') sound.playBomb();
-        else if (next.banner === 'on-fire' || next.banner === 'overtime' || next.banner === 'win' || next.banner === 'nachwurf') sound.playFire();
+        if (next.banner === 'bomb' || action.type === 'deathcup') sound.playBomb();
         else if (action.type === 'throw' && action.outcome === 'hit') sound.playHit();
         else if (action.type === 'throw' && action.outcome === 'airball') sound.playAirball();
-        else if (turn && action.type !== 'reRack') sound.playMiss();
+        else if (action.type !== 'reRack') sound.playMiss();
+        if (FANFARE_EVENTS.includes(next.banner)) setTimeout(sound.playFire, 350);
         showBanner(next.banner);
     };
 
@@ -103,30 +109,27 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     const throwHit = (cup: number, bouncer: boolean, extraCups: number[] = []) =>
         dispatch({ type: 'throw', player: selectedPlayer.value, outcome: 'hit', cup, bouncer, extraCups, time: now() });
 
-    // Becher angetippt: Treffer, oder Zusatzbecher waehrend der Auswahl
-    const tapCup = (cup: number) => {
+    // Becher angetippt: Treffer, oder Zusatzbecher waehrend der Auswahl. true, wenn ein Wurf eingetragen wurde.
+    const tapCup = (cup: number): boolean => {
         const current = pick.value;
         if (current) {
-            if (!current.candidates.includes(cup)) return;
+            if (!current.candidates.includes(cup)) return false;
             current.chosen = current.chosen.includes(cup) ? current.chosen.filter(other => other !== cup) : [...current.chosen, cup];
-            if (current.chosen.length === current.needed) throwHit(current.cup, current.bouncer, current.chosen);
-            return;
+            return current.chosen.length === current.needed && throwHit(current.cup, current.bouncer, current.chosen);
         }
-        if (!hittableCups.value.has(cup)) return;
+        if (!hittableCups.value.has(cup)) return false;
 
         const preview = previewHit(state.value, cup, bouncerArmed.value, selectedPlayer.value);
-        if (preview.extrasNeeded === 0) {
-            throwHit(cup, bouncerArmed.value);
-            return;
-        }
+        if (preview.extrasNeeded === 0) return throwHit(cup, bouncerArmed.value);
         pick.value = { cup, bouncer: bouncerArmed.value, type: preview.type, needed: preview.extrasNeeded, candidates: preview.extraCandidates, chosen: [] };
+        return false;
     };
 
     const cancelPick = () => { pick.value = null; };
 
     const throwMiss = (outcome: 'miss' | 'airball') => {
-        if (pick.value) return;
-        dispatch({ type: 'throw', player: selectedPlayer.value, outcome, time: now() });
+        if (pick.value) return false;
+        return dispatch({ type: 'throw', player: selectedPlayer.value, outcome, time: now() });
     };
 
     const trickshot = (catcher: number) => dispatch({ type: 'trickshot', player: selectedPlayer.value, catcher, time: now() });
@@ -135,6 +138,16 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     const ownCup = (team: number, player: number, cups: number[]) => dispatch({ type: 'ownCup', team, player, cups, time: now() });
 
     const canUndo = computed(() => !!pick.value || actions.value.length > 0);
+
+    // ─── Ball-Anzeige ───
+    // Bildschirmkoordinaten: der Ball bleibt dort, wo getippt wurde, auch wenn sich das Feld danach dreht
+    const ballMark = ref<BallMark | null>(null);
+    let ballTimer: ReturnType<typeof setTimeout> | null = null;
+    const markBall = (kind: BallMark['kind'], x: number, y: number) => {
+        if (ballTimer) clearTimeout(ballTimer);
+        ballMark.value = { id: now(), kind, x, y };
+        ballTimer = setTimeout(() => { ballMark.value = null; }, BALL_DURATION);
+    };
 
     const undo = () => {
         if (pick.value) return cancelPick();
@@ -186,6 +199,8 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         ownCup,
         canUndo,
         undo,
+        ballMark,
+        markBall,
         replaceActions,
         start,
         sound,

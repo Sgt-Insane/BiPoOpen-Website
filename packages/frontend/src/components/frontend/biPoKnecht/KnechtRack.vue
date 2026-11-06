@@ -7,7 +7,7 @@
     >
         <!-- Hinter den Bechern: Airball (Ball ueber den Tisch) -->
         <div v-if="isTarget" class="kn-zone kn-zone-airball" @click.stop="onAirballClick">
-            <span class="kn-zone-label">💨 Airball</span>
+            <span class="kn-zone-label"><KnechtIcon name="airball" /> Airball</span>
         </div>
 
         <div class="kn-pyramid">
@@ -20,23 +20,23 @@
                     :class="getCupClass(cup)"
                     :disabled="!isTarget"
                     :aria-label="`Becher ${cup + 1}`"
-                    @click.stop="game.tapCup(cup)"
+                    @click.stop="onCupClick(cup, $event)"
                 >
-                    <span class="kn-cup-inner">
-                        <span v-if="getCupMark(cup)" class="kn-cup-mark">{{ getCupMark(cup) }}</span>
-                    </span>
+                    <KnechtIcon v-if="getCupMark(cup)" :name="getCupMark(cup)!" class="kn-cup-mark" />
+                    <span v-else-if="pending.has(cup)" class="kn-cup-ball"></span>
                 </button>
             </div>
         </div>
 
         <!-- Vor und neben den Bechern: Nullwurf -->
         <div class="kn-front">
-            <span v-if="isTarget && !game.pick.value" class="kn-zone-label kn-zone-label-miss">✕ Nullwurf · neben die Becher tippen</span>
+            <span v-if="isTarget && !game.pick.value" class="kn-zone-label kn-zone-label-miss"><KnechtIcon name="miss" /> Nullwurf · neben die Becher tippen</span>
             <slot name="front"></slot>
         </div>
 
         <!-- Zusatzbecher waehlen (Bouncer, Bombe) -->
         <div v-if="isTarget && game.pick.value" class="kn-pick" @click.stop>
+            <KnechtIcon :name="pickIcon" />
             <span class="kn-pick-text">{{ pickText }}</span>
             <button type="button" class="kn-pick-cancel" @click="game.cancelPick()">Abbrechen</button>
         </div>
@@ -45,7 +45,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import KnechtIcon from './KnechtIcon.vue';
 import { CUP_ROWS, getStandingCups } from './knechtEngine';
+import type { KnechtIconName } from './knechtIcons';
 import { TEAM_COLORS } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
@@ -75,29 +77,43 @@ const getCupClass = (cup: number) => {
     };
 };
 
-const getCupMark = (cup: number) => {
+// Bei der Auswahl der Zusatzbecher zeigen die gewaehlten Becher Bombe bzw. Bouncer
+const pickIcon = computed<KnechtIconName>(() => props.game.pick.value?.type === 'bomb' ? 'bomb' : 'bouncer');
+
+const getCupMark = (cup: number): KnechtIconName | null => {
     const pick = props.game.pick.value;
-    if (pick && props.isTarget && (pick.chosen.includes(cup) || pick.cup === cup)) return '✓';
-    if (pending.value.has(cup)) return props.isTarget && props.game.hittableCups.value.has(cup) && !pick ? '💣' : '✓';
-    if (!standing.value.has(cup)) return '';
-    return '';
+    if (pick && props.isTarget && (pick.chosen.includes(cup) || pick.cup === cup)) return pickIcon.value;
+    if (pending.value.has(cup) && props.isTarget && props.game.hittableCups.value.has(cup) && !pick) return 'bomb';
+    return null;
 };
 
 const pickText = computed(() => {
     const pick = props.game.pick.value;
     if (!pick) return '';
     const left = pick.needed - pick.chosen.length;
-    if (pick.type === 'bomb') return `💣 Bombe! Noch ${left} Becher wählen`;
-    return `⚡ Bouncer: zweiten Becher wählen`;
+    if (pick.type === 'bomb') return `Bombe! Noch ${left} Becher wählen`;
+    return 'Bouncer: zweiten Becher wählen';
 });
 
-// Tippen auf den freien Tisch = Nullwurf, nur auf dem Feld, auf das geworfen wird
-const onTableClick = () => {
-    if (props.isTarget && !props.game.pick.value) props.game.throwMiss('miss');
+// ─── Eingaben (Ball-Anzeige in Bildschirmkoordinaten, siehe useBiPoKnecht.markBall) ───
+const onCupClick = (cup: number, event: MouseEvent) => {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    if (props.game.tapCup(cup)) props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2);
 };
 
-const onAirballClick = () => {
-    if (!props.game.pick.value) props.game.throwMiss('airball');
+// Tippen auf den freien Tisch = Nullwurf, nur auf dem Feld, auf das geworfen wird
+const onTableClick = (event: MouseEvent) => {
+    if (!props.isTarget || props.game.pick.value) return;
+    if (props.game.throwMiss('miss')) props.game.markBall('miss', event.clientX, event.clientY);
+};
+
+// Airball: der Ball landet irgendwo hinter dem Tisch
+const onAirballClick = (event: MouseEvent) => {
+    if (props.game.pick.value) return;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    if (props.game.throwMiss('airball')) {
+        props.game.markBall('airball', rect.left + rect.width * (.15 + Math.random() * .7), rect.top + rect.height * (.2 + Math.random() * .6));
+    }
 };
 </script>
 
@@ -150,6 +166,9 @@ const onAirballClick = () => {
     flex-basis: 14%;
 }
 .kn-zone-label{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: .06em;
@@ -157,17 +176,20 @@ const onAirballClick = () => {
     color: #8A9099;
     pointer-events: none;
 }
+.kn-zone-label .KnechtIcon{
+    font-size: 15px;
+}
 .kn-rack--left .kn-zone-airball .kn-zone-label{ writing-mode: vertical-rl; transform: rotate(180deg); }
 .kn-rack--right .kn-zone-airball .kn-zone-label{ writing-mode: vertical-rl; }
 
-/* ─── Becher ─── */
+/* ─── Becher (Draufsicht: farbiger Rand, heller Boden) ─── */
 .kn-pyramid{
     --kn-cup: min(16.5cqw, 11cqh);
     display: flex;
     flex-direction: column-reverse;
     align-items: center;
     justify-content: center;
-    gap: calc(var(--kn-cup) * .12);
+    gap: calc(var(--kn-cup) * .14);
     flex: 1;
     min-height: 0;
     min-width: 0;
@@ -190,7 +212,7 @@ const onAirballClick = () => {
 .kn-row{
     display: flex;
     justify-content: center;
-    gap: calc(var(--kn-cup) * .12);
+    gap: calc(var(--kn-cup) * .14);
 }
 .kn-rack--left .kn-row,
 .kn-rack--right .kn-row{
@@ -199,31 +221,29 @@ const onAirballClick = () => {
 
 .kn-cup{
     position: relative;
-    width: var(--kn-cup);
-    height: var(--kn-cup);
-    padding: 0;
-    border: calc(var(--kn-cup) * .07) solid var(--kn-team-color);
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--kn-team-color) 70%, white);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, .14);
-    cursor: default;
-    transition: transform .12s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
-}
-.kn-cup-inner{
-    position: absolute;
-    inset: 12%;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: var(--kn-cup);
+    height: var(--kn-cup);
+    padding: 0;
+    border: none;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .5) 0%, rgba(255, 255, 255, 0) 60%);
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, .22);
+    background: color-mix(in srgb, var(--kn-team-color) 18%, white);
+    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) var(--kn-team-color);
+    color: var(--kn-team-color);
+    cursor: default;
+    transition: transform .12s ease, background .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .kn-cup-mark{
-    font-size: calc(var(--kn-cup) * .34);
-    font-weight: 800;
-    line-height: 1;
-    color: white;
+    font-size: calc(var(--kn-cup) * .4);
+}
+.kn-cup-ball{
+    width: 34%;
+    height: 34%;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 0 0 1px rgba(31, 35, 40, .15);
 }
 
 .kn-cup--hittable{
@@ -233,34 +253,22 @@ const onAirballClick = () => {
     transform: scale(.9);
 }
 .kn-cup--hit{
-    border-color: #D3D6DB;
-    background: #E6E8EB;
-    box-shadow: none;
-    opacity: .55;
-}
-.kn-cup--hit .kn-cup-inner{
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, .12);
-    background: none;
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px #D3D6DB;
 }
 .kn-cup--pending{
-    border-color: #F5A524;
-    background: #FDE7B8;
+    background: #FDF1D8;
+    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) #F5A524;
+    color: #B37400;
 }
-.kn-cup--pending .kn-cup-mark{
-    color: #8A5A00;
-}
-.kn-cup--bomb{
-    animation: kn-glow 1.2s ease-in-out infinite;
-}
+.kn-cup--bomb,
 .kn-cup--candidate{
     cursor: pointer;
     animation: kn-glow 1.2s ease-in-out infinite;
 }
 .kn-cup--chosen{
-    border-color: #1F2328;
     background: #1F2328;
-}
-.kn-cup--chosen .kn-cup-mark{
+    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) #1F2328;
     color: white;
 }
 .kn-rack--picking .kn-cup:not(.kn-cup--candidate):not(.kn-cup--chosen){
@@ -268,8 +276,8 @@ const onAirballClick = () => {
 }
 
 @keyframes kn-glow{
-    0%, 100%{ box-shadow: 0 0 0 2px white, 0 0 0 4px rgba(245, 165, 36, .9); }
-    50%{ box-shadow: 0 0 0 2px white, 0 0 0 7px rgba(245, 165, 36, .35); }
+    0%, 100%{ outline: 2px solid rgba(245, 165, 36, .9); outline-offset: 2px; }
+    50%{ outline: 2px solid rgba(245, 165, 36, .3); outline-offset: 5px; }
 }
 
 /* ─── Vorderer Bereich (Nullwurf + Steuerung) ─── */
@@ -298,10 +306,10 @@ const onAirballClick = () => {
     position: absolute;
     left: 50%;
     top: 8px;
-    z-index: 2;
+    z-index: 4;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 8px 8px 8px 14px;
     border-radius: 999px;
     background: #1F2328;

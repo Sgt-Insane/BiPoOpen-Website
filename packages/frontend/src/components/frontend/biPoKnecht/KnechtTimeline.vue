@@ -3,7 +3,7 @@
         <div v-if="entries.length === 0" class="kn-tl-empty">Noch keine Würfe</div>
 
         <template v-for="entry in entries" :key="entry.key">
-            <div v-if="entry.kind === 'marker'" class="kn-tl-marker">{{ entry.label }}</div>
+            <div v-if="entry.kind === 'marker'" class="kn-tl-marker"><KnechtIcon :name="entry.icon" /> {{ entry.label }}</div>
 
             <button
                 v-else
@@ -14,7 +14,7 @@
                 :disabled="!editable"
                 @click="$emit('edit', entry.turnIndex)"
             >
-                <span class="kn-tl-icon">{{ entry.icon }}</span>
+                <span class="kn-tl-icon"><KnechtIcon :name="entry.icon" /></span>
                 <span class="kn-tl-text">
                     <span class="kn-tl-player">{{ entry.player }}</span>
                     <span class="kn-tl-label">{{ entry.label }}</span>
@@ -31,8 +31,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import KnechtIcon from './KnechtIcon.vue';
 import { getTurnPoints, type KnechtState } from './knechtEngine';
-import { TEAM_COLORS, TURN_ICONS, formatPoints, getPlayerName, getTeamName, getTurnLabel } from './KnechtUtilFunctions';
+import { TURN_ICONS, type KnechtIconName } from './knechtIcons';
+import { TEAM_COLORS, formatPoints, getPlayerName, getTeamName, getTurnLabel } from './KnechtUtilFunctions';
 
 const props = defineProps<{
     match: Match;
@@ -43,14 +45,14 @@ const props = defineProps<{
 defineEmits<{ edit: [turnIndex: number] }>();
 
 type Entry =
-    | { kind: 'marker'; key: string; label: string }
-    | { kind: 'turn'; key: string; turnIndex: number; teamIndex: number; icon: string; player: string; label: string; points: number; pointsLabel: string; minute: string };
+    | { kind: 'marker'; key: string; icon: KnechtIconName; label: string }
+    | { kind: 'turn'; key: string; turnIndex: number; teamIndex: number; icon: KnechtIconName; player: string; label: string; points: number; pointsLabel: string; minute: string };
 
-const MARKER_LABELS = {
-    reRack: (team: string) => `🔄 Re-Rack für ${team}`,
-    nachwurf: (team: string) => `⚖️ Gentleman's Rule – Nachwurf ${team}`,
-    overtime: (team: string) => `⚔️ Verlängerung (2×3) – ${team} beginnt`,
-};
+const MARKERS = {
+    reRack: { icon: 'reRack', label: (team: string) => `Re-Rack für ${team}` },
+    nachwurf: { icon: 'nachwurf', label: (team: string) => `Gentleman's Rule – Nachwurf ${team}` },
+    overtime: { icon: 'overtime', label: (team: string) => `Verlängerung (2×3) – ${team} beginnt` },
+} satisfies Record<string, { icon: KnechtIconName; label: (team: string) => string }>;
 
 const getMinute = (time: number) => {
     if (!props.match.time) return '';
@@ -62,7 +64,12 @@ const entries = computed<Entry[]>(() => {
     const markers = props.state.markers;
     const addMarkers = (afterTurnIndex: number) => markers
         .filter(marker => marker.afterTurnIndex === afterTurnIndex)
-        .forEach((marker, index) => list.push({ kind: 'marker', key: `m-${afterTurnIndex}-${index}`, label: MARKER_LABELS[marker.kind](getTeamName(props.match, marker.teamIndex)) }));
+        .forEach((marker, index) => list.push({
+            kind: 'marker',
+            key: `m-${afterTurnIndex}-${index}`,
+            icon: MARKERS[marker.kind].icon,
+            label: MARKERS[marker.kind].label(getTeamName(props.match, marker.teamIndex)),
+        }));
 
     props.state.turns.forEach((turn, turnIndex) => {
         addMarkers(turnIndex);
@@ -75,7 +82,7 @@ const entries = computed<Entry[]>(() => {
             teamIndex: turn.teamIndex,
             icon: TURN_ICONS[turn.type],
             player: getPlayerName(props.match, turn.teamIndex, turn.playerIndex),
-            label: getTurnLabel(turn, props.match),
+            label: getTurnLabel(turn, props.match, props.state.turns[turnIndex - 1]),
             points,
             pointsLabel: forOpponent ? `+${formatPoints(points)} Gegner` : `+${formatPoints(points)}`,
             minute: getMinute(turn.time),
@@ -100,6 +107,9 @@ const entries = computed<Entry[]>(() => {
     text-align: center;
 }
 .kn-tl-marker{
+    display: flex;
+    align-items: center;
+    gap: 6px;
     align-self: center;
     margin: 4px 0;
     padding: 4px 12px;
@@ -136,9 +146,19 @@ const entries = computed<Entry[]>(() => {
     background: #FAFBFC;
 }
 .kn-tl-icon{
-    width: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--kn-team-color) 12%, white);
+    color: var(--kn-team-color);
     font-size: 16px;
-    text-align: center;
+}
+.kn-tl-turn--zero .kn-tl-icon{
+    background: #F1F2F4;
+    color: #8A9099;
 }
 .kn-tl-text{
     display: flex;

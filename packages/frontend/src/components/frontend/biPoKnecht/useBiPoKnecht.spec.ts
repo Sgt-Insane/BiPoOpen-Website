@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { nextTick, reactive } from 'vue';
 
 // biPoSound liest localStorage beim Laden des Moduls
 vi.hoisted(() => {
@@ -13,6 +13,7 @@ vi.hoisted(() => {
 });
 
 import { useBiPoKnecht } from './useBiPoKnecht';
+import type { KnechtAction } from './knechtEngine';
 
 const team = (...names: string[]): Team => ({ _id: 'placeholder', players: names.map(name => ({ _id: 'placeholder', name, score: 0 })) });
 const createGame = () => {
@@ -83,5 +84,12 @@ describe('useBiPoKnecht (Oberflaeche)', () => {
         const message = game.replaceActions([actions[0], { ...actions[1], player: 0 } as never]);
         expect(message).toContain('Wurf 2');
         expect(game.state.value.turns[0].type).toBe('miss');
+    });
+
+    it('spielt ein fortgesetztes Spiel weiter, auch wenn die Aktionen als reaktive Proxys ankommen', () => {
+        const stored = reactive({ actions: [{ type: 'throw', player: 0, outcome: 'hit', cup: 4, bouncer: true, extraCups: [9], time: 1 }] as KnechtAction[] });
+        const game = useBiPoKnecht({ _id: 'placeholder', team1: team('Alice', 'Bob'), team2: team('Charlie', 'David') }, 0, stored.actions);
+        expect(game.throwMiss('miss')).toBe(true);
+        expect(game.actions.value).toHaveLength(2);
     });
 });

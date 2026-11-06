@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getDemoGames } from "@/util/demoGames";
 import { LEAGUE_SEASONS, LEGACY_LEAGUE, LEGACY_SEASON_SLUG, getRegularSeasonGameCount, toLeaguePlayers, type LeagueDivision } from "./LeagueSeasonsData";
 
 /////////////
@@ -7,7 +8,7 @@ import { LEAGUE_SEASONS, LEGACY_LEAGUE, LEGACY_SEASON_SLUG, getRegularSeasonGame
 export const getAllLeagueGames = async () => {
     let response = await axios.get("/leagueGames/get");
     if(response.status == 200)
-        return response.data.leagueGames as Match[];
+        return [...response.data.leagueGames as Match[], ...getDemoGames('league')];
 
     return [];
 }

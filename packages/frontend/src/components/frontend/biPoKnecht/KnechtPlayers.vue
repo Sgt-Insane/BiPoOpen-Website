@@ -25,8 +25,8 @@
                 <span class="kn-player-text">
                     <span class="kn-player-name">
                         {{ player.name }}
-                        <span v-if="getFire(playerIndex) === 'on-fire'" class="kn-fire" title="On Fire">🔥🔥</span>
-                        <span v-else-if="getFire(playerIndex) === 'heating-up'" class="kn-fire" title="Heating Up">🔥</span>
+                        <span v-if="getFire(playerIndex) === 'on-fire'" class="kn-fire" title="On Fire"><KnechtIcon name="onfire" /><KnechtIcon name="onfire" /></span>
+                        <span v-else-if="getFire(playerIndex) === 'heating-up'" class="kn-fire" title="Heating Up"><KnechtIcon name="onfire" /></span>
                     </span>
                     <span class="kn-player-stats">{{ getPlayerLine(playerIndex) }}</span>
                 </span>
@@ -38,6 +38,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
+import KnechtIcon from './KnechtIcon.vue';
 import { getBallNumber, getPlayerPoints, getTeamPoints, isOnFireEnabled } from './knechtEngine';
 import { TEAM_COLORS, formatPoints, getTeam, getTeamName } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
@@ -204,7 +205,8 @@ const getPlayerLine = (playerIndex: number) => {
     color: #1F2328;
 }
 .kn-fire{
-    font-size: 12px;
+    font-size: 13px;
+    color: #F76B15;
 }
 .kn-player-stats{
     overflow: hidden;

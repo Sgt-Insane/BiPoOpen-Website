@@ -45,7 +45,7 @@
                     <input id="kn-referee" v-model="referee" class="kn-referee" type="text" maxlength="40" placeholder="Name (optional)" autocomplete="off" />
                 </template>
 
-                <div v-if="isDev" class="kn-over-dev">Entwicklungsmodus: das Spiel wird nicht in die Datenbank geschrieben.</div>
+                <div v-if="isDemoMode" class="kn-over-dev">Demo-Modus: das Spiel erscheint auf der Webseite, wird aber nur lokal im Browser gespeichert.</div>
             </template>
         </div>
 
@@ -78,6 +78,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import { isDemoMode } from '@/util/demoGames';
 import KnechtScoreboard from './KnechtScoreboard.vue';
 import KnechtTimeline from './KnechtTimeline.vue';
 import KnechtSheet from './KnechtSheet.vue';
@@ -92,7 +93,6 @@ const props = defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean }>();
 const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
 
 const toast = useToast();
-const isDev = import.meta.env.DEV;
 const match = props.game.match;
 
 const step = ref<'awards' | 'summary'>('awards');

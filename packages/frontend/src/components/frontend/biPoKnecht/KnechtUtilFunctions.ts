@@ -3,6 +3,7 @@ import { addOpenGame } from '../openGames/OpenGamesUtilFunctions';
 import { CUP_URL_SEGMENT } from '../league/cup/LeagueCupUtilFunctions';
 import { clearPlayerCaches } from '../playerProfile/PlayerProfileUtilFunctions';
 import { clearGameDataCache } from '@/util/gameDataCache';
+import { addDemoGame, isDemoMode } from '@/util/demoGames';
 import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
 import { getPlayerPoints, isHitTurnType, type KnechtState } from './knechtEngine';
 
@@ -58,11 +59,11 @@ export const buildKnechtMatch = (match: Match, state: KnechtState, referee?: str
     return result;
 };
 
-// Speichert das fertige Spiel. Im Entwicklungsmodus (lokale Simulation, Tests) wird nie geschrieben.
+// Speichert das fertige Spiel. Im Demo-Modus (lokaler Entwicklungsserver) nur im Browser, nie in der echten Datenbank.
 export const saveKnechtGame = async (match: Match): Promise<boolean> => {
-    if (import.meta.env.DEV) return true;
-
-    const success = getGameKind(match) === 'open' ? await addOpenGame(match) : await addLeagueGame(match);
+    const kind = getGameKind(match) === 'open' ? 'open' : 'league';
+    if (isDemoMode) addDemoGame(kind, match);
+    const success = isDemoMode || (kind === 'open' ? await addOpenGame(match) : await addLeagueGame(match));
     if (success) {
         clearGameDataCache();
         clearPlayerCaches();
@@ -94,29 +95,29 @@ const TURN_LABELS: Record<Turn['type'], string> = {
     owncup: 'Eigener Becher',
 };
 
-export const TURN_ICONS: Record<Turn['type'], string> = {
-    hit: '🍺',
-    miss: '✕',
-    airball: '💨',
-    bomb: '💣',
-    bouncer: '⚡',
-    trickshot: '🎯',
-    onfire: '🔥',
-    ballsback: '🔁',
-    lastCup: '🏁',
-    deathcup: '💀',
-    owncup: '🙈',
-};
+// Treffer mit Trickshot: der Faenger des vorherigen Wurfs hat getroffen
+const isTrickshotHit = (turn: Turn, previous?: Turn) =>
+    previous?.type === 'trickshot' && previous.teamIndex === turn.teamIndex
+    && (previous.data as Record<string, unknown>).catcherIndex === turn.playerIndex;
 
-export const getTurnLabel = (turn: Turn, match?: Match) => {
+// Treffer werden immer als "Treffer · Art" beschrieben, z.B. "Treffer · Bouncer (2 Becher)"
+export const getTurnLabel = (turn: Turn, match?: Match, previous?: Turn) => {
     const data = turn.data as Record<string, unknown>;
-    if (turn.type === 'lastCup' && data.double) return 'Letzter Becher · Doppeltreffer';
     if (turn.type === 'trickshot') {
         const catcher = match && typeof data.catcherIndex === 'number' ? getPlayerName(match, turn.teamIndex, data.catcherIndex) : '';
         return catcher ? `Verfehlt · ${catcher} fängt (Trickshot)` : 'Verfehlt · Trickshot-Fang';
     }
     if (turn.type === 'owncup') return `${(data.cups as number[]).length} eigene${(data.cups as number[]).length === 1 ? 'r' : ''} Becher runter`;
-    return TURN_LABELS[turn.type] + (data.bouncer ? ' · Bouncer' : '');
+    if (!isHitTurnType(turn.type)) return TURN_LABELS[turn.type];
+
+    const kinds = [
+        turn.type !== 'hit' && TURN_LABELS[turn.type],
+        turn.type !== 'bouncer' && data.bouncer && TURN_LABELS.bouncer,
+        data.double && 'Doppeltreffer',
+        isTrickshotHit(turn, previous) && TURN_LABELS.trickshot,
+    ].filter(Boolean);
+    const cups = Object.keys(data).filter(key => key.startsWith('cupIndex')).length;
+    return ['Treffer', ...kinds].join(' · ') + (cups > 1 ? ` (${cups} Becher)` : '');
 };
 
 export const formatPoints = (points: number) =>

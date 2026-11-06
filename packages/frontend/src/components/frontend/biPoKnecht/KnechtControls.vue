@@ -7,26 +7,33 @@
             :disabled="!!game.pick.value"
             @click="game.toggleBouncer()"
         >
-            <span>⚡</span>
+            <KnechtIcon name="bouncer" />
             <span>{{ game.bouncerArmed.value ? 'Bouncer aktiv' : 'Bouncer' }}</span>
         </button>
 
-        <button type="button" class="kn-control kn-control-trickshot" :disabled="!!game.pick.value" @click="$emit('trickshot')">
-            <span>🎯</span>
-            <span>Trickshot</span>
+        <button
+            type="button"
+            class="kn-control kn-control-trickshot"
+            :class="{ 'kn-control--armed': trickshotActive }"
+            :disabled="!!game.pick.value"
+            @click="$emit('trickshot')"
+        >
+            <KnechtIcon name="trickshot" />
+            <span>{{ trickshotActive ? 'Trickshot: Fänger wählen' : 'Trickshot' }}</span>
         </button>
 
         <button v-if="game.canReRack.value" type="button" class="kn-chip" :disabled="!!game.pick.value" @click="game.reRack()">
-            🔄 Re-Rack <small>({{ reRacksLeft }} übrig)</small>
+            <KnechtIcon name="reRack" /> Re-Rack <small>({{ reRacksLeft }} übrig)</small>
         </button>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import KnechtIcon from './KnechtIcon.vue';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
-const props = defineProps<{ game: BiPoKnechtGame }>();
+const props = defineProps<{ game: BiPoKnechtGame; trickshotActive?: boolean }>();
 defineEmits<{ trickshot: [] }>();
 
 const reRacksLeft = computed(() => props.game.state.value.reRacksLeft[props.game.state.value.activeTeamIndex]);
@@ -75,6 +82,9 @@ const reRacksLeft = computed(() => props.game.state.value.reRacksLeft[props.game
     font-size: 13px;
 }
 .kn-chip{
+    display: flex;
+    align-items: center;
+    gap: 5px;
     align-self: center;
     padding: 6px 12px;
     border: none;

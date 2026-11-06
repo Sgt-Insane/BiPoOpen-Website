@@ -35,6 +35,15 @@
                 <i class="pi pi-plus"></i> Neues Spiel einrichten
             </button>
 
+            <!-- Demo (lokaler Entwicklungsserver): Ergebnisse bleiben im Browser -->
+            <div v-if="isDemoMode" class="kn-page-card kn-page-demo">
+                <div class="kn-page-card-title">Demo-Modus</div>
+                <p>Eingetragene Spiele erscheinen in Tabellen und Spielelisten, landen aber nicht in der echten Datenbank.</p>
+                <button v-if="demoGameCount" type="button" class="kn-page-button kn-page-button-secondary" @click="resetDemo">
+                    {{ demoGameCount }} Demo-Spiel{{ demoGameCount === 1 ? '' : 'e' }} löschen
+                </button>
+            </div>
+
             <div class="kn-page-card">
                 <div class="kn-page-card-title">So funktioniert's</div>
                 <ul class="kn-page-list">
@@ -59,6 +68,8 @@ import { formatPoints, getResultPath, getTeamName, normalizeTeams } from './Knec
 import { clearStoredGame, loadStoredGame, storeGame, type StoredKnechtGame } from './knechtStorage';
 import { useKnechtLaunch } from './useKnechtLaunch';
 import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
+import { clearDemoGames, getDemoGames, isDemoMode } from '@/util/demoGames';
+import { clearGameDataCache } from '@/util/gameDataCache';
 
 type ActiveGame = {
     key: number;
@@ -116,6 +127,13 @@ const discardStored = () => {
 
 const openSetup = () => openAddGame(undefined, { knecht: true });
 
+const demoGameCount = ref(getDemoGames('league').length + getDemoGames('open').length);
+const resetDemo = () => {
+    clearDemoGames();
+    clearGameDataCache();
+    demoGameCount.value = 0;
+};
+
 const onChange = (progress: { startTeamIndex: number | null; actions: KnechtAction[]; refereeUsed: boolean }) => {
     if (!game.value) return;
     Object.assign(game.value, progress);
@@ -148,7 +166,7 @@ const onSaved = (result: Match, rematch: boolean) => {
     clearStoredGame();
     stored.value = null;
     const score = [result.team1, result.team2].map(team => formatPoints(team.players.reduce((sum, player) => sum + player.score, 0)));
-    const suffix = import.meta.env.DEV ? ' (Testmodus, nicht gespeichert)' : ' eingetragen';
+    const suffix = isDemoMode ? ' (Demo, nur lokal gespeichert)' : ' eingetragen';
     toast.add({ severity: 'success', summary: `${getTeamName(result, 0)} ${score[0]} : ${score[1]} ${getTeamName(result, 1)}${suffix}`, life: 3500 });
 
     if (rematch) {
@@ -173,7 +191,6 @@ onMounted(() => {
     if (hasLaunch()) takeLaunch();
     // /Knecht?Fortsetzen (z.B. aus dem Eintragen-Drawer): laufendes Spiel direkt oeffnen
     else if (stored.value && 'Fortsetzen' in router.currentRoute.value.query) resume();
-    else if (!stored.value) openSetup();
 });
 </script>
 
@@ -203,6 +220,15 @@ onMounted(() => {
 }
 .kn-page-resume{
     border-top: 4px solid var(--main-color);
+}
+.kn-page-demo{
+    border-style: dashed;
+    background: #F2FAFC;
+}
+.kn-page-demo p{
+    margin: 0;
+    font-size: 13px;
+    color: #555B63;
 }
 .kn-page-card-title{
     font-size: 12px;

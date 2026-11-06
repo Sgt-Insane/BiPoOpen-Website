@@ -302,7 +302,10 @@ describe('BiPo Knecht Testbench', () => {
         expect(match.referee).toBe('Schiri');
         expect(match.turns).toHaveLength(state.turns.length);
 
-        expect(await saveKnechtGame(match)).toBe(true);     // DEV: speichert nicht
+        expect(await saveKnechtGame(match)).toBe(true);     // Demo/DEV: nur lokal, nie in die Datenbank
         expect(networkCalls).toEqual([]);
+        const { clearDemoGames, getDemoGames } = await import('@/util/demoGames');
+        expect(getDemoGames('league')).toHaveLength(1);
+        clearDemoGames();
     });
 });

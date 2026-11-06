@@ -22,7 +22,7 @@
                         class="kn-edit-chip"
                         :class="{ 'kn-edit-chip--active': draft.outcome === option.value }"
                         @click="draft.outcome = option.value"
-                    >{{ option.label }}</button>
+                    ><KnechtIcon :name="option.value" /> {{ option.label }}</button>
                 </div>
             </div>
 
@@ -45,7 +45,7 @@
 
                 <label class="kn-edit-toggle">
                     <input v-model="draft.bouncer" type="checkbox" />
-                    <span>⚡ Bouncer (zweiter Becher wird automatisch gewählt)</span>
+                    <span><KnechtIcon name="bouncer" /> Bouncer (zweiter Becher wird automatisch gewählt)</span>
                 </label>
             </template>
         </template>
@@ -69,6 +69,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import KnechtIcon from './KnechtIcon.vue';
 import { CUP_ROWS, getActionIndexOfTurn, getAllowedThrowers, getHittableCups, previewHit, replay, type KnechtAction, type ThrowOutcome } from './knechtEngine';
 import { TEAM_COLORS, getTeam } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
@@ -77,9 +78,9 @@ const props = defineProps<{ game: BiPoKnechtGame; turnIndex: number }>();
 const emit = defineEmits<{ done: [] }>();
 
 const OUTCOMES: { value: ThrowOutcome; label: string }[] = [
-    { value: 'hit', label: '🍺 Treffer' },
-    { value: 'miss', label: '✕ Nullwurf' },
-    { value: 'airball', label: '💨 Airball' },
+    { value: 'hit', label: 'Treffer' },
+    { value: 'miss', label: 'Nullwurf' },
+    { value: 'airball', label: 'Airball' },
 ];
 
 const actionIndex = computed(() => getActionIndexOfTurn(props.game.actions.value, props.turnIndex));

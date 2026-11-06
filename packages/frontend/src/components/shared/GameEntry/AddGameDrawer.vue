@@ -202,14 +202,10 @@ const sidesToMatch = (sides: GameEntrySide[]) => {
     return sidesToNewMatch(sides);
 };
 
-// Laufendes Spiel: zurueck in den Knecht. Sonst wird der Drawer zur Knecht-Einrichtung.
+// Laufendes Spiel: zurueck in den Knecht. Sonst zur Startseite des Knechts.
 const openKnecht = () => {
-    if (runningGameTitle.value) {
-        addGameVisible.value = false;
-        router.push('/Knecht?Fortsetzen');
-        return;
-    }
-    knechtSetup.value = true;
+    addGameVisible.value = false;
+    router.push(runningGameTitle.value ? '/Knecht?Fortsetzen' : '/Knecht');
 };
 
 // Liga-Teams bringen ihr Logo mit, damit der Knecht es anzeigen kann

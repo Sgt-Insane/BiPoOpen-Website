@@ -21,7 +21,7 @@
                     {{ stats.hits }}/{{ stats.throws }} Treffer · {{ getAccuracy(stats) }} % · beste Serie {{ stats.bestStreak }}
                 </div>
                 <div v-if="getSpecials(stats).length" class="kn-score-specials">
-                    <span v-for="special in getSpecials(stats)" :key="special" class="kn-score-special">{{ special }}</span>
+                    <span v-for="special in getSpecials(stats)" :key="special.text" class="kn-score-special"><KnechtIcon :name="special.icon" /> {{ special.text }}</span>
                 </div>
             </div>
 
@@ -31,14 +31,16 @@
             </div>
         </div>
 
-        <div v-if="state.overtimeCount" class="kn-score-note">⚔️ {{ state.overtimeCount }}. Verlängerung (2×3 Becher)</div>
-        <div v-if="state.victoryBonus" class="kn-score-note">🏅 Siegpunkt: Gleichstand aufgelöst (+{{ formatPoints(state.victoryBonus) }})</div>
+        <div v-if="state.overtimeCount" class="kn-score-note"><KnechtIcon name="overtime" /> {{ state.overtimeCount }}. Verlängerung (2×3 Becher)</div>
+        <div v-if="state.victoryBonus" class="kn-score-note"><KnechtIcon name="win" /> Siegpunkt: Gleichstand aufgelöst (+{{ formatPoints(state.victoryBonus) }})</div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
+import KnechtIcon from './KnechtIcon.vue';
+import type { KnechtIconName } from './knechtIcons';
 import { getTeamPoints, type KnechtState } from './knechtEngine';
 import { TEAM_COLORS, formatPoints, getAccuracy, getPlayerStats, getTeam, getTeamName, type KnechtPlayerStats } from './KnechtUtilFunctions';
 
@@ -48,17 +50,17 @@ const teamPoints = computed(() => getTeamPoints(props.state));
 const stats = computed(() => getPlayerStats(props.match, props.state));
 const statsOf = (teamIndex: number) => stats.value.filter(entry => entry.teamIndex === teamIndex);
 
-const getSpecials = (stats: KnechtPlayerStats) => [
-    stats.bombs && `💣 ${stats.bombs} Bombe${stats.bombs > 1 ? 'n' : ''}`,
-    stats.bouncers && `⚡ ${stats.bouncers} Bouncer`,
-    stats.ballsBacks && `🔁 ${stats.ballsBacks} Balls Back`,
-    stats.onFires && `🔥 ${stats.onFires}× On Fire`,
-    stats.trickshotHits && `🎯 ${stats.trickshotHits} Trickshot`,
-    stats.airballs && `💨 ${stats.airballs} Airball${stats.airballs > 1 ? 's' : ''}`,
-    stats.lastCups && '🏁 Letzter Becher',
-    stats.deathcups && '💀 Deathcup',
-    stats.ownCups && `🙈 ${stats.ownCups} eigene${stats.ownCups > 1 ? '' : 'r'} Becher`,
-].filter((entry): entry is string => !!entry);
+const getSpecials = (stats: KnechtPlayerStats) => ([
+    stats.bombs && { icon: 'bomb', text: `${stats.bombs} Bombe${stats.bombs > 1 ? 'n' : ''}` },
+    stats.bouncers && { icon: 'bouncer', text: `${stats.bouncers} Bouncer` },
+    stats.ballsBacks && { icon: 'ballsback', text: `${stats.ballsBacks} Balls Back` },
+    stats.onFires && { icon: 'onfire', text: `${stats.onFires}× On Fire` },
+    stats.trickshotHits && { icon: 'trickshot', text: `${stats.trickshotHits} Trickshot` },
+    stats.airballs && { icon: 'airball', text: `${stats.airballs} Airball${stats.airballs > 1 ? 's' : ''}` },
+    stats.lastCups && { icon: 'lastCup', text: 'Letzter Becher' },
+    stats.deathcups && { icon: 'deathcup', text: 'Deathcup' },
+    stats.ownCups && { icon: 'owncup', text: `${stats.ownCups} eigene${stats.ownCups > 1 ? '' : 'r'} Becher` },
+] as const).filter((entry): entry is { icon: KnechtIconName; text: string } => !!entry);
 </script>
 
 <style scoped>

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getDemoGames } from "@/util/demoGames";
 
 /////////////
 // GENERAL //
@@ -6,7 +7,7 @@ import axios from "axios";
 export const getAllOpenGames = async () => {
     let response = await axios.get("/openGames/get");
     if(response.status == 200)
-        return response.data.openGames as Match[];
+        return [...response.data.openGames as Match[], ...getDemoGames('open')];
 
     return [];
 }
