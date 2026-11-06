@@ -31,6 +31,36 @@ const vibrate = (pattern: number | number[]) => {
   }
 };
 
+// A single oscillator whose pitch sweeps from `from` to `to` Hz while its
+// volume decays from `volume` to silence over `duration` seconds.
+const sweep = (
+  ctx: AudioContext,
+  type: OscillatorType,
+  from: number,
+  to: number,
+  volume: number,
+  duration: number,
+  pitchRamp: 'linear' | 'exponential' = 'exponential',
+) => {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const end = ctx.currentTime + duration;
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, ctx.currentTime);
+  if (pitchRamp === 'linear') osc.frequency.linearRampToValueAtTime(to, end);
+  else osc.frequency.exponentialRampToValueAtTime(to, end);
+
+  gain.gain.setValueAtTime(volume, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, end);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(end);
+};
+
 export const useBiPoSound = () => {
   const toggleMute = () => {
     isMuted.value = !isMuted.value;
@@ -41,69 +71,21 @@ export const useBiPoSound = () => {
   const playHit = () => {
     vibrate(35);
     const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(320, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.12);
-
-    gain.gain.setValueAtTime(0.4, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.12);
+    if (ctx) sweep(ctx, 'triangle', 320, 140, 0.4, 0.12);
   };
 
   /** Dumpfer Ton bei Fehlwurf */
   const playMiss = () => {
     vibrate(60);
     const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(130, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(70, ctx.currentTime + 0.15);
-
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
+    if (ctx) sweep(ctx, 'sine', 130, 70, 0.3, 0.15, 'linear');
   };
 
   /** Zisch- und Sweep-Sound bei Airball */
   const playAirball = () => {
     vibrate([40, 30, 40]);
     const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(500, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.22);
-
-    gain.gain.setValueAtTime(0.18, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.22);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.22);
+    if (ctx) sweep(ctx, 'sawtooth', 500, 80, 0.18, 0.22);
   };
 
   /** Aufsteigende Fanfare bei On-Fire */
@@ -136,23 +118,7 @@ export const useBiPoSound = () => {
   const playBomb = () => {
     vibrate([100, 50, 120]);
     const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(110, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.35);
-
-    gain.gain.setValueAtTime(0.4, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.35);
+    if (ctx) sweep(ctx, 'square', 110, 30, 0.4, 0.35);
   };
 
   return {

@@ -15,9 +15,11 @@ const turnLabel: Record<Turn['type'], string> = {
   onfire: 'On Fire',
   ballsback: 'Balls Back',
   lastCup: 'Letzter Becher',
+  deathcup: 'Deathcup',
+  owncup: 'Eigener Becher',
 };
 
-const importantTypes = new Set<Turn['type']>(['hit', 'bomb', 'bouncer', 'trickshot', 'onfire', 'ballsback', 'lastCup']);
+const importantTypes = new Set<Turn['type']>(['hit', 'bomb', 'bouncer', 'trickshot', 'onfire', 'ballsback', 'lastCup', 'deathcup', 'owncup']);
 const EVENT_MIN_GAP = 5; // min % gap between events before spreading
 
 const duration = computed(() => {

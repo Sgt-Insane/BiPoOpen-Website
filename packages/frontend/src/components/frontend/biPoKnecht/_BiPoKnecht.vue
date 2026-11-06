@@ -1,65 +1,258 @@
 <template>
-    <div class="BiPoKnecht">
-        <ModalEnterTeam v-if="modalEnterTeamVisible" :setMatch="setMatch"/>
-        <!-- key forces a fresh game state for every new match (e.g. a rematch) -->
-        <BiPoKnecht v-if="match" :key="gameKey" :match="match" :isLeagueGame="isLeagueGame" :onRematch="rematch"/>
+    <div class="KnechtPage">
+        <BiPoKnecht
+            v-if="game"
+            :key="game.key"
+            :match="game.match"
+            :startTeamIndex="game.startTeamIndex"
+            :actions="game.actions"
+            :refereeUsed="game.refereeUsed"
+            @change="onChange"
+            @exit="abort"
+            @leave="leave"
+            @saved="onSaved"
+        />
+
+        <template v-else>
+            <h1 class="bp-title">BiPo Knecht</h1>
+            <p class="kn-page-intro">
+                Der digitale Schreiber für euer Spiel: jeden Wurf antippen, der Knecht kennt die Regeln,
+                zählt die Becher und trägt das Ergebnis am Ende ein.
+            </p>
+
+            <!-- Laufendes Spiel (z.B. nach Neuladen) -->
+            <div v-if="stored" class="kn-page-card kn-page-resume">
+                <div class="kn-page-card-title">Laufendes Spiel</div>
+                <div class="kn-page-resume-teams">{{ getTeamName(stored.match, 0) }} gegen {{ getTeamName(stored.match, 1) }}</div>
+                <div class="kn-page-resume-meta">{{ storedSummary }}</div>
+                <div class="kn-page-actions">
+                    <button type="button" class="kn-page-button kn-page-button-secondary" @click="discardStored">Verwerfen</button>
+                    <button type="button" class="kn-page-button" @click="resume">Fortsetzen</button>
+                </div>
+            </div>
+
+            <button type="button" class="kn-page-button kn-page-button-new" @click="openSetup">
+                <i class="pi pi-plus"></i> Neues Spiel einrichten
+            </button>
+
+            <div class="kn-page-card">
+                <div class="kn-page-card-title">So funktioniert's</div>
+                <ul class="kn-page-list">
+                    <li><strong>Treffer:</strong> getroffenen Becher antippen. Bouncer vorher aktivieren.</li>
+                    <li><strong>Nullwurf:</strong> irgendwo neben oder vor die Becher tippen.</li>
+                    <li><strong>Airball:</strong> hinter die Becher tippen – der Ball flog über den Tisch.</li>
+                    <li><strong>Werfer:</strong> Spielerkarte antippen – die Reihenfolge ist frei.</li>
+                    <li><strong>Schiedsrichter-Modus</strong> im Menü: Tisch quer von der Seite.</li>
+                </ul>
+            </div>
+        </template>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import BiPoKnecht from '@/components/frontend/biPoKnecht/BiPoKnecht.vue';
-import ModalEnterTeam from './ModalEnterTeam.vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useToast } from 'primevue/usetoast';
+import router from '@/router.js';
+import BiPoKnecht from './BiPoKnecht.vue';
+import type { KnechtAction } from './knechtEngine';
+import { clearStoredGame, formatPoints, getResultPath, getTeamName, loadStoredGame, normalizeTeams, storeGame, type StoredKnechtGame } from './KnechtUtilFunctions';
+import { useKnechtLaunch } from './useKnechtLaunch';
+import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
 
-let modalEnterTeamVisible = ref(true);
-let match = ref<Match>();
-let isLeagueGame = ref(false);
-let gameKey = ref(0);
-
-// Player names and team metadata as entered, so a rematch starts from the original line-up
-let lineUp: { team1: string[]; team2: string[]; team1Name?: string; team2Name?: string } = { team1: [], team2: [] };
-
-let setMatch = (newMatch: Match, isLeague: boolean = false) => {
-    isLeagueGame.value = isLeague;
-    lineUp = {
-        team1: newMatch.team1.players.map(p => p.name),
-        team2: newMatch.team2.players.map(p => p.name),
-        team1Name: newMatch.team1.name,
-        team2Name: newMatch.team2.name,
-    };
-    match.value = newMatch;
-    modalEnterTeamVisible.value = false;
+type ActiveGame = {
+    key: number;
+    match: Match;
+    startTeamIndex: number | null;
+    actions: KnechtAction[];
+    refereeUsed: boolean;
 };
 
-const toPlayers = (names: string[]): Player[] =>
-    names.map(name => ({ _id: 'placeholder', name, score: 0 }));
+const toast = useToast();
+const { pendingMatch, consumeLaunch } = useKnechtLaunch();
+const { openAddGame } = useAddGame();
 
-// Same teams play again: fresh match, same players, back to "who starts?".
-let rematch = () => {
-    const freshTeam1Players = toPlayers(lineUp.team1);
-    const freshTeam2Players = toPlayers(lineUp.team2);
-    if (freshTeam1Players.length === 1) freshTeam1Players.push({ ...freshTeam1Players[0] });
-    if (freshTeam2Players.length === 1) freshTeam2Players.push({ ...freshTeam2Players[0] });
+const game = ref<ActiveGame | null>(null);
+const stored = ref<StoredKnechtGame | null>(loadStoredGame());
+let gameKey = 0;
 
-    match.value = {
-        _id: 'placeholder',
-        team1: { _id: 'placeholder', name: lineUp.team1Name, players: freshTeam1Players },
-        team2: { _id: 'placeholder', name: lineUp.team2Name, players: freshTeam2Players },
-        season: match.value?.season,
-        league: match.value?.league,
-    };
-    gameKey.value++;
+const storedSummary = computed(() => {
+    if (!stored.value) return '';
+    const throws = stored.value.actions.filter(action => action.type !== 'reRack').length;
+    const time = new Date(stored.value.savedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    return `${throws} Einträge · zuletzt ${time} Uhr`;
+});
+
+// ─── Spiel starten / fortsetzen ───
+const persist = () => {
+    if (!game.value) return;
+    storeGame({
+        match: game.value.match,
+        startTeamIndex: game.value.startTeamIndex,
+        actions: game.value.actions,
+        refereeUsed: game.value.refereeUsed,
+        savedAt: new Date().getTime(),
+    });
 };
+
+const newGame = (match: Match) => {
+    if (stored.value && !confirm('Das laufende Spiel wird verworfen. Neues Spiel starten?')) return;
+    game.value = { key: ++gameKey, match: normalizeTeams(match), startTeamIndex: null, actions: [], refereeUsed: false };
+    stored.value = null;
+    persist();
+};
+
+const resume = () => {
+    if (!stored.value) return;
+    const { match, startTeamIndex, actions, refereeUsed } = stored.value;
+    game.value = { key: ++gameKey, match, startTeamIndex, actions, refereeUsed };
+};
+
+const discardStored = () => {
+    if (!confirm('Laufendes Spiel wirklich verwerfen?')) return;
+    clearStoredGame();
+    stored.value = null;
+};
+
+const openSetup = () => openAddGame(undefined, { knecht: true });
+
+const onChange = (progress: { startTeamIndex: number | null; actions: KnechtAction[]; refereeUsed: boolean }) => {
+    if (!game.value) return;
+    Object.assign(game.value, progress);
+    persist();
+};
+
+// ─── Spiel verlassen ───
+const abort = () => {
+    clearStoredGame();
+    game.value = null;
+    stored.value = null;
+};
+
+const leave = () => {
+    persist();
+    router.push('/');
+};
+
+// Revanche: gleiche Teams und gleicher Wettbewerb, neues Spiel
+const toRematch = (match: Match): Match => ({
+    _id: 'placeholder',
+    team1: { ...match.team1, players: match.team1.players.map(player => ({ ...player, score: 0 })) },
+    team2: { ...match.team2, players: match.team2.players.map(player => ({ ...player, score: 0 })) },
+    ...(match.season !== undefined && { season: match.season }),
+    ...(match.league !== undefined && { league: match.league }),
+    ...(match.cupId !== undefined && { cupId: match.cupId, cupRound: match.cupRound }),
+});
+
+const onSaved = (result: Match, rematch: boolean) => {
+    clearStoredGame();
+    stored.value = null;
+    const score = [result.team1, result.team2].map(team => formatPoints(team.players.reduce((sum, player) => sum + player.score, 0)));
+    const suffix = import.meta.env.DEV ? ' (Testmodus, nicht gespeichert)' : ' eingetragen';
+    toast.add({ severity: 'success', summary: `${getTeamName(result, 0)} ${score[0]} : ${score[1]} ${getTeamName(result, 1)}${suffix}`, life: 3500 });
+
+    if (rematch) {
+        game.value = { key: ++gameKey, match: toRematch(result), startTeamIndex: null, actions: [], refereeUsed: false };
+        persist();
+        return;
+    }
+    game.value = null;
+    router.push(getResultPath(result));
+};
+
+// ─── Uebergabe aus dem "Spiel eintragen"-Drawer ───
+const takeLaunch = () => {
+    const match = consumeLaunch();
+    if (match) newGame(match);
+};
+
+watch(pendingMatch, (match) => { if (match) takeLaunch(); });
+
+onMounted(() => {
+    if (pendingMatch.value) takeLaunch();
+    else if (!stored.value) openSetup();
+});
 </script>
 
 <style scoped>
-.BiPoKnecht{
-    position: absolute;
-    width: 100dvw;
-    height: 100dvh;
-    top: 0%;
-    left: 0%;
-    z-index: 1000;
-    background-color: var(--bp-surface);
+.KnechtPage{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: min(560px, 100%);
+    margin: 0 auto;
+    padding: 0 16px 32px;
+}
+.kn-page-intro{
+    margin: 0;
+    color: #555B63;
+    font-size: 15px;
+    line-height: 1.5;
+}
+.kn-page-card{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid #E6E8EB;
+    border-radius: 16px;
+    background: white;
+}
+.kn-page-resume{
+    border-top: 4px solid var(--main-color);
+}
+.kn-page-card-title{
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #555B63;
+}
+.kn-page-resume-teams{
+    font-size: 17px;
+    font-weight: 700;
+    color: #1F2328;
+}
+.kn-page-resume-meta{
+    font-size: 13px;
+    color: #6B7079;
+}
+.kn-page-actions{
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+.kn-page-button{
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 52px;
+    border: none;
+    border-radius: 14px;
+    background: var(--main-color);
+    color: white;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.kn-page-button-secondary{
+    border: 1px solid #E6E8EB;
+    background: white;
+    color: #3A3F46;
+}
+.kn-page-button-new{
+    flex: none;
+}
+.kn-page-list{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding-left: 18px;
+    color: #3A3F46;
+    font-size: 14px;
+    line-height: 1.45;
 }
 </style>
