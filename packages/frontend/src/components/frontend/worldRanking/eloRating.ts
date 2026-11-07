@@ -42,57 +42,93 @@ const createPlayerNameResolver = () => {
 // ELO-FORMEL         //
 ////////////////////////
 export const ELO_START = 1000;
-export const ELO_K = 32;
+export const ELO_K = 20;
+// Neulinge: K startet hier und sinkt bis zum ELO_MIN_GAMES. Spiel auf ELO_K, damit neue Spieler schnell bei ihrer Staerke landen.
+export const ELO_K_NEWCOMER = 40;
 export const ELO_SCALE = 400;
 // Erst ab so vielen Spielen erscheint man in der Liste, gerechnet wird ab dem ersten Spiel.
 export const ELO_MIN_GAMES = 20;
-// Aktiv = letztes Spiel hoechstens so lange her (6 Monate).
-export const ELO_ACTIVE_DAYS = 182;
+// Aktiv = letztes Spiel hoechstens so lange her. Wer pausiert, behaelt sein Rating (kein Punkteverfall).
+export const ELO_ACTIVE_MONTHS = 6;
 // Trendpfeile und Rating-Veraenderung: Vergleich mit dem Stand vor so vielen Tagen.
 export const ELO_TREND_DAYS = 30;
 // Rating-Verlauf im Spielerprofil (Sparkline)
 export const ELO_HISTORY_DAYS = 90;
+// Doppel: so stark werden die Punkte einer Seite nach Treffern verteilt (7:3 Treffer = 1,2 / 0,8)
+const ELO_HIT_WEIGHT = 0.5;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const ACTIVE_MS = ELO_ACTIVE_MONTHS * 365 / 12 * DAY_MS;
 
 const getExpectedScore = (own: number, opponent: number) => 1 / (1 + 10 ** ((opponent - own) / ELO_SCALE));
 
-// Gewinner bekommt genau so viel, wie der Verlierer abgibt (gerundet einmal fuer beide Seiten).
-export const getEloDelta = (own: number, opponent: number, won: boolean) => {
-    const winner = won ? own : opponent;
-    const loser = won ? opponent : own;
-    const delta = Math.round(ELO_K * (1 - getExpectedScore(winner, loser)));
-    return won ? delta : -delta;
+// K nach der Zahl der bisherigen Spiele
+const getPlayerK = (games: number) =>
+    games >= ELO_MIN_GAMES ? ELO_K : ELO_K_NEWCOMER - (ELO_K_NEWCOMER - ELO_K) * games / ELO_MIN_GAMES;
+
+// Becher-Differenz, auf 10 Becher umgerechnet (Verlaengerung 13:12 ist knapper als 10:9). Faktor = (5 + Differenz) / 7,5:
+// 10:9 = 0,8 · 10:7 ≈ 1,07 · 10:5 ≈ 1,33 · 10:0 = 2. Ueber alle Spiele gemittelt ≈ 1, insgesamt gibt es also nicht mehr Punkte.
+export const getEloMarginFactor = (winnerScore: number, loserScore: number) =>
+    (5 + 10 * (winnerScore - loserScore) / winnerScore) / 7.5;
+
+// Gegenstueck zur Becher-Differenz: Kantersiege des Favoriten zaehlen etwas weniger, die des Aussenseiters etwas mehr
+// (200 Vorsprung = 0,92, 200 Rueckstand = 1,1). Sonst rutschen Starke allein durch hohe Siege gegen Schwaechere nach oben.
+const getFavoriteFactor = (ratingLead: number) => 2.2 / (ratingLead / 1000 + 2.2);
+
+// Doppel: Punkte einer Seite nach Treffern verteilen, zusammen bleibt es gleich. Wer mehr trifft, bekommt beim Sieg mehr
+// und verliert bei der Niederlage weniger. Ohne erfasste Treffer bekommen alle dasselbe.
+const getEloHitFactors = (hits: number[] | undefined, players: number, won: boolean) => {
+    const total = hits?.reduce((acc, hit) => acc + hit, 0) ?? 0;
+    if (!hits || players < 2 || total <= 0) return Array<number>(players).fill(1);
+    return hits.map(hit => Math.max(0, 1 + (won ? 1 : -1) * ELO_HIT_WEIGHT * (players * hit / total - 1)));
 };
 
-// Elo-Wechsel je Seite fuer ein noch nicht gespeichertes Spiel (Vorschau beim Eintragen).
-// Gleiche Rechnung wie computeElo: Team-Rating = Durchschnitt, alle Spieler einer Seite bekommen dieselben Punkte.
-export const getEloSideDeltas = (sideRatings: number[][], winner: 0 | 1): [number, number] => {
-    const averages = sideRatings.map(ratings => ratings.reduce((acc, rating) => acc + rating, 0) / ratings.length);
-    const winnerDelta = getEloDelta(averages[winner], averages[1 - winner], true);
-    return winner === 0 ? [winnerDelta, -winnerDelta] : [-winnerDelta, winnerDelta];
+// Spieler vor dem Spiel: Rating und Zahl der bisherigen Spiele (Neulings-K)
+export type EloPlayerState = { rating: number; games: number };
+
+// scores fehlt, wenn nur der Sieger bekannt ist (dann ohne Becher-Differenz).
+// hits = Treffer je Seite in der Reihenfolge der Spieler, fehlt, wenn sie nicht erfasst wurden.
+export type EloResult = { winner: 0 | 1; scores?: [number, number]; hits?: (number[] | undefined)[] };
+
+// Elo-Wechsel je Spieler, auch fuer die Vorschau beim Eintragen. Team-Rating = Durchschnitt der Spieler.
+// Der Gewinner bekommt, was der Verlierer abgibt. Abweichen koennen nur Neulinge (hoeheres K) und Doppel (Treffer-Verteilung).
+export const getEloDeltas = (sides: EloPlayerState[][], { winner, scores, hits }: EloResult): number[][] => {
+    const averages = sides.map(players => players.reduce((acc, player) => acc + player.rating, 0) / players.length);
+    const lead = averages[winner] - averages[1 - winner];
+    const resultFactor = scores ? getEloMarginFactor(scores[winner], scores[1 - winner]) * getFavoriteFactor(lead) : 1;
+    const points = (1 - getExpectedScore(averages[winner], averages[1 - winner])) * resultFactor;
+
+    return sides.map((players, sideIndex) => {
+        const won = sideIndex === winner;
+        const hitFactors = getEloHitFactors(hits?.[sideIndex], players.length, won);
+        return players.map((player, playerIndex) => {
+            const delta = Math.round(getPlayerK(player.games) * points * hitFactors[playerIndex]);
+            return won ? delta : -delta;
+        });
+    });
 };
 
-// Fuer das Erklaer-Sheet, damit Anzeige und Berechnung dieselben Werte nutzen.
-export const ELO_EXAMPLE_ROWS = [
-    { label: 'Beide gleich stark', difference: 0, won: true },
-    { label: 'Du bist 200 stärker', difference: 200, won: true },
-    { label: 'Du bist 200 schwächer', difference: -200, won: true },
-    { label: 'Du bist 200 stärker', difference: 200, won: false },
-].map(row => ({ ...row, points: getEloDelta(ELO_START + row.difference, ELO_START, row.won) }));
+// Fuer das Erklaer-Sheet, damit Anzeige und Berechnung dieselben Werte nutzen (Einzel, beide schon in der Liste).
+// Zeilen: eigener Rating-Unterschied zum Gegner, Spalten: Ergebnis des Siegs.
+export const ELO_EXAMPLE_RESULTS: [number, number][] = [[10, 9], [10, 5], [10, 0]];
 
-// Zwischenwert fuer den Hinweis, dass stufenlos gerechnet wird
-export const ELO_EXAMPLE_IN_BETWEEN = {
-    difference: 100,
-    favorite: getEloDelta(ELO_START + 100, ELO_START, true),
-    underdog: getEloDelta(ELO_START, ELO_START + 100, true),
-};
+const getExampleDelta = (difference: number, scores: [number, number]) =>
+    getEloDeltas([[{ rating: ELO_START + difference, games: ELO_MIN_GAMES }], [{ rating: ELO_START, games: ELO_MIN_GAMES }]], { winner: 0, scores })[0][0];
+
+export const ELO_EXAMPLE_ROWS = [300, 200, 100, 0, -100, -200, -300].map(difference => ({
+    difference,
+    points: ELO_EXAMPLE_RESULTS.map(scores => getExampleDelta(difference, scores)),
+}));
+
+// Doppel: Treffer im Team und der jeweilige Anteil an den Punkten
+export const ELO_EXAMPLE_HITS = { hits: [7, 3], factors: getEloHitFactors([7, 3], 2, true) };
 
 ////////////////////////
 // SPIELE             //
 ////////////////////////
 // Alle Spielarten werden in eine gemeinsame, chronologische Liste umgerechnet.
-type EloSide = { players: string[]; teamName?: string };
+// hits = Treffer je Spieler (Reihenfolge wie players), fehlt, wenn sie nicht erfasst wurden.
+type EloSide = { players: string[]; teamName?: string; hits?: number[] };
 
 export type EloGame = {
     matchId?: string;
@@ -101,9 +137,13 @@ export type EloGame = {
     sourceLabel: string;
     sides: [EloSide, EloSide];
     winner: 0 | 1;
+    scores?: [number, number]; // fehlt, wenn nur der Sieger bekannt ist
 };
 
 export type EloGames = { games: EloGame[]; displayNames: Record<string, string> };
+
+// BiPo Open 2020: nur der Sieger ist erfasst (alle Spiele stehen als 10:0 drin), die Becher-Differenz zaehlt dort nicht.
+const WINNER_ONLY_YEARS = ['2020'];
 
 const getTeamScore = (team: Team) => team.players.reduce((acc, player) => acc + (player.score ?? 0), 0);
 
@@ -111,21 +151,30 @@ export const buildEloGames = (data: RankingData): EloGames => {
     const games: EloGame[] = [];
     const { toPlayerKey, getDisplayNames } = createPlayerNameResolver();
 
-    const addGame = (match: Match, sourceLabel: string, time: number, team1: Team, team2: Team, team1Score: number, team2Score: number, useTeamNames: boolean) => {
-        // Nur Sieg oder Niederlage zaehlt, Unentschieden fliegen raus
+    // trackHits: Treffer je Spieler erfasst (Turniere erst seit 2023), winnerOnly: Ergebnis nicht erfasst
+    const addGame = (match: Match, sourceLabel: string, time: number, team1: Team, team2: Team, team1Score: number, team2Score: number,
+        useTeamNames: boolean, { trackHits = true, winnerOnly = false } = {}) => {
+        // Unentschieden fliegen raus
         if (team1Score === team2Score) return;
 
-        // Leere Spieler (z.B. nicht ausgefuelltes Zusatzfeld beim Eintragen) werden ignoriert
-        const toSide = (team: Team): EloSide => ({
-            players: [...new Set(team.players.filter(player => player.name?.trim()).map(player => toPlayerKey(player.name)))],
-            teamName: useTeamNames ? team.name : undefined,
-        });
+        // Leere Spieler (z.B. nicht ausgefuelltes Zusatzfeld beim Eintragen) werden ignoriert, doppelt eingetragene zusammengefasst
+        const toSide = (team: Team): EloSide => {
+            const hits = new Map<string, number>();
+            team.players.filter(player => player.name?.trim()).forEach(player => {
+                const key = toPlayerKey(player.name);
+                hits.set(key, (hits.get(key) ?? 0) + (player.score ?? 0));
+            });
+            return { players: [...hits.keys()], teamName: useTeamNames ? team.name : undefined, hits: trackHits ? [...hits.values()] : undefined };
+        };
         const sides: [EloSide, EloSide] = [toSide(team1), toSide(team2)];
         if (sides.some(side => !side.players.length)) return;
         if (sides[0].players.some(player => sides[1].players.includes(player))) return;
 
         const matchId = match._id && match._id !== 'placeholder' ? match._id : undefined;
-        games.push({ matchId, time, order: games.length, sourceLabel, sides, winner: team1Score > team2Score ? 0 : 1 });
+        games.push({
+            matchId, time, order: games.length, sourceLabel, sides, winner: team1Score > team2Score ? 0 : 1,
+            scores: winnerOnly ? undefined : [team1Score, team2Score],
+        });
     };
 
     data.openGames
@@ -146,12 +195,13 @@ export const buildEloGames = (data: RankingData): EloGames => {
         // "Weck BiPo Open 2026" -> "BiPo Open 2026"
         const year = tournament.name.match(/\d{4}/)?.[0];
         const sourceLabel = year ? `BiPo Open ${year}` : tournament.name;
+        const options = { trackHits: tournament.settings.trackPlayerShots, winnerOnly: !!year && WINNER_ONLY_YEARS.includes(year) };
 
         [...tournament.groupPhase.matches.flat(), ...tournament.koPhase.matches.flat()].forEach(match => {
             const team1Score = getMatchScore(match, true);
             const team2Score = getMatchScore(match, false);
             if (team1Score === undefined || team2Score === undefined) return;
-            addGame(match, sourceLabel, match.time ?? time, match.team1, match.team2, team1Score, team2Score, true);
+            addGame(match, sourceLabel, match.time ?? time, match.team1, match.team2, team1Score, team2Score, true, options);
         });
     });
 
@@ -235,19 +285,23 @@ export const computeElo = ({ games, displayNames }: EloGames, now: number, mode:
             : side.players.map(player => getRecord(player, [player]))
         );
 
-        // Team-Rating = Durchschnitt der Spieler
+        // Team-Rating = Durchschnitt der Spieler, Treffer-Verteilung nur bei einzeln gewerteten Spielern
         const sideRatings = sideRecords.map(entries => entries.reduce((acc, entry) => acc + entry.rating, 0) / entries.length);
-        const winnerDelta = getEloDelta(sideRatings[game.winner], sideRatings[1 - game.winner], true);
+        const deltas = getEloDeltas(sideRecords, {
+            winner: game.winner,
+            scores: game.scores,
+            hits: mode === 'players' ? game.sides.map(side => side.hits) : undefined,
+        });
 
         sideRecords.forEach((entries, sideIndex) => {
             const won = sideIndex === game.winner;
-            const delta = won ? winnerDelta : -winnerDelta;
             const side = game.sides[sideIndex];
             const opponentSide = game.sides[1 - sideIndex];
             const opponentRating = Math.round(sideRatings[1 - sideIndex]);
             const opponentRatingLabel = `${opponentSide.players.length > 1 ? 'Gegner-Ø' : 'Gegner'} ${opponentRating}`;
 
-            entries.forEach(entry => {
+            entries.forEach((entry, entryIndex) => {
+                const delta = deltas[sideIndex][entryIndex];
                 const partners = mode === 'players' ? side.players.filter(player => player !== entry.key) : [];
                 partners.forEach(partner => entry.partners[partner] = (entry.partners[partner] ?? 0) + 1);
 
@@ -275,25 +329,27 @@ export const computeElo = ({ games, displayNames }: EloGames, now: number, mode:
 // JE SPIEL           //
 ////////////////////////
 // Elo je Seite nach einem Spiel (Spieler-Wertung wie computeElo), z.B. fuer die Elo-Zeile im MatchElement.
-// rating = Stand nach dem Spiel, bei mehreren Spielern der Durchschnitt.
+// rating = Stand nach dem Spiel, delta = Veraenderung, bei mehreren Spielern jeweils der Durchschnitt.
 export type EloMatchSide = { rating: number; delta: number; players: number };
 
 // Schluessel = Match-_id, Unentschieden und nicht gewertete Spiele fehlen.
 export const getEloMatchChanges = ({ games }: EloGames): Map<string, [EloMatchSide, EloMatchSide]> => {
-    const ratings = new Map<string, number>();
+    const players = new Map<string, EloPlayerState>();
     const changes = new Map<string, [EloMatchSide, EloMatchSide]>();
+    const average = (values: number[]) => values.reduce((acc, value) => acc + value, 0) / values.length;
 
     games.forEach(game => {
-        const before = game.sides.map(side => side.players.map(player => ratings.get(player) ?? ELO_START));
-        const deltas = getEloSideDeltas(before, game.winner);
-        game.sides.forEach((side, sideIndex) =>
-            side.players.forEach((player, playerIndex) => ratings.set(player, before[sideIndex][playerIndex] + deltas[sideIndex]))
-        );
+        const before = game.sides.map(side => side.players.map(player => players.get(player) ?? { rating: ELO_START, games: 0 }));
+        const deltas = getEloDeltas(before, { winner: game.winner, scores: game.scores, hits: game.sides.map(side => side.hits) });
+        const after = before.map((states, sideIndex) => states.map((state, playerIndex) => state.rating + deltas[sideIndex][playerIndex]));
+        game.sides.forEach((side, sideIndex) => side.players.forEach((player, playerIndex) =>
+            players.set(player, { rating: after[sideIndex][playerIndex], games: before[sideIndex][playerIndex].games + 1 })
+        ));
 
         if (!game.matchId) return;
         const toSide = (sideIndex: number): EloMatchSide => ({
-            rating: Math.round(before[sideIndex].reduce((acc, rating) => acc + rating, 0) / before[sideIndex].length + deltas[sideIndex]),
-            delta: deltas[sideIndex],
+            rating: Math.round(average(after[sideIndex])),
+            delta: Math.round(average(deltas[sideIndex])),
             players: before[sideIndex].length,
         });
         changes.set(game.matchId, [toSide(0), toSide(1)]);
@@ -315,7 +371,7 @@ export type EloEntry = EloRecord & {
 
 export type EloRanking = { active: EloEntry[]; inactive: EloEntry[] };
 
-const isRecent = (lastTime: number, referenceTime: number) => referenceTime - lastTime <= ELO_ACTIVE_DAYS * DAY_MS;
+const isRecent = (lastTime: number, referenceTime: number) => referenceTime - lastTime <= ACTIVE_MS;
 const isListed = (games: number, lastTime: number, referenceTime: number) =>
     games >= ELO_MIN_GAMES && isRecent(lastTime, referenceTime);
 

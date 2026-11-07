@@ -1,3 +1,4 @@
+import { Request } from 'express';
 import webpush from 'web-push';
 import { config } from '../config/config';
 import PushSubscription, { NotificationCategory } from '../models/PushSubscription';
@@ -17,6 +18,9 @@ const ensureVapid = () => {
 };
 
 export const normalizePlayerName = (name: string) => name.trim().toLowerCase();
+
+// Push-Endpoint des eintragenden Geraets, gesetzt in usePushNotifications.ts im Frontend
+export const pushEndpointOf = (req: Request) => req.get('X-Push-Endpoint') || undefined;
 
 interface GameTeam {
     name?: string | null;
@@ -125,15 +129,17 @@ export const sendToSubscription = async (subscription: StoredSubscription, paylo
 /**
  * Schickt eine Benachrichtigung an alle Subscriptions, die die Kategorie aktiviert haben
  * und (bei followModes[category] 'followed') mindestens einem der beteiligten Spieler folgen.
+ * excludeEndpoint: Geraet, das das Ergebnis eingetragen hat (Header X-Push-Endpoint, siehe pushEndpointOf).
  * Wirft nie - Fehler werden nur geloggt.
  */
-export const notify = async (category: NotificationCategory, payload: NotificationPayload, playerNames: string[] = []) => {
+export const notify = async (category: NotificationCategory, payload: NotificationPayload, playerNames: string[] = [], excludeEndpoint?: string) => {
     try {
         if (!ensureVapid()) return;
 
         const normalizedPlayers = playerNames.filter(Boolean).map(normalizePlayerName);
 
         const subscriptions = await PushSubscription.find({
+            ...(excludeEndpoint && { endpoint: { $ne: excludeEndpoint } }),
             [`preferences.${category}`]: true,
             $or: [
                 { [`followModes.${category}`]: { $ne: 'followed' } },

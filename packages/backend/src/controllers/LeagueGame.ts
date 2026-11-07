@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import LeagueGame from "../models/LeagueGame";
-import { cardTeam, describeResult, gamePlayerNames, notify, resultImageUrl } from "../util/notify";
+import { cardTeam, describeResult, gamePlayerNames, notify, pushEndpointOf, resultImageUrl } from "../util/notify";
 
 const createLeagueGame = (req: Request, res: Response, next: NextFunction) => {
     const { team1, team2, time, turns, endTime, season, league, cupId, cupRound, referee } = req.body;
@@ -33,7 +33,7 @@ const createLeagueGame = (req: Request, res: Response, next: NextFunction) => {
                 image: resultImageUrl(cardTeam(leagueGame.team1, true), cardTeam(leagueGame.team2, true), leagueGame.cupId ? 'BiPo League Cup' : `${leagueGame.league ?? 1}. Liga`, true),
                 tag: `leagueGame-${leagueGame._id}`,
                 actions: [{ action: 'table', title: leagueGame.cupId ? 'Pokal ansehen' : 'Tabelle', url }]
-            }, gamePlayerNames(leagueGame.team1, leagueGame.team2));
+            }, gamePlayerNames(leagueGame.team1, leagueGame.team2), pushEndpointOf(req));
 
             res.status(201).json({ leagueGame });
         })

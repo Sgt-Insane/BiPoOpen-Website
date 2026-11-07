@@ -4,7 +4,7 @@ import { getBiPoOpenTournamentFallbackTime } from "@/util/bipoOpenTournamentMeta
 import { GameData, getGameData } from "@/util/gameDataCache";
 import { calculateBadges, type RecordKey, type RecordStanding } from "./BadgeRegistry";
 import { getLeagueTeamForPlayer, getPlayerForLeagueTeam } from "@/components/frontend/league/LeaguePlayersData";
-import { ELO_START, buildEloGames, computeElo, getEloMatchChanges, getEloPlayerKey, getEloRanking } from "@/components/frontend/worldRanking/eloRating";
+import { ELO_START, buildEloGames, computeElo, getEloMatchChanges, getEloPlayerKey, getEloRanking, type EloPlayerState } from "@/components/frontend/worldRanking/eloRating";
 import { getKnechtCareerStats } from "@/components/frontend/biPoKnecht/knechtStats";
 
 const TREND_PERIOD_DAYS: Record<Exclude<TrendPeriod, 'all'>, number> = {
@@ -536,6 +536,12 @@ const getEloRecords = memoize((data: GameData) => {
 // Aktuelles Elo eines Spielers (Liga: Teamname geht auch), null = noch kein gewertetes Spiel
 export const getPlayerEloRating = (data: GameData, playerName: string): number | null =>
     getEloRecords(data).records.get(getEloPlayerKey(playerName))?.rating ?? null;
+
+// Rating und bisherige Spiele (Neulings-K) fuer die Elo-Vorschau, null = noch kein gewertetes Spiel
+export const getPlayerEloState = (data: GameData, playerName: string): EloPlayerState | null => {
+    const record = getEloRecords(data).records.get(getEloPlayerKey(playerName));
+    return record ? { rating: record.rating, games: record.games } : null;
+};
 
 // Elo je Seite nach jedem Spiel, Schluessel = Match-_id
 export const getMatchEloChanges = memoize((data: GameData) => getEloMatchChanges(getEloGames(data)));

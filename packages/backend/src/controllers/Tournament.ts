@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import Tournament from "../models/Tournament";
 import { tournamentAggregation } from "./TournamentAggregate";
-import { notify, resultImageUrl } from "../util/notify";
+import { notify, pushEndpointOf, resultImageUrl } from "../util/notify";
 
 const createTournament = (req: Request, res: Response, next: NextFunction) => {
 
@@ -213,7 +213,7 @@ const setGroups = (req: Request, res: Response, next: NextFunction) => {
 const hasResult = (match: any) => match?.result?.team1Score != null && match?.result?.team2Score != null;
 
 // Vergleicht alte und neue Matches nach Position und benachrichtigt über neu eingetragene Ergebnisse
-const notifyNewResults = async (tournament: any, oldMatches: any[][], newMatches: any[][], isGroupPhase: boolean) => {
+const notifyNewResults = async (tournament: any, oldMatches: any[][], newMatches: any[][], isGroupPhase: boolean, excludeEndpoint?: string) => {
     const urlSegment = isGroupPhase ? 'Gruppenphase' : 'K.o.Phase';
     const url = `/${tournament.name}/${urlSegment}`;
     const teamsByID = new Map<string, any>(tournament.teams.map((team: any) => [String(team._id), team]));
@@ -248,7 +248,7 @@ const notifyNewResults = async (tournament: any, oldMatches: any[][], newMatches
                 ),
                 tag: `tournament-${tournament._id}-${urlSegment}-${i}-${j}`,
                 actions: [{ action: 'phase', title: isGroupPhase ? 'Gruppe ansehen' : 'K.o.-Phase ansehen', url }]
-            }, [...team1.players, ...team2.players]));
+            }, [...team1.players, ...team2.players], excludeEndpoint));
         });
     });
 
@@ -274,7 +274,7 @@ const setMatchesGroupPhase = (req: Request, res: Response, next: NextFunction) =
                 tournament
                     .save()
                     .then(async (updatedTournament) => {
-                        await notifyNewResults(updatedTournament, oldMatches, matches, true);
+                        await notifyNewResults(updatedTournament, oldMatches, matches, true, pushEndpointOf(req));
                         res.status(201).json({ message: "Matches Groupphase updated successfully", tournament: updatedTournament });
                     })
                     .catch((error) => {
@@ -312,7 +312,7 @@ const setMatchesKOPhase = (req: Request, res: Response, next: NextFunction) => {
                 tournament
                     .save()
                     .then(async (updatedTournament) => {
-                        await notifyNewResults(updatedTournament, oldMatches, matches, false);
+                        await notifyNewResults(updatedTournament, oldMatches, matches, false, pushEndpointOf(req));
                         res.status(201).json({ message: "Matches KOPhase updated successfully", tournament: updatedTournament });
                     })
                     .catch((error) => {

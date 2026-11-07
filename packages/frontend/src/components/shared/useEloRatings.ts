@@ -1,6 +1,6 @@
 import { computed, shallowRef } from 'vue';
 import { getCachedGameData, getGameData, type GameData } from '@/util/gameDataCache';
-import { getMatchEloChanges, getPlayerEloRating } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
+import { getMatchEloChanges, getPlayerEloRating, getPlayerEloState } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
 import { onGameSaved } from '@/components/shared/GameEntry/useAddGame';
 
 // Aktuelles Elo fuer Chips, Vorschau und Elo-Zeilen (Spielersuche, Spiel eintragen, MatchElement), geteilt ueber alle Komponenten.
@@ -17,8 +17,11 @@ export const useEloRatings = () => {
     // null = noch nicht geladen oder noch kein gewertetes Spiel
     const getElo = (name: string) => gameData.value && name.trim() ? getPlayerEloRating(gameData.value, name) : null;
 
+    // Rating und Spielzahl fuer die Vorschau beim Eintragen, null wie bei getElo
+    const getEloState = (name: string) => gameData.value && name.trim() ? getPlayerEloState(gameData.value, name) : null;
+
     // Elo beider Seiten nach diesem Spiel, null = nicht geladen oder nicht gewertet
     const getMatchElo = (match: Match) => gameData.value ? getMatchEloChanges(gameData.value).get(match._id) ?? null : null;
 
-    return { loadEloRatings, isEloLoaded, getElo, getMatchElo };
+    return { loadEloRatings, isEloLoaded, getElo, getEloState, getMatchElo };
 };

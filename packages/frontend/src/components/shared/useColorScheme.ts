@@ -5,6 +5,8 @@ export type ColorScheme = 'light' | 'dark';
 // Muss zum Vorab-Skript in index.html passen (setzt die Klasse schon vor dem ersten Rendern)
 const STORAGE_KEY = 'colorScheme';
 const DARK_CLASS = 'bp-dark';
+// Status- und Navigationsleiste der PWA in der Farbe von Header/Bottom-Nav (--bp-surface in App.vue)
+const THEME_COLOR = { light: '#ffffff', dark: '#1B1E22' };
 
 const readStoredScheme = (): ColorScheme | null => {
 	try {
@@ -29,6 +31,7 @@ watchEffect(() => {
 	root.classList.toggle(DARK_CLASS, isDark.value);
 	root.dataset.bsTheme = isDark.value ? 'dark' : 'light';
 	root.style.colorScheme = isDark.value ? 'dark' : 'light';
+	document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark.value ? THEME_COLOR.dark : THEME_COLOR.light);
 });
 
 export const useColorScheme = () => {

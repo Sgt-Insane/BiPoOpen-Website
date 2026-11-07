@@ -1,24 +1,22 @@
 <template>
     <GameEntryDrawer
         v-model:visible="addGameVisible"
-        :title="knechtSetup ? 'BiPo Knecht' : undefined"
         :subtitle="subtitle"
         :initialSides="initialSides"
         v-bind="MODE_PROPS[mode]"
         :save="save"
         eloPreview
-        :launch="knechtSetup || mode !== 'open' ? launch : undefined"
-        :hideScores="knechtSetup"
+        :launch="launch"
     >
         <template #top="{ setTeams }">
-            <!-- BiPo Knecht: laufendes Spiel fortsetzen oder Knecht oeffnen -->
-            <button v-if="!knechtSetup" type="button" class="ag-knecht" :class="{ 'ag-knecht--running': runningGameTitle }" @click="openKnecht">
+            <!-- Laufendes BiPo-Knecht-Spiel fortsetzen -->
+            <button v-if="runningGameTitle" type="button" class="ag-knecht" @click="resumeKnecht">
                 <span class="ag-knecht-icon">🎯</span>
                 <span class="ag-knecht-text">
-                    <span class="ag-knecht-title">{{ runningGameTitle ? 'Laufendes Knecht-Spiel' : 'BiPo Knecht' }}</span>
-                    <span class="ag-knecht-subtitle">{{ runningGameTitle ?? 'Spiel live Wurf für Wurf zählen' }}</span>
+                    <span class="ag-knecht-title">Laufendes Knecht-Spiel</span>
+                    <span class="ag-knecht-subtitle">{{ runningGameTitle }}</span>
                 </span>
-                <span class="ag-knecht-action">{{ runningGameTitle ? 'Fortsetzen' : 'Öffnen' }}</span>
+                <span class="ag-knecht-action">Fortsetzen</span>
             </button>
 
             <!-- Spieltyp -->
@@ -95,7 +93,7 @@ const MODE_PROPS = {
     cup: { sideLabels: TEAM_LABELS, lockedNames: true, allowDraw: false, avatarShape: 'square' as const, incompleteLabel: 'Paarung wÃ¤hlen' },
 };
 
-const { addGameVisible, pageContext, presetNames, knechtSetup, notifyGameSaved } = useAddGame();
+const { addGameVisible, pageContext, presetNames, notifyGameSaved } = useAddGame();
 const { launchKnecht } = useKnechtLaunch();
 
 // Eingetragen wird immer in der aktuellen Saison.
@@ -202,10 +200,9 @@ const sidesToMatch = (sides: GameEntrySide[]) => {
     return sidesToNewMatch(sides);
 };
 
-// Laufendes Spiel: zurueck in den Knecht. Sonst zur Startseite des Knechts.
-const openKnecht = () => {
+const resumeKnecht = () => {
     addGameVisible.value = false;
-    router.push(runningGameTitle.value ? '/Knecht?Fortsetzen' : '/Knecht');
+    router.push('/Knecht');
 };
 
 // Liga-Teams bringen ihr Logo mit, damit der Knecht es anzeigen kann
@@ -285,17 +282,13 @@ const showNewAwards = async (badgesBefore: Map<string, PlayerBadge[]>, names: st
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--main-color);
     border-radius: 14px;
-    background: white;
+    background: #FFF7F8;
     color: #1F2328;
     font: inherit;
     text-align: left;
     cursor: pointer;
-}
-.ag-knecht--running{
-    border-color: var(--main-color);
-    background: #FFF7F8;
 }
 .ag-knecht-icon{
     font-size: 20px;
@@ -320,13 +313,9 @@ const showNewAwards = async (badgesBefore: Map<string, PlayerBadge[]>, names: st
 .ag-knecht-action{
     padding: 6px 12px;
     border-radius: 999px;
-    background: #F1F2F4;
-    color: #3A3F46;
-    font-size: 13px;
-    font-weight: 700;
-}
-.ag-knecht--running .ag-knecht-action{
     background: var(--main-color);
     color: white;
+    font-size: 13px;
+    font-weight: 700;
 }
 </style>

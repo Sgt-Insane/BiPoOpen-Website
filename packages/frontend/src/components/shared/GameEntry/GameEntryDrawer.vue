@@ -25,7 +25,7 @@
                     <span v-else class="ge-side-label">{{ sideLabels[sideIndex] }}</span>
 
                     <span v-if="winnerIndex === sideIndex" class="ge-win-badge">Sieg</span>
-                    <span v-if="!hideScores" class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
+                    <span class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
                 </div>
 
                 <div v-for="(player, playerIndex) in side.players" :key="playerIndex" class="ge-player">
@@ -56,7 +56,6 @@
                     </template>
 
                     <GameEntryScorePicker
-                        v-if="!hideScores"
                         v-model="player.score"
                         :max="maxScore"
                         :chances="getScoreChances(sides, sideIndex, playerIndex, maxScore)"
@@ -88,7 +87,7 @@
             <EloExplainedSheet v-if="eloPreview" v-model:visible="eloExplainedVisible"/>
 
             <!-- Spiel live im BiPo Knecht zaehlen statt das Ergebnis einzutragen -->
-            <button v-if="launch && !hideScores" type="button" class="ge-launch" :disabled="!canLaunch" @click="onLaunch()">
+            <button v-if="launch" type="button" class="ge-launch" :disabled="!canLaunch" @click="onLaunch()">
                 <span class="ge-launch-icon">🎯</span>
                 <span class="ge-launch-text">
                     <span class="ge-launch-title">Mit BiPo Knecht spielen</span>
@@ -101,10 +100,7 @@
                 <button v-if="remove" type="button" class="ge-button ge-button-delete" :disabled="loading" aria-label="Spiel löschen" @click="onDelete()">
                     <i class="pi pi-trash"></i>
                 </button>
-                <button v-if="launch && hideScores" type="button" class="ge-button ge-button-save" :disabled="!canLaunch" @click="onLaunch()">
-                    {{ canLaunch ? 'BiPo Knecht starten' : launchIncompleteLabel }}
-                </button>
-                <button v-else type="button" class="ge-button ge-button-save" :disabled="!canSave || loading" @click="onSave()">
+                <button type="button" class="ge-button ge-button-save" :disabled="!canSave || loading" @click="onSave()">
                     <i v-if="loading" class="pi pi-spin pi-spinner"></i>
                     <span v-else>{{ saveLabel }}</span>
                 </button>
@@ -120,7 +116,7 @@
  * - #player: ersetzt die Spielersuche (z.B. Liga-Team-Dropdown)
  * - #top: Inhalt ueber den Seiten (z.B. Pokal-Paarung), setzt die Seiten per setTeams
  * - lockedNames: Namen stehen fest (Turnier, Pokal), nur Treffer werden gewaehlt
- * - launch: Spiel stattdessen live im BiPo Knecht zaehlen (hideScores: nur Teams waehlen, ohne Treffer)
+ * - launch: Spiel stattdessen live im BiPo Knecht zaehlen
  * - eloPreview: Elo-Wechsel unter den Seiten, nur fuer neue Spiele (bearbeitete sind schon eingerechnet)
  */
 import { computed, ref, watch } from 'vue';
@@ -130,7 +126,7 @@ import Avatar from '@/components/shared/Avatar.vue';
 import EloChip from '@/components/shared/EloChip.vue';
 import EloExplainedSheet from '@/components/frontend/worldRanking/EloExplainedSheet.vue';
 import { useEloRatings } from '@/components/shared/useEloRatings';
-import { ELO_START, getEloSideDeltas } from '@/components/frontend/worldRanking/eloRating';
+import { ELO_START, getEloDeltas } from '@/components/frontend/worldRanking/eloRating';
 import { getPlayerForLeagueTeam } from '@/components/frontend/league/LeaguePlayersData';
 import GameEntryPlayerSearch from './GameEntryPlayerSearch.vue';
 import GameEntryScorePicker from './GameEntryScorePicker.vue';
@@ -156,7 +152,6 @@ const props = withDefaults(defineProps<{
     save: (sides: GameEntrySide[]) => Promise<boolean | void>;
     remove?: () => Promise<boolean | void>;
     launch?: (sides: GameEntrySide[]) => void;
-    hideScores?: boolean;
 }>(), {
     title: 'Spiel eintragen',
     sideLabels: () => ['Seite 1', 'Seite 2'],
@@ -169,7 +164,7 @@ const props = withDefaults(defineProps<{
 const toast = useToast();
 const sides = ref<GameEntrySide[]>(createEmptySides());
 const loading = ref(false);
-const { loadEloRatings, isEloLoaded, getElo } = useEloRatings();
+const { loadEloRatings, isEloLoaded, getElo, getEloState } = useEloRatings();
 const { status: pushStatus } = usePushNotifications();
 
 // Bei jedem Oeffnen und jeder neuen Vorbelegung (z.B. anderer Spieltyp) frisch aus der Vorbelegung,
@@ -238,19 +233,24 @@ const saveLabel = computed(() => {
 });
 
 // ─── Elo ───
-// Gleiche Rechnung wie die Weltrangliste, wer noch kein Spiel hat, startet bei ELO_START.
+// Gleiche Rechnung wie die Weltrangliste (mit Becher-Differenz und Treffern), wer noch kein Spiel hat, startet bei ELO_START.
 // Liga/Pokal: gewertet wird der Spieler hinter dem Team.
 const eloExplainedVisible = ref(false);
 
 const eloChanges = computed(() => {
     if (!props.eloPreview || !isEloLoaded.value || winnerIndex.value === -1 || !hasAllNames.value || hasDuplicateNames.value) return [];
 
-    const ratings = sides.value.map(side => side.players.map(player => getElo(player.name) ?? ELO_START));
-    const deltas = getEloSideDeltas(ratings, winnerIndex.value as 0 | 1);
+    const states = sides.value.map(side => side.players.map(player => getEloState(player.name) ?? { rating: ELO_START, games: 0 }));
+    const deltas = getEloDeltas(states, {
+        winner: winnerIndex.value as 0 | 1,
+        scores: totals.value as [number, number],
+        hits: sides.value.map(side => side.players.map(player => player.score ?? 0)),
+    });
     return sides.value.flatMap((side, sideIndex) => side.players.map((player, playerIndex) => {
-        const before = ratings[sideIndex][playerIndex];
+        const before = states[sideIndex][playerIndex].rating;
+        const delta = deltas[sideIndex][playerIndex];
         const name = player.name.trim();
-        return { name: getPlayerForLeagueTeam(name) ?? name, before, after: before + deltas[sideIndex], delta: deltas[sideIndex] };
+        return { name: getPlayerForLeagueTeam(name) ?? name, before, after: before + delta, delta };
     }));
 });
 
@@ -310,7 +310,6 @@ const onDelete = () => {
 
 // ─── BiPo Knecht ───
 const canLaunch = computed(() => hasAllNames.value && !hasDuplicateNames.value);
-const launchIncompleteLabel = computed(() => hasDuplicateNames.value ? 'Doppelt gewählt' : props.incompleteLabel);
 
 const onLaunch = () => {
     if (!canLaunch.value || !props.launch) return;

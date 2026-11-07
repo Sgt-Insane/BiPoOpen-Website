@@ -58,7 +58,7 @@
         </template>
 
         <p class="elo-footnote">
-            In der Liste erscheint, wer mindestens {{ ELO_MIN_GAMES }} Spiele hat und in den letzten 6 Monaten gespielt hat.
+            In der Liste erscheint, wer mindestens {{ ELO_MIN_GAMES }} Spiele hat und in den letzten {{ ELO_ACTIVE_MONTHS }} Monaten gespielt hat.
             Pfeile und Veränderung beziehen sich auf den Stand vor {{ ELO_TREND_DAYS }} Tagen.
         </p>
 
@@ -73,7 +73,7 @@ import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import EloRankingEntry from './EloRankingEntry.vue';
 import EloExplainedSheet from './EloExplainedSheet.vue';
-import { ELO_MIN_GAMES, ELO_TREND_DAYS, EloMode, RankingData, buildEloGames, computeElo, getEloRanking } from './eloRating';
+import { ELO_ACTIVE_MONTHS, ELO_MIN_GAMES, ELO_TREND_DAYS, EloMode, RankingData, buildEloGames, computeElo, getEloRanking } from './eloRating';
 
 const props = defineProps<{ data: RankingData; now: number }>();
 

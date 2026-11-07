@@ -44,6 +44,15 @@ let subscription: PushSubscription | null = null;
 let initialized = false;
 let settingsRequest: Promise<void> | null = null;
 
+// Wer ein Ergebnis eintraegt, bekommt dafuer keinen Push: Backend schliesst diesen Endpoint aus (util/notify.ts).
+// Nur bei schreibenden Requests, damit GETs ohne CORS-Preflight bleiben.
+export const PUSH_ENDPOINT_HEADER = 'X-Push-Endpoint';
+axios.interceptors.request.use((config) => {
+	if (subscription && config.method && config.method.toLowerCase() !== 'get')
+		config.headers.set(PUSH_ENDPOINT_HEADER, subscription.endpoint);
+	return config;
+});
+
 const isIos = () => /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 const isSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;

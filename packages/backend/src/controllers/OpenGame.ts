@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import OpenGame from "../models/OpenGame";
-import { cardTeam, describeResult, gamePlayerNames, notify, playerProfilePath, resultImageUrl } from "../util/notify";
+import { cardTeam, describeResult, gamePlayerNames, notify, playerProfilePath, pushEndpointOf, resultImageUrl } from "../util/notify";
 
 const createOpenGame = (req: Request, res: Response, next: NextFunction) => {
     const { team1, team2, time, turns, endTime, referee } = req.body;
@@ -31,7 +31,7 @@ const createOpenGame = (req: Request, res: Response, next: NextFunction) => {
                     { action: 'game', title: 'Spiel ansehen', url: '/' },
                     { action: 'profile', title: `Profil von ${result.winnerName.split(' ')[0]}`, url: playerProfilePath(result.winnerName) }
                 ]
-            }, gamePlayerNames(openGame.team1, openGame.team2));
+            }, gamePlayerNames(openGame.team1, openGame.team2), pushEndpointOf(req));
 
             res.status(201).json({ openGame });
         })
