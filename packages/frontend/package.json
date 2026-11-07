@@ -33,6 +33,7 @@
     "@vercel/node": "^5.7.0",
     "@vercel/og": "^0.11.1",
     "@vitejs/plugin-vue": "^5.0.5",
+    "happy-dom": "^21.0.4",
     "sass-embedded": "^1.97.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.4.5",
