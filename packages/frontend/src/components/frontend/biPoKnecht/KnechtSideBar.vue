@@ -34,10 +34,10 @@ defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: []; move: [] }>();
     width: 56px;
     min-width: 56px;
     padding: 10px 0;
-    background: white;
+    background: var(--bp-surface);
 }
-.kn-sidebar--left{ border-right: 1px solid #E6E8EB; }
-.kn-sidebar--right{ border-left: 1px solid #E6E8EB; }
+.kn-sidebar--left{ border-right: 1px solid var(--bp-border); }
+.kn-sidebar--right{ border-left: 1px solid var(--bp-border); }
 
 .kn-side-spacer{
     height: 12px;
@@ -48,10 +48,10 @@ defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: []; move: [] }>();
     justify-content: center;
     width: 44px;
     height: 44px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--bp-border);
     border-radius: 50%;
-    background: white;
-    color: #3A3F46;
+    background: var(--bp-surface);
+    color: var(--bp-text);
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
     transition: background .15s ease, transform .1s ease;
@@ -61,7 +61,7 @@ defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: []; move: [] }>();
 }
 .kn-side-button:active:not(:disabled){
     transform: scale(.94);
-    background: #F6F7F9;
+    background: var(--page-gray);
 }
 .kn-side-button:disabled{
     opacity: .35;
@@ -71,7 +71,7 @@ defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: []; move: [] }>();
     width: 34px;
     height: 34px;
     box-shadow: none;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
 }
 .kn-side-button--small .pi{
     font-size: 13px;

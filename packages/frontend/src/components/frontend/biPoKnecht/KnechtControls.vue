@@ -54,10 +54,10 @@ const reRacksLeft = computed(() => props.game.state.value.reRacksLeft[props.game
     gap: 6px;
     height: 40px;
     padding: 0 12px;
-    border: 1.5px solid #E6E8EB;
+    border: 1.5px solid var(--bp-border);
     border-radius: 12px;
-    background: white;
-    color: #1F2328;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 14px;
     font-weight: 700;

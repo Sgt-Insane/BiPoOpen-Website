@@ -145,6 +145,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import SelectButton from 'primevue/selectbutton';
+import { useToast } from 'primevue/usetoast';
 import KnechtRack from './KnechtRack.vue';
 import KnechtPlayers from './KnechtPlayers.vue';
 import KnechtControls from './KnechtControls.vue';
@@ -177,6 +178,7 @@ const emit = defineEmits<{
 }>();
 
 const game = useBiPoKnecht(props.match, props.startTeamIndex, props.actions);
+const toast = useToast();
 
 // ─── Einstellungen (bleiben fuer das naechste Spiel erhalten) ───
 const MODE_KEY = 'bipo_knecht_mode';
@@ -320,6 +322,8 @@ watch(game.isOver, (isOver) => {
 onMounted(() => {
     orientationQuery.addEventListener('change', onOrientationChange);
     if (game.isStarted.value && !game.isOver.value) requestWakeLock();
+    if (game.droppedActions)
+        toast.add({ severity: 'warn', summary: `${game.droppedActions} Einträge passten nicht mehr zu den aktuellen Regeln und wurden entfernt`, life: 6000 });
 });
 
 onUnmounted(() => {
@@ -387,10 +391,10 @@ onUnmounted(() => {
     min-height: 0;
 }
 .kn-field--referee .kn-end + .kn-end{
-    border-left: 2px solid white;
+    border-left: 2px solid var(--bp-surface);
 }
 .kn-field--player .kn-end + .kn-end{
-    border-top: 2px solid white;
+    border-top: 2px solid var(--bp-surface);
 }
 
 /* ─── Overlays ─── */
@@ -411,18 +415,18 @@ onUnmounted(() => {
     width: min(360px, 100%);
     padding: 20px;
     border-radius: 20px;
-    background: white;
+    background: var(--bp-surface);
     text-align: center;
 }
 .kn-pause-title{
     font-size: 26px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-pause-score{
     font-size: 14px;
     font-weight: 600;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 
 /* ─── Ball ─── */
@@ -433,7 +437,7 @@ onUnmounted(() => {
     height: 18px;
     margin: -9px 0 0 -9px;
     border-radius: 50%;
-    background: white;
+    background: var(--bp-surface);
     box-shadow: 0 0 0 1px rgba(31, 35, 40, .12), 0 3px 6px rgba(31, 35, 40, .25);
     pointer-events: none;
     animation: kn-ball-drop 1.5s ease-out forwards;
@@ -523,7 +527,7 @@ onUnmounted(() => {
     width: min(340px, 100%);
     padding: 22px 18px 18px;
     border-radius: 20px;
-    background: white;
+    background: var(--bp-surface);
     text-align: center;
     box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
 }
@@ -534,18 +538,18 @@ onUnmounted(() => {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: #FFF0F1;
+    background: var(--bp-primary-faint);
     color: var(--main-color);
     font-size: 30px;
 }
 .kn-confirm-title{
     font-size: 20px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-confirm-text{
     font-size: 14px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .kn-confirm-actions{
     display: grid;
@@ -598,7 +602,7 @@ onUnmounted(() => {
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: #555B63;
+    color: var(--bp-text-secondary);
 }
 .kn-menu-button{
     display: flex;
@@ -606,10 +610,10 @@ onUnmounted(() => {
     gap: 10px;
     min-height: 48px;
     padding: 0 14px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--bp-border);
     border-radius: 12px;
-    background: white;
-    color: #1F2328;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 15px;
     font-weight: 600;
@@ -617,7 +621,7 @@ onUnmounted(() => {
     cursor: pointer;
 }
 .kn-menu-button:active{
-    background: #F6F7F9;
+    background: var(--page-gray);
 }
 .kn-menu-button--primary{
     justify-content: center;
@@ -627,8 +631,8 @@ onUnmounted(() => {
     font-weight: 700;
 }
 .kn-menu-button--danger{
-    border-color: #F3C4C9;
-    background: #FFF5F6;
+    border-color: var(--bp-primary-weak);
+    background: var(--bp-primary-faint);
     color: var(--main-color);
 }
 </style>

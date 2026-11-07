@@ -70,7 +70,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
-import { CUP_ROWS, getActionIndexOfTurn, getAllowedThrowers, getHittableCups, previewHit, replay, type KnechtAction, type ThrowOutcome } from './knechtEngine';
+import { CUP_ROWS, getActionIndexOfTurn, getAllowedThrowers, getHittableCups, previewHit, type KnechtAction, type ThrowOutcome } from './knechtEngine';
 import { TEAM_COLORS, getTeam } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
@@ -87,7 +87,7 @@ const actionIndex = computed(() => getActionIndexOfTurn(props.game.actions.value
 const action = computed(() => props.game.actions.value[actionIndex.value]);
 
 // Spielstand direkt vor diesem Wurf: welche Werfer und Becher waren da moeglich?
-const stateBefore = computed(() => replay(props.game.config.value, props.game.actions.value.slice(0, actionIndex.value)).state);
+const stateBefore = computed(() => props.game.getStateAfter(actionIndex.value));
 const team = computed(() => getTeam(props.game.match, stateBefore.value.activeTeamIndex));
 const allowedThrowers = computed(() => {
     const allowed = getAllowedThrowers(stateBefore.value);
@@ -152,7 +152,7 @@ const remove = () => apply(props.game.actions.value.filter((_, index) => index !
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: #555B63;
+    color: var(--bp-text-secondary);
 }
 .kn-edit-chips{
     display: flex;
@@ -161,10 +161,10 @@ const remove = () => apply(props.game.actions.value.filter((_, index) => index !
 }
 .kn-edit-chip{
     padding: 8px 12px;
-    border: 1.5px solid #E6E8EB;
+    border: 1.5px solid var(--bp-border);
     border-radius: 10px;
-    background: white;
-    color: #1F2328;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 14px;
     font-weight: 600;
@@ -172,7 +172,7 @@ const remove = () => apply(props.game.actions.value.filter((_, index) => index !
 }
 .kn-edit-chip--active{
     border-color: var(--main-color);
-    background: #FFF5F6;
+    background: var(--bp-primary-faint);
     color: var(--main-color);
 }
 .kn-edit-chip:disabled{
@@ -194,8 +194,8 @@ const remove = () => apply(props.game.actions.value.filter((_, index) => index !
     height: 40px;
     border: 3px solid var(--kn-team-color);
     border-radius: 50%;
-    background: white;
-    color: #1F2328;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 13px;
     font-weight: 700;
@@ -206,8 +206,8 @@ const remove = () => apply(props.game.actions.value.filter((_, index) => index !
     color: white;
 }
 .kn-edit-cup:disabled{
-    border-color: #E6E8EB;
-    color: #B5B9C0;
+    border-color: var(--bp-border);
+    color: var(--bp-text-faint);
     cursor: default;
 }
 .kn-edit-toggle{
@@ -215,20 +215,20 @@ const remove = () => apply(props.game.actions.value.filter((_, index) => index !
     align-items: center;
     gap: 8px;
     font-size: 14px;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-edit-info{
     padding: 12px;
     border-radius: 12px;
-    background: #F6F7F9;
-    color: #6B7079;
+    background: var(--page-gray);
+    color: var(--bp-text-muted);
     font-size: 14px;
 }
 .kn-edit-error{
     padding: 10px 12px;
     border-radius: 12px;
-    background: #FFF5F6;
-    color: #B42318;
+    background: var(--bp-primary-faint);
+    color: var(--bp-primary-text);
     font-size: 13px;
 }
 .kn-edit-footer{
@@ -250,8 +250,8 @@ const remove = () => apply(props.game.actions.value.filter((_, index) => index !
     cursor: pointer;
 }
 .kn-edit-button-delete{
-    border: 1px solid #F3C4C9;
-    background: #FFF5F6;
+    border: 1px solid var(--bp-primary-weak);
+    background: var(--bp-primary-faint);
     color: var(--main-color);
 }
 .kn-edit-button-save{
@@ -260,7 +260,7 @@ const remove = () => apply(props.game.actions.value.filter((_, index) => index !
     color: white;
 }
 .kn-edit-button-save:disabled{
-    background: #CDD0D6;
+    background: var(--bp-fill-strong);
     cursor: default;
 }
 </style>

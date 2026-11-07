@@ -102,7 +102,7 @@ const entries = computed<Entry[]>(() => {
 }
 .kn-tl-empty{
     padding: 24px 0;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
     font-size: 14px;
     text-align: center;
 }
@@ -114,8 +114,8 @@ const entries = computed<Entry[]>(() => {
     margin: 4px 0;
     padding: 4px 12px;
     border-radius: 999px;
-    background: #F1F2F4;
-    color: #3A3F46;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text);
     font-size: 12px;
     font-weight: 700;
 }
@@ -125,10 +125,10 @@ const entries = computed<Entry[]>(() => {
     gap: 10px;
     width: 100%;
     padding: 9px 12px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--bp-border);
     border-left: 4px solid var(--kn-team-color);
     border-radius: 12px;
-    background: white;
+    background: var(--bp-surface);
     font: inherit;
     text-align: left;
 }
@@ -140,10 +140,10 @@ const entries = computed<Entry[]>(() => {
     cursor: pointer;
 }
 .kn-tl-turn--editable:active{
-    background: #F6F7F9;
+    background: var(--page-gray);
 }
 .kn-tl-turn--zero{
-    background: #FAFBFC;
+    background: var(--bp-surface-soft);
 }
 .kn-tl-icon{
     display: flex;
@@ -152,13 +152,13 @@ const entries = computed<Entry[]>(() => {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--kn-team-color) 12%, white);
+    background: color-mix(in srgb, var(--kn-team-color) 12%, var(--bp-surface));
     color: var(--kn-team-color);
     font-size: 16px;
 }
 .kn-tl-turn--zero .kn-tl-icon{
-    background: #F1F2F4;
-    color: #8A9099;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-subtle);
 }
 .kn-tl-text{
     display: flex;
@@ -172,11 +172,11 @@ const entries = computed<Entry[]>(() => {
     white-space: nowrap;
     font-size: 14px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-tl-label{
     font-size: 12px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .kn-tl-meta{
     display: flex;
@@ -191,10 +191,10 @@ const entries = computed<Entry[]>(() => {
 }
 .kn-tl-minute{
     font-size: 11px;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
 }
 .kn-tl-edit{
     font-size: 12px;
-    color: #B5B9C0;
+    color: var(--bp-text-faint);
 }
 </style>

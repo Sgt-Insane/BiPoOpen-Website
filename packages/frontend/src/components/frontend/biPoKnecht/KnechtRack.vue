@@ -125,7 +125,7 @@ const onAirballClick = (event: MouseEvent) => {
     width: 100%;
     height: 100%;
     container-type: size;
-    background: #EEF1F4;
+    background: var(--bp-fill);
     transition: background .25s ease, opacity .25s ease, filter .25s ease;
 }
 .kn-rack--up{ flex-direction: column; }
@@ -136,11 +136,11 @@ const onAirballClick = (event: MouseEvent) => {
 
 .kn-rack--target{
     cursor: pointer;
-    background: #E9EDF1;
+    background: var(--bp-fill-strong);
     box-shadow: inset 0 0 0 1.5px rgba(31, 35, 40, .08);
 }
 .kn-rack--waiting{
-    background: #F3F4F6;
+    background: var(--bp-fill-soft);
     filter: grayscale(.85);
     opacity: .5;
     pointer-events: none;
@@ -173,7 +173,7 @@ const onAirballClick = (event: MouseEvent) => {
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
     pointer-events: none;
 }
 .kn-zone-label .KnechtIcon{
@@ -229,7 +229,7 @@ const onAirballClick = (event: MouseEvent) => {
     padding: 0;
     border: none;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--kn-team-color) 18%, white);
+    background: color-mix(in srgb, var(--kn-team-color) 18%, var(--bp-surface));
     box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) var(--kn-team-color);
     color: var(--kn-team-color);
     cursor: default;
@@ -242,7 +242,7 @@ const onAirballClick = (event: MouseEvent) => {
     width: 34%;
     height: 34%;
     border-radius: 50%;
-    background: white;
+    background: var(--bp-surface);
     box-shadow: 0 0 0 1px rgba(31, 35, 40, .15);
 }
 
@@ -254,12 +254,12 @@ const onAirballClick = (event: MouseEvent) => {
 }
 .kn-cup--hit{
     background: transparent;
-    box-shadow: inset 0 0 0 1.5px #D3D6DB;
+    box-shadow: inset 0 0 0 1.5px var(--bp-border-strong);
 }
 .kn-cup--pending{
-    background: #FDF1D8;
+    background: var(--bp-gold-weak);
     box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) #F5A524;
-    color: #B37400;
+    color: var(--bp-gold);
 }
 .kn-cup--bomb,
 .kn-cup--candidate{
@@ -267,9 +267,9 @@ const onAirballClick = (event: MouseEvent) => {
     animation: kn-glow 1.2s ease-in-out infinite;
 }
 .kn-cup--chosen{
-    background: #1F2328;
-    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) #1F2328;
-    color: white;
+    background: var(--bp-inverse-bg);
+    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) var(--bp-inverse-bg);
+    color: var(--bp-inverse-text);
 }
 .kn-rack--picking .kn-cup:not(.kn-cup--candidate):not(.kn-cup--chosen){
     opacity: .35;

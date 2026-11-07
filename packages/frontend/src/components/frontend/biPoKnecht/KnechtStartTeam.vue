@@ -108,23 +108,23 @@ onBeforeUnmount(stopRps);
     width: min(420px, 100%);
     padding: 20px 16px 16px;
     border-radius: 20px;
-    background: white;
+    background: var(--bp-surface);
     box-shadow: 0 12px 40px rgba(0, 0, 0, .18);
 }
 .kn-start-title{
     margin-bottom: 4px;
     font-size: 22px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-start-option{
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px;
-    border: 1.5px solid #E6E8EB;
+    border: 1.5px solid var(--bp-border);
     border-radius: 16px;
-    background: white;
+    background: var(--bp-surface);
     font: inherit;
     text-align: left;
     cursor: pointer;
@@ -132,7 +132,7 @@ onBeforeUnmount(stopRps);
 }
 .kn-start-option--active{
     border-color: var(--kn-team-color);
-    background: color-mix(in srgb, var(--kn-team-color) 8%, white);
+    background: color-mix(in srgb, var(--kn-team-color) 8%, var(--bp-surface));
     box-shadow: 0 0 0 1px var(--kn-team-color);
 }
 .kn-start-avatar{
@@ -149,14 +149,14 @@ onBeforeUnmount(stopRps);
 .kn-start-team{
     font-size: 15px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-start-players{
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 13px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .kn-start-check{
     display: flex;
@@ -164,7 +164,7 @@ onBeforeUnmount(stopRps);
     justify-content: center;
     width: 24px;
     height: 24px;
-    border: 2px solid #D3D6DB;
+    border: 2px solid var(--bp-border-strong);
     border-radius: 50%;
     color: white;
     font-size: 11px;
@@ -175,10 +175,10 @@ onBeforeUnmount(stopRps);
 }
 .kn-start-rps{
     height: 44px;
-    border: 1px dashed #D3D6DB;
+    border: 1px dashed var(--bp-border-strong);
     border-radius: 12px;
     background: transparent;
-    color: #3A3F46;
+    color: var(--bp-text);
     font: inherit;
     font-size: 14px;
     font-weight: 700;
@@ -198,7 +198,7 @@ onBeforeUnmount(stopRps);
     font-weight: 800;
     letter-spacing: .1em;
     text-transform: uppercase;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
 }
 .kn-rps-hands{
     display: flex;
@@ -230,7 +230,7 @@ onBeforeUnmount(stopRps);
     height: 76px;
     border: 2px solid var(--kn-team-color);
     border-radius: 18px;
-    background: color-mix(in srgb, var(--kn-team-color) 8%, white);
+    background: color-mix(in srgb, var(--kn-team-color) 8%, var(--bp-surface));
     font-size: 38px;
     transition: transform .2s ease, box-shadow .2s ease;
 }
@@ -244,7 +244,7 @@ onBeforeUnmount(stopRps);
 .kn-rps-result{
     font-size: 16px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 @keyframes kn-shake{
     0%, 100%{ transform: translateY(0); }
@@ -267,16 +267,16 @@ onBeforeUnmount(stopRps);
     cursor: pointer;
 }
 .kn-start-button-cancel{
-    border: 1px solid #E6E8EB;
-    background: white;
-    color: #3A3F46;
+    border: 1px solid var(--bp-border);
+    background: var(--bp-surface);
+    color: var(--bp-text);
 }
 .kn-start-button-start{
     background: var(--main-color);
     color: white;
 }
 .kn-start-button-start:disabled{
-    background: #CDD0D6;
+    background: var(--bp-fill-strong);
     cursor: default;
 }
 </style>

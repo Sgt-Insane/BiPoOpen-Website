@@ -39,7 +39,7 @@
 import { computed } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import KnechtIcon from './KnechtIcon.vue';
-import { getBallNumber, getPlayerPoints, getTeamPoints, isOnFireEnabled } from './knechtEngine';
+import { getBallNumber, getFinalPlayerPoints, getTeamPoints, isOnFireEnabled } from './knechtEngine';
 import { TEAM_COLORS, formatPoints, getTeam, getTeamName } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
@@ -55,7 +55,7 @@ const team = computed(() => getTeam(props.game.match, props.teamIndex));
 const teamName = computed(() => getTeamName(props.game.match, props.teamIndex));
 const isActive = computed(() => props.game.isStarted.value && state.value.status === 'playing' && state.value.activeTeamIndex === props.teamIndex);
 const teamPoints = computed(() => getTeamPoints(state.value)[props.teamIndex]);
-const playerPoints = computed(() => getPlayerPoints(state.value)[props.teamIndex]);
+const playerPoints = computed(() => getFinalPlayerPoints(state.value)[props.teamIndex]);
 
 const turnBadge = computed(() => {
     if (state.value.nachwurfTeamIndex === props.teamIndex) return 'Nachwurf';
@@ -95,7 +95,7 @@ const getPlayerLine = (playerIndex: number) => {
     flex-direction: column;
     gap: 6px;
     padding: 8px 10px 10px;
-    background: white;
+    background: var(--bp-surface);
     transition: opacity .25s ease, filter .25s ease;
 }
 .kn-players--rotated{ transform: rotate(180deg); }
@@ -141,13 +141,13 @@ const getPlayerLine = (playerIndex: number) => {
 .kn-team-score{
     font-size: 16px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
     white-space: nowrap;
 }
 .kn-team-score small{
     font-size: 10px;
     font-weight: 600;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 
 .kn-player-list{
@@ -165,9 +165,9 @@ const getPlayerLine = (playerIndex: number) => {
     gap: 8px;
     min-width: 0;
     padding: 7px 9px;
-    border: 1.5px solid #E6E8EB;
+    border: 1.5px solid var(--bp-border);
     border-radius: 12px;
-    background: white;
+    background: var(--bp-surface);
     font: inherit;
     text-align: left;
     cursor: pointer;
@@ -178,7 +178,7 @@ const getPlayerLine = (playerIndex: number) => {
 }
 .kn-player--selected{
     border-color: var(--kn-team-color);
-    background: color-mix(in srgb, var(--kn-team-color) 9%, white);
+    background: color-mix(in srgb, var(--kn-team-color) 9%, var(--bp-surface));
     box-shadow: 0 0 0 1px var(--kn-team-color);
 }
 .kn-player--done,
@@ -202,7 +202,7 @@ const getPlayerLine = (playerIndex: number) => {
     white-space: nowrap;
     font-size: 14px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-fire{
     font-size: 13px;
@@ -213,7 +213,7 @@ const getPlayerLine = (playerIndex: number) => {
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 11px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 
 /* Kompakt: wartendes Team im Spielermodus */

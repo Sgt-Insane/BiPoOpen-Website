@@ -51,7 +51,7 @@ defineProps<{
     max-height: 88%;
     padding: 6px 16px 16px;
     border-radius: 20px 20px 0 0;
-    background: white;
+    background: var(--bp-surface);
     box-shadow: 0 -8px 30px rgba(0, 0, 0, .15);
 }
 .kn-sheet-handle{
@@ -60,7 +60,7 @@ defineProps<{
     height: 4px;
     margin: 4px 0 8px;
     border-radius: 999px;
-    background: #D3D6DB;
+    background: var(--bp-border-strong);
 }
 .kn-sheet-header{
     display: flex;
@@ -72,12 +72,12 @@ defineProps<{
 .kn-sheet-title{
     font-size: 20px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
     line-height: 1.2;
 }
 .kn-sheet-subtitle{
     font-size: 13px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .kn-sheet-close{
     display: flex;
@@ -87,8 +87,8 @@ defineProps<{
     height: 34px;
     border: none;
     border-radius: 50%;
-    background: #F1F2F4;
-    color: #3A3F46;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text);
     cursor: pointer;
 }
 .kn-sheet-content{

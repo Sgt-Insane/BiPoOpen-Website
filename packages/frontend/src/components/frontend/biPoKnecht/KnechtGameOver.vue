@@ -115,7 +115,6 @@ const reasonText = computed(() => {
         case 'doubleLastCup': return `Zwei Bälle im letzten Becher – Sofortsieg${overtime}`;
         case 'nachwurfDouble': return `Im Nachwurf mit zwei Bällen im letzten Becher gewonnen${overtime}`;
         case 'deathcup': return `💀 Deathcup – Sofortsieg${overtime}`;
-        case 'owncup': return `Gegner hat den letzten eigenen Becher runtergeworfen${overtime}`;
         default: return state.value.markers.some(marker => marker.kind === 'nachwurf')
             ? `Alle Becher getroffen, Nachwurf verfehlt${overtime}`
             : `Alle Becher getroffen${overtime}`;
@@ -164,10 +163,10 @@ const save = async (rematch: boolean) => {
     align-items: center;
     gap: 2px;
     padding: 20px 16px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--bp-border);
     border-top: 5px solid var(--kn-team-color);
     border-radius: 20px;
-    background: white;
+    background: var(--bp-surface);
     text-align: center;
 }
 .kn-over-trophy{
@@ -190,16 +189,16 @@ const save = async (rematch: boolean) => {
     line-height: 1;
 }
 .kn-over-colon{
-    color: #B5B9C0;
+    color: var(--bp-text-faint);
 }
 .kn-over-teams{
     font-size: 14px;
     font-weight: 600;
-    color: #3A3F46;
+    color: var(--bp-text);
 }
 .kn-over-reason{
     font-size: 13px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 
 .kn-over-section-title{
@@ -211,14 +210,14 @@ const save = async (rematch: boolean) => {
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: #555B63;
+    color: var(--bp-text-secondary);
 }
 .kn-over-section-hint{
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0;
     text-transform: none;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
 }
 
 .kn-awards{
@@ -231,10 +230,10 @@ const save = async (rematch: boolean) => {
     align-items: center;
     gap: 14px;
     padding: 14px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--bp-border);
     border-left: 5px solid var(--kn-team-color);
     border-radius: 16px;
-    background: white;
+    background: var(--bp-surface);
     animation: kn-award-in .4s ease both;
 }
 .kn-award:nth-child(2){ animation-delay: .1s; }
@@ -251,7 +250,7 @@ const save = async (rematch: boolean) => {
 .kn-award-title{
     font-size: 17px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-award-player{
     font-size: 13px;
@@ -260,7 +259,7 @@ const save = async (rematch: boolean) => {
 }
 .kn-award-detail{
     font-size: 13px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 @keyframes kn-award-in{
     from{ opacity: 0; transform: translateY(12px); }
@@ -271,10 +270,10 @@ const save = async (rematch: boolean) => {
     width: 100%;
     height: 48px;
     padding: 0 14px;
-    border: 1px solid #D3D6DB;
+    border: 1px solid var(--bp-border-strong);
     border-radius: 12px;
-    background: white;
-    color: #1F2328;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
     font: inherit;
     font-size: 16px;
     outline: none;
@@ -286,8 +285,8 @@ const save = async (rematch: boolean) => {
     margin-top: 16px;
     padding: 10px 12px;
     border-radius: 12px;
-    background: #FFF8E6;
-    color: #8A5A00;
+    background: var(--bp-gold-weak);
+    color: var(--bp-gold);
     font-size: 13px;
 }
 
@@ -295,8 +294,8 @@ const save = async (rematch: boolean) => {
     display: flex;
     gap: 8px;
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    border-top: 1px solid #E6E8EB;
-    background: white;
+    border-top: 1px solid var(--bp-border);
+    background: var(--bp-surface);
 }
 .kn-over-button{
     display: flex;
@@ -319,9 +318,9 @@ const save = async (rematch: boolean) => {
 .kn-over-button-secondary{
     width: 52px;
     min-width: 52px;
-    border: 1px solid #E6E8EB;
-    background: white;
-    color: #3A3F46;
+    border: 1px solid var(--bp-border);
+    background: var(--bp-surface);
+    color: var(--bp-text);
 }
 .kn-over-button:disabled{
     opacity: .6;

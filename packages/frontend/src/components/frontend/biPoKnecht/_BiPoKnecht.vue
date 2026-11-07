@@ -205,7 +205,7 @@ onMounted(() => {
 }
 .kn-page-intro{
     margin: 0;
-    color: #555B63;
+    color: var(--bp-text-secondary);
     font-size: 15px;
     line-height: 1.5;
 }
@@ -214,37 +214,37 @@ onMounted(() => {
     flex-direction: column;
     gap: 8px;
     padding: 16px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--bp-border);
     border-radius: 16px;
-    background: white;
+    background: var(--bp-surface);
 }
 .kn-page-resume{
     border-top: 4px solid var(--main-color);
 }
 .kn-page-demo{
     border-style: dashed;
-    background: #F2FAFC;
+    background: var(--secondary-color-weak);
 }
 .kn-page-demo p{
     margin: 0;
     font-size: 13px;
-    color: #555B63;
+    color: var(--bp-text-secondary);
 }
 .kn-page-card-title{
     font-size: 12px;
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: #555B63;
+    color: var(--bp-text-secondary);
 }
 .kn-page-resume-teams{
     font-size: 17px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-page-resume-meta{
     font-size: 13px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .kn-page-actions{
     display: flex;
@@ -268,9 +268,9 @@ onMounted(() => {
     cursor: pointer;
 }
 .kn-page-button-secondary{
-    border: 1px solid #E6E8EB;
-    background: white;
-    color: #3A3F46;
+    border: 1px solid var(--bp-border);
+    background: var(--bp-surface);
+    color: var(--bp-text);
 }
 .kn-page-button-new{
     flex: none;
@@ -281,7 +281,7 @@ onMounted(() => {
     gap: 6px;
     margin: 0;
     padding-left: 18px;
-    color: #3A3F46;
+    color: var(--bp-text);
     font-size: 14px;
     line-height: 1.45;
 }

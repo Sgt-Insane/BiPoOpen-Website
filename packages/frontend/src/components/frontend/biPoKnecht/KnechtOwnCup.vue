@@ -79,7 +79,7 @@ const confirm = () => {
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: #555B63;
+    color: var(--bp-text-secondary);
 }
 .kn-own-players{
     display: flex;
@@ -88,10 +88,10 @@ const confirm = () => {
 }
 .kn-own-player{
     padding: 8px 12px;
-    border: 1.5px solid #E6E8EB;
+    border: 1.5px solid var(--bp-border);
     border-left: 4px solid var(--kn-team-color);
     border-radius: 10px;
-    background: white;
+    background: var(--bp-surface);
     font: inherit;
     font-size: 14px;
     font-weight: 600;
@@ -99,7 +99,7 @@ const confirm = () => {
 }
 .kn-own-player--active{
     border-color: var(--kn-team-color);
-    background: color-mix(in srgb, var(--kn-team-color) 10%, white);
+    background: color-mix(in srgb, var(--kn-team-color) 10%, var(--bp-surface));
 }
 .kn-own-pyramid{
     display: flex;
@@ -116,21 +116,21 @@ const confirm = () => {
     height: 36px;
     border: 3px solid var(--kn-team-color);
     border-radius: 50%;
-    background: white;
+    background: var(--bp-surface);
     cursor: pointer;
 }
 .kn-own-cup--active{
-    background: #1F2328;
-    border-color: #1F2328;
+    background: var(--bp-inverse-bg);
+    border-color: var(--bp-inverse-bg);
 }
 .kn-own-cup:disabled{
-    border-color: #E6E8EB;
-    background: #F1F2F4;
+    border-color: var(--bp-border);
+    background: var(--bp-fill-soft);
     cursor: default;
 }
 .kn-own-hint{
     font-size: 13px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .kn-own-confirm{
     height: 50px;
@@ -144,7 +144,7 @@ const confirm = () => {
     cursor: pointer;
 }
 .kn-own-confirm:disabled{
-    background: #CDD0D6;
+    background: var(--bp-fill-strong);
     cursor: default;
 }
 </style>

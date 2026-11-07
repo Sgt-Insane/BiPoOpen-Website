@@ -74,13 +74,13 @@ const getSpecials = (stats: KnechtPlayerStats) => ([
     flex-direction: column;
     gap: 10px;
     padding: 12px;
-    border: 1px solid #E6E8EB;
+    border: 1px solid var(--bp-border);
     border-top: 4px solid var(--kn-team-color);
     border-radius: 16px;
-    background: white;
+    background: var(--bp-surface);
 }
 .kn-score-team--winner{
-    background: #FFF7F8;
+    background: var(--bp-primary-faint);
     box-shadow: 0 0 0 1px var(--main-color);
 }
 .kn-score-header{
@@ -102,7 +102,7 @@ const getSpecials = (stats: KnechtPlayerStats) => ([
     white-space: nowrap;
     font-size: 15px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-win-badge{
     padding: 2px 8px;
@@ -117,14 +117,14 @@ const getSpecials = (stats: KnechtPlayerStats) => ([
 .kn-score-total{
     font-size: 24px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-score-player{
     display: flex;
     flex-direction: column;
     gap: 4px;
     padding-top: 10px;
-    border-top: 1px dashed #E6E8EB;
+    border-top: 1px dashed var(--bp-border);
 }
 .kn-score-player-head{
     display: flex;
@@ -135,21 +135,21 @@ const getSpecials = (stats: KnechtPlayerStats) => ([
 .kn-score-player-name{
     font-size: 14px;
     font-weight: 700;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-score-player-points{
     font-size: 16px;
     font-weight: 800;
-    color: #1F2328;
+    color: var(--bp-text-strong);
 }
 .kn-score-player-points small{
     font-size: 11px;
     font-weight: 600;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .kn-score-line{
     font-size: 12px;
-    color: #6B7079;
+    color: var(--bp-text-muted);
 }
 .kn-score-specials{
     display: flex;
@@ -159,20 +159,20 @@ const getSpecials = (stats: KnechtPlayerStats) => ([
 .kn-score-special{
     padding: 2px 8px;
     border-radius: 999px;
-    background: #F1F2F4;
-    color: #3A3F46;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text);
     font-size: 11px;
     font-weight: 600;
 }
 .kn-score-footer{
     font-size: 11px;
-    color: #8A9099;
+    color: var(--bp-text-subtle);
 }
 .kn-score-note{
     padding: 10px 12px;
     border-radius: 12px;
-    background: #F6F7F9;
-    color: #3A3F46;
+    background: var(--page-gray);
+    color: var(--bp-text);
     font-size: 13px;
     font-weight: 600;
     text-align: center;
