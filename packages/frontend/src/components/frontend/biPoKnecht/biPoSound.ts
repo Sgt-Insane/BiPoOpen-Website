@@ -93,35 +93,36 @@ const tone = (ctx: AudioContext, at: number, from: number, to: number, volume: n
   osc.stop(start + duration);
 };
 
-// Tischtennisball trifft auf eine harte Flaeche: heller, sehr kurzer Klick
-const tock = (ctx: AudioContext, at: number, volume: number, pitch = 3200) => {
-  tone(ctx, at, pitch, pitch * 0.85, volume * 0.6, 0.035);
-  noiseBurst(ctx, at, 0.03, volume, [pitch * 1.3], 4, 0.001);
+// Tischtennisball trifft auf die Tischplatte: hohles, kurzes "Pock" plus ein leiser, tiefer Plattenklang
+const tock = (ctx: AudioContext, at: number, volume: number, pitch = 1150) => {
+  tone(ctx, at, pitch * 1.1, pitch * 0.9, volume * 0.55, 0.045);
+  tone(ctx, at, 240, 150, volume * 0.35, 0.05);
+  noiseBurst(ctx, at, 0.018, volume * 0.5, [pitch * 1.4], 1.5, 0.0008);
 };
 
 // Ball springt aus: die Abstaende und die Lautstaerke werden mit jedem Aufprall kleiner
 const bounces = (ctx: AudioContext, at: number, volume: number, count: number) => {
   let time = at;
-  let gap = 0.24;
+  let gap = 0.3;
   for (let i = 0; i < count; i++) {
-    tock(ctx, time, volume * Math.pow(0.62, i), 3200 + i * 120);
+    tock(ctx, time, volume * Math.pow(0.65, i), 1150 + i * 40);
     time += gap;
-    gap *= 0.68;
+    gap *= 0.7;
   }
 };
 
-// Ball faellt ins Bier: aufsteigender "Plopp" (Luftblase) mit etwas Spritzer
+// Ball faellt ins Bier: dumpfer "Plopp" (Luftblase) mit etwas Spritzer
 const plop = (ctx: AudioContext, at: number, volume: number, pitch = 1) => {
-  tone(ctx, at, 320 * pitch, 1100 * pitch, volume, 0.07);
-  splash(ctx, at + 0.01, volume * 0.35, 0.12);
+  tone(ctx, at, 180 * pitch, 520 * pitch, volume, 0.08);
+  splash(ctx, at + 0.01, volume * 0.3, 0.12);
 };
 
 const splash = (ctx: AudioContext, at: number, volume: number, duration: number) =>
-  noiseBurst(ctx, at, duration, volume, [1800, 900], 0.8, 0.005);
+  noiseBurst(ctx, at, duration, volume, [1100, 500], 0.8, 0.005);
 
 // Luftzug: Rauschen, das hoch- und wieder runterzieht
 const whoosh = (ctx: AudioContext, at: number, duration: number, volume: number) =>
-  noiseBurst(ctx, at, duration, volume, [500, 2600, 600], 1.2, duration * 0.4);
+  noiseBurst(ctx, at, duration, volume, [300, 1400, 350], 1.2, duration * 0.4);
 
 export const useBiPoSound = () => {
   const toggleMute = () => {
@@ -134,7 +135,7 @@ export const useBiPoSound = () => {
     vibrate(35);
     const ctx = getAudioContext();
     if (!ctx) return;
-    tock(ctx, 0, 0.25, 2600);
+    tock(ctx, 0, 0.25, 1400);
     plop(ctx, 0.05, 0.5);
   };
 
@@ -161,7 +162,7 @@ export const useBiPoSound = () => {
     const ctx = getAudioContext();
     if (!ctx) return;
 
-    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    const notes = [261.63, 329.63, 392.0, 523.25]; // C4, E4, G4, C5
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();

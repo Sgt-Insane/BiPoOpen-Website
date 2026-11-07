@@ -81,6 +81,22 @@ export const getTurnStats = (match: Match, turns: Turn[], points: number[][]): K
 
 export const getAccuracy = (stats: { hits: number; throws: number }) => stats.throws ? Math.round(stats.hits / stats.throws * 100) : 0;
 
+// ─── Becher je Eintrag (Spielverlauf auf der Webseite) ───
+// Wer bekommt die Becher dieses Eintrags? Beim eigenen Becher der Gegner.
+export const getScoringTeam = (turn: Turn) => turn.type === 'owncup' ? 1 - turn.teamIndex : turn.teamIndex;
+
+// Wie viele Becher ein Eintrag abraeumt. Bei der Bombe ist cupIndex1 der Becher des ersten Balls,
+// der schon mit dem ersten Wurf gezaehlt wurde. Alte Trickshots (vor dem neuen Knecht) waren selbst Treffer.
+export const getTurnCups = (turn: Turn) => {
+    const data = (turn.data ?? {}) as Record<string, unknown>;
+    const cupKeys = Object.keys(data).filter(key => key.startsWith('cupIndex')).length;
+    if (turn.type === 'deathcup' || turn.type === 'owncup') return (data.cups as number[] | undefined)?.length ?? 0;
+    if (turn.type === 'bomb') return Math.max(0, cupKeys - 1);
+    if (turn.type === 'lastCup' && data.double) return 0;       // der erste Ball hat den Becher schon gezaehlt
+    if (isHitTurnType(turn.type) || turn.type === 'trickshot') return cupKeys;
+    return 0;
+};
+
 // ─── Spielerprofil: alle mit dem Knecht gezaehlten Spiele eines Spielers ───
 export type KnechtCareerStats = Omit<KnechtPlayerStats, 'teamIndex' | 'playerIndex' | 'name'> & {
     games: number;

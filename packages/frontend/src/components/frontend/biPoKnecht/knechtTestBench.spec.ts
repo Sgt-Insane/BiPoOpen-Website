@@ -14,6 +14,7 @@ import {
     getTeamPoints, getPlayerPoints, previewHit, replay, CUP_COUNT, RE_RACKS_PER_TEAM,
     type KnechtAction, type KnechtConfig, type KnechtState,
 } from './knechtEngine';
+import { getScoringTeam, getTurnCups } from './knechtStats';
 
 const networkCalls: string[] = [];
 vi.mock('axios', () => {
@@ -80,14 +81,7 @@ const getLegalActions = (state: KnechtState, limitCups = Infinity, pickExtras: (
 };
 
 // ─── Invarianten ───
-const cupsOfTurn = (turn: Turn): number => {
-    const data = turn.data as Record<string, unknown>;
-    if (turn.type === 'deathcup' || turn.type === 'owncup') return (data.cups as number[]).length;
-    if (turn.type === 'lastCup' && data.double) return 0;
-    const keys = turn.type === 'bomb' ? ['cupIndex2', 'cupIndex3', 'cupIndex4'] : ['cupIndex', 'cupIndex1', 'cupIndex2', 'cupIndex3'];
-    return keys.filter(key => typeof data[key] === 'number').length;
-};
-
+// Becher je Eintrag kommen aus knechtStats (dieselbe Zaehlung zeigt der Spielverlauf auf der Webseite)
 const checkInvariants = (state: KnechtState, previous: KnechtState | null, action: KnechtAction | null) => {
     const context = () => JSON.stringify({ action, turns: state.turns.slice(-6).map(t => `${t.teamIndex}.${t.playerIndex}:${t.type}`) });
 
@@ -102,8 +96,7 @@ const checkInvariants = (state: KnechtState, previous: KnechtState | null, actio
     // 2. Punkte = genommene Becher (+ Siegpunkt), je Team
     const cupsPerTeam = [0, 0];
     state.turns.forEach(turn => {
-        const owner = turn.type === 'owncup' ? 1 - turn.teamIndex : turn.teamIndex;
-        cupsPerTeam[owner] += cupsOfTurn(turn);
+        cupsPerTeam[getScoringTeam(turn)] += getTurnCups(turn);
     });
     const points = getTeamPoints(state);
     [0, 1].forEach(team => {

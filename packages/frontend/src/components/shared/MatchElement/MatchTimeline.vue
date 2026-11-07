@@ -1,329 +1,359 @@
+<template>
+    <div class="MatchTimeline">
+        <div class="mtl-header">
+            <span class="mtl-title">Spielverlauf</span>
+            <span v-if="duration" class="mtl-duration">{{ duration }}</span>
+        </div>
+
+        <!-- Trefferquote je Team -->
+        <div class="mtl-teams">
+            <div v-for="team in teamSummaries" :key="team.teamIndex" class="mtl-team" :style="{ '--mtl-team-color': TEAM_COLORS[team.teamIndex] }">
+                <span class="mtl-team-name">{{ team.name }}</span>
+                <span class="mtl-team-stats">{{ team.hits }}/{{ team.throws }} Treffer · {{ team.accuracy }} %</span>
+            </div>
+        </div>
+
+        <!-- Becherverlauf: wer lag wann vorne? -->
+        <svg v-if="chartLines.length" class="mtl-chart" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+            <line v-for="y in [2, 21, 40]" :key="y" x1="0" x2="100" :y1="y" :y2="y" class="mtl-chart-grid" vector-effect="non-scaling-stroke" />
+            <polyline v-for="line in chartLines" :key="line.teamIndex" :points="line.points" :stroke="TEAM_COLORS[line.teamIndex]" class="mtl-chart-line" vector-effect="non-scaling-stroke" />
+        </svg>
+
+        <!-- Treffer: Team 1 links, Team 2 rechts, in der Mitte Minute und Zwischenstand -->
+        <div class="mtl-list">
+            <div v-for="row in rows" :key="row.key" class="mtl-row" :style="{ '--mtl-team-color': TEAM_COLORS[row.teamIndex] }">
+                <div class="mtl-side mtl-side--left">
+                    <template v-if="row.teamIndex === 0">
+                        <span class="mtl-text">
+                            <span class="mtl-label">{{ row.label }}</span>
+                            <span v-if="row.player" class="mtl-player">{{ row.player }}</span>
+                        </span>
+                        <span class="mtl-icon"><KnechtIcon :name="row.icon" /></span>
+                    </template>
+                </div>
+
+                <div class="mtl-center">
+                    <span class="mtl-score">
+                        <span :class="{ 'mtl-score--changed': row.scoringTeam === 0 }">{{ row.score[0] }}</span>:<span :class="{ 'mtl-score--changed': row.scoringTeam === 1 }">{{ row.score[1] }}</span>
+                    </span>
+                    <span v-if="row.minute !== null" class="mtl-minute">{{ row.minute }}'</span>
+                </div>
+
+                <div class="mtl-side mtl-side--right">
+                    <template v-if="row.teamIndex === 1">
+                        <span class="mtl-icon"><KnechtIcon :name="row.icon" /></span>
+                        <span class="mtl-text">
+                            <span class="mtl-label">{{ row.label }}</span>
+                            <span v-if="row.player" class="mtl-player">{{ row.player }}</span>
+                        </span>
+                    </template>
+                </div>
+            </div>
+
+            <div class="mtl-final">
+                Endstand <strong>{{ finalScore[0] }} : {{ finalScore[1] }}</strong>
+            </div>
+        </div>
+    </div>
+</template>
+
 <script setup lang="ts">
 import { computed, PropType } from 'vue';
+import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
+import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
+import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
+import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
+import { TEAM_COLORS, formatDuration, formatPoints, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 const props = defineProps({
-  match: { type: Object as PropType<Match>, required: true },
+    match: { type: Object as PropType<Match>, required: true },
 });
 
-const turnLabel: Record<Turn['type'], string> = {
-  hit: 'Treffer',
-  miss: 'Nullwurf',
-  airball: 'Airball',
-  bomb: 'Bombe',
-  bouncer: 'Bouncer',
-  trickshot: 'Trickshot',
-  onfire: 'On Fire',
-  ballsback: 'Balls Back',
-  lastCup: 'Letzter Becher',
-  deathcup: 'Deathcup',
-  owncup: 'Eigener Becher',
+const SHORT_LABELS: Partial<Record<Turn['type'], string>> = {
+    bomb: 'Bombe',
+    bouncer: 'Bouncer',
+    onfire: 'On Fire',
+    ballsback: 'Balls Back',
+    lastCup: 'Letzter Becher',
+    deathcup: 'Deathcup',
+    owncup: 'Eigener Becher',
 };
 
-const importantTypes = new Set<Turn['type']>(['hit', 'bomb', 'bouncer', 'trickshot', 'onfire', 'ballsback', 'lastCup', 'deathcup', 'owncup']);
-const EVENT_MIN_GAP = 5; // min % gap between events before spreading
+type Row = {
+    key: number;
+    teamIndex: number;          // wer geworfen hat
+    scoringTeam: number;        // wer die Becher bekommt, -1 wenn kein Becher faellt
+    icon: KnechtIconName;
+    label: string;
+    player: string;
+    minute: number | null;
+    time: number;
+    score: [number, number];
+};
 
-const duration = computed(() => {
-  if (!props.match.time || !props.match.endTime) return 1;
-  return props.match.endTime - props.match.time || 1;
+const turns = computed(() => props.match.turns ?? []);
+const duration = computed(() => formatDuration(props.match.time, props.match.endTime));
+
+const getData = (turn: Turn) => (turn.data ?? {}) as Record<string, unknown>;
+
+const isTrickshotHit = (turn: Turn, previous?: Turn) =>
+    previous?.type === 'trickshot' && previous.teamIndex === turn.teamIndex && getData(previous).catcherIndex === turn.playerIndex;
+
+const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
+    const data = getData(turn);
+    const kinds = [
+        SHORT_LABELS[turn.type],
+        turn.type !== 'bouncer' && data.bouncer && 'Bouncer',
+        (turn.type === 'trickshot' || isTrickshotHit(turn, previous)) && 'Trickshot',
+    ].filter(Boolean);
+    const label = kinds.length ? kinds.join(' · ') : 'Treffer';
+    return cups > 1 && turn.type !== 'owncup' ? `${label} +${cups}` : label;
+};
+
+const rows = computed<Row[]>(() => {
+    const score: [number, number] = [0, 0];
+    const start = props.match.time;
+    const list: Row[] = [];
+
+    turns.value.forEach((turn, index) => {
+        const cups = getTurnCups(turn);
+        if (!cups && !isHitTurnType(turn.type)) return;
+        const scoringTeam = getScoringTeam(turn);
+        score[scoringTeam] += cups;
+        const team = getTeam(props.match, turn.teamIndex);
+        list.push({
+            key: index,
+            teamIndex: turn.teamIndex,
+            scoringTeam: cups ? scoringTeam : -1,
+            icon: turn.type === 'hit' && isTrickshotHit(turn, turns.value[index - 1]) ? 'trickshot' : TURN_ICONS[turn.type],
+            label: getLabel(turn, turns.value[index - 1], cups),
+            player: team.players.length > 1 ? getPlayerName(props.match, turn.teamIndex, turn.playerIndex) : '',
+            minute: start && turn.time ? Math.max(0, Math.floor((turn.time - start) / 60000)) : null,
+            time: turn.time,
+            score: [score[0], score[1]],
+        });
+    });
+    return list;
 });
 
-type LayoutEvent = {
-  position: number;
-  displayPosition: number;
-  teamIndex: number;
-  label: string;
-  playerName: string;
-  minute: number;
-  hasOffset: boolean;
-};
+// Endstand aus den gespeicherten Punkten (kann z.B. durch den Siegpunkt vom Becherstand abweichen)
+const finalScore = computed(() => [props.match.team1, props.match.team2]
+    .map(team => formatPoints(team.players.reduce((sum, player) => sum + (player.score ?? 0), 0))));
 
-function getPlayerName(teamIndex: number, playerIndex: number): string {
-  const team = teamIndex === 0 ? props.match.team1 : props.match.team2;
-  if (!team?.players?.[playerIndex]) return '';
-  return team.players[playerIndex].name;
-}
-
-function spreadEvents(events: LayoutEvent[]): LayoutEvent[] {
-  if (events.length <= 1) return events;
-  const sorted = [...events].sort((a, b) => a.position - b.position);
-
-  for (let pass = 0; pass < 20; pass++) {
-    let changed = false;
-    for (let i = 1; i < sorted.length; i++) {
-      const gap = sorted[i].displayPosition - sorted[i - 1].displayPosition;
-      if (gap < EVENT_MIN_GAP) {
-        const adjust = (EVENT_MIN_GAP - gap) / 2;
-        sorted[i - 1].displayPosition -= adjust;
-        sorted[i].displayPosition += adjust;
-        changed = true;
-      }
-    }
-    if (!changed) break;
-  }
-
-  for (const e of sorted) {
-    e.displayPosition = Math.max(2, Math.min(98, e.displayPosition));
-    e.hasOffset = Math.abs(e.displayPosition - e.position) > 0.5;
-  }
-
-  return sorted;
-}
-
-const allRawEvents = computed(() => {
-  if (!props.match.turns || !props.match.time) return [];
-  const start = props.match.time;
-  const dur = duration.value;
-
-  return props.match.turns
-    .filter(t => importantTypes.has(t.type))
-    .map(t => {
-      const pos = Math.min(Math.max(((t.time - start) / dur) * 100, 2), 98);
-      return {
-        position: pos,
-        displayPosition: pos,
-        teamIndex: t.teamIndex,
-        label: turnLabel[t.type],
-        playerName: getPlayerName(t.teamIndex, t.playerIndex),
-        minute: Math.floor((t.time - start) / 60000),
-        hasOffset: false,
-      } as LayoutEvent;
+const teamSummaries = computed(() => {
+    const points = [props.match.team1, props.match.team2].map(team => team.players.map(player => player.score ?? 0));
+    const stats = getTurnStats(props.match, turns.value, points);
+    return [0, 1].map(teamIndex => {
+        const teamStats = stats.filter(entry => entry.teamIndex === teamIndex);
+        const hits = teamStats.reduce((sum, entry) => sum + entry.hits, 0);
+        const throws = teamStats.reduce((sum, entry) => sum + entry.throws, 0);
+        return { teamIndex, name: getTeamName(props.match, teamIndex), hits, throws, accuracy: getAccuracy({ hits, throws }) };
     });
 });
 
-const team1Events = computed(() => spreadEvents(allRawEvents.value.filter(e => e.teamIndex === 0)));
-const team2Events = computed(() => spreadEvents(allRawEvents.value.filter(e => e.teamIndex === 1)));
+// Treppenlinie je Team: x = Spielzeit (oder Reihenfolge ohne Zeiten), y = abgeraeumte Becher
+const chartLines = computed(() => {
+    const list = rows.value;
+    if (list.length < 2) return [];
+    const start = props.match.time ?? list[0].time;
+    const end = props.match.endTime ?? list[list.length - 1].time;
+    const useTime = !!start && !!end && end > start && list.every(row => !!row.time);
+    const maxScore = Math.max(1, ...list[list.length - 1].score);
+    const toX = (row: Row, index: number) => useTime ? (row.time - start) / (end - start) * 100 : (index + 1) / list.length * 100;
+    const toY = (score: number) => 40 - score / maxScore * 38;
 
-function formatDuration(startTime: number, endTime: number): string {
-  const diff = endTime - startTime;
-  const minutes = Math.floor(diff / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
+    return [0, 1].map(teamIndex => {
+        const points = ['0,40'];
+        let current = 0;
+        list.forEach((row, index) => {
+            if (row.score[teamIndex] === current) return;
+            const x = Math.min(100, Math.max(0, toX(row, index))).toFixed(2);
+            points.push(`${x},${toY(current).toFixed(2)}`, `${x},${toY(row.score[teamIndex]).toFixed(2)}`);
+            current = row.score[teamIndex];
+        });
+        points.push(`100,${toY(current).toFixed(2)}`);
+        return { teamIndex, points: points.join(' ') };
+    });
+});
 </script>
 
-<template>
-  <div class="timeline-container">
-    <div class="timeline-header">
-      <span class="timeline-title">Spielverlauf</span>
-      <span v-if="match.time && match.endTime" class="timeline-duration">
-        {{ formatDuration(match.time, match.endTime) }} min
-      </span>
-    </div>
-
-    <div class="timeline-body">
-      <!-- Left column: Team 1 -->
-      <div class="timeline-col team1-col">
-        <div v-for="(event, i) in team1Events" :key="'t1-' + i"
-          class="event-row"
-          :style="{ top: event.displayPosition + '%' }">
-          <div class="event-content">
-            <span class="event-player">{{ event.playerName }}</span>
-            <span class="event-label">{{ event.label }}</span>
-            <span class="event-minute">{{ event.minute }}'</span>
-          </div>
-          <div class="event-hline" :class="{ 'to-beam': !event.hasOffset }"></div>
-        </div>
-        <!-- Bracket connectors for spread events -->
-        <template v-for="(event, i) in team1Events.filter(e => e.hasOffset)" :key="'b1-' + i">
-          <div class="bracket-vline" :style="{
-            top: Math.min(event.displayPosition, event.position) + '%',
-            height: Math.abs(event.displayPosition - event.position) + '%'
-          }"></div>
-          <div class="bracket-tick" :style="{ top: event.position + '%' }"></div>
-        </template>
-      </div>
-
-      <!-- Beam -->
-      <div class="timeline-beam">
-        <div class="beam-dot"></div>
-        <div class="beam-line"></div>
-        <div class="beam-dot"></div>
-      </div>
-
-      <!-- Right column: Team 2 -->
-      <div class="timeline-col team2-col">
-        <div v-for="(event, i) in team2Events" :key="'t2-' + i"
-          class="event-row"
-          :style="{ top: event.displayPosition + '%' }">
-          <div class="event-hline" :class="{ 'to-beam': !event.hasOffset }"></div>
-          <div class="event-content">
-            <span class="event-minute">{{ event.minute }}'</span>
-            <span class="event-label">{{ event.label }}</span>
-            <span class="event-player">{{ event.playerName }}</span>
-          </div>
-        </div>
-        <!-- Bracket connectors for spread events -->
-        <template v-for="(event, i) in team2Events.filter(e => e.hasOffset)" :key="'b2-' + i">
-          <div class="bracket-vline" :style="{
-            top: Math.min(event.displayPosition, event.position) + '%',
-            height: Math.abs(event.displayPosition - event.position) + '%'
-          }"></div>
-          <div class="bracket-tick" :style="{ top: event.position + '%' }"></div>
-        </template>
-      </div>
-    </div>
-  </div>
-</template>
-
 <style scoped>
-.timeline-container {
-  width: 100%;
-  padding: 12px 0;
+.MatchTimeline{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 0 4px;
+}
+.mtl-header{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+.mtl-title{
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--bp-text-strong);
+}
+.mtl-duration{
+    font-size: 12px;
+    color: var(--bp-text-muted);
 }
 
-.timeline-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+/* ─── Teams ─── */
+.mtl-teams{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
 }
-
-.timeline-title {
-  font-weight: 600;
-  font-size: 14px;
+.mtl-team{
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--mtl-team-color);
+    border-radius: 8px;
+    background: var(--bp-fill-soft);
 }
-
-.timeline-duration {
-  font-size: 12px;
-  color: gray;
+.mtl-team + .mtl-team{
+    align-items: flex-end;
+    border-left: none;
+    border-right: 3px solid var(--mtl-team-color);
+    text-align: right;
 }
-
-/* Main layout */
-.timeline-body {
-  display: flex;
-  position: relative;
-  min-height: 500px;
+.mtl-team-name{
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--bp-text-strong);
 }
-
-/* Columns */
-.timeline-col {
-  flex: 1;
-  position: relative;
-  overflow: visible;
-}
-
-/* Event row */
-.event-row {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  width: 100%;
-  transform: translateY(-50%);
-}
-
-.event-content {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.event-minute {
-  font-size: 11px;
-  color: var(--main-color, #c0392b);
-  font-weight: 700;
-}
-
-.event-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--main-color, #c0392b);
-}
-
-.event-player {
-  font-size: 10px;
-  color: gray;
-}
-
-/* Horizontal connector line */
-.event-hline {
-  flex-grow: 1;
-  height: 0;
-  border-top: 1.5px solid var(--main-color, #c0392b);
-  min-width: 5px;
-}
-
-.team1-col .event-hline.to-beam {
-  margin-right: -8px;
-}
-
-.team2-col .event-hline.to-beam {
-  margin-left: -8px;
-}
-
-/* Bracket: vertical connector */
-.bracket-vline {
-  position: absolute;
-  width: 0;
-}
-
-.team1-col .bracket-vline {
-  right: 0;
-  border-right: 1.5px solid var(--main-color, #c0392b);
-}
-
-.team2-col .bracket-vline {
-  left: 0;
-  border-left: 1.5px solid var(--main-color, #c0392b);
-}
-
-/* Bracket: horizontal tick to beam */
-.bracket-tick {
-  position: absolute;
-  height: 0;
-  border-top: 1.5px solid var(--main-color, #c0392b);
-}
-
-.team1-col .bracket-tick {
-  right: -8px;
-  width: 8px;
-}
-
-.team2-col .bracket-tick {
-  left: -8px;
-  width: 8px;
-}
-
-/* Vertical beam – solid red */
-.timeline-beam {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 14px;
-  flex-shrink: 0;
-}
-
-.beam-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--main-color, #c0392b);
-  flex-shrink: 0;
-}
-
-.beam-line {
-  flex-grow: 1;
-  width: 3px;
-  background-color: var(--main-color, #c0392b);
-  border-radius: 2px;
-}
-
-/* Mobile */
-@media (width <= 900px) {
-  .event-label {
+.mtl-team-stats{
     font-size: 11px;
-  }
-  .event-player {
-    font-size: 9px;
-  }
+    color: var(--bp-text-muted);
 }
 
-@media (width <= 360px) {
-  .timeline-body {
-    min-height: 350px;
-  }
-  .event-minute {
+/* ─── Becherverlauf ─── */
+.mtl-chart{
+    width: 100%;
+    height: 56px;
+    overflow: visible;
+}
+.mtl-chart-grid{
+    stroke: var(--bp-border);
+    stroke-width: 1;
+    stroke-dasharray: 3 4;
+}
+.mtl-chart-line{
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+}
+
+/* ─── Treffer ─── */
+.mtl-list{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.mtl-list::before{
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 22px;
+    left: 50%;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--bp-border);
+}
+.mtl-row{
+    display: grid;
+    grid-template-columns: 1fr 58px 1fr;
+    align-items: center;
+    min-height: 30px;
+}
+.mtl-side{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+.mtl-side--left{
+    justify-content: flex-end;
+    text-align: right;
+}
+.mtl-text{
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.15;
+}
+.mtl-label{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--bp-text);
+}
+.mtl-player{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 10px;
-  }
+    color: var(--bp-text-muted);
+}
+.mtl-icon{
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--mtl-team-color) 14%, var(--bp-surface));
+    color: var(--mtl-team-color);
+    font-size: 14px;
+}
+.mtl-center{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.mtl-score{
+    padding: 1px 7px;
+    border: 1px solid var(--bp-border);
+    border-radius: 999px;
+    background: var(--bp-surface);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bp-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.mtl-score--changed{
+    font-weight: 800;
+    color: var(--mtl-team-color);
+}
+.mtl-minute{
+    font-size: 9px;
+    line-height: 1.1;
+    color: var(--bp-text-subtle);
+}
+.mtl-final{
+    position: relative;
+    align-self: center;
+    margin-top: 4px;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--bp-fill-soft);
+    font-size: 12px;
+    color: var(--bp-text-muted);
+}
+.mtl-final strong{
+    color: var(--bp-text-strong);
 }
 </style>
