@@ -3,7 +3,12 @@
 
         <h1 class="bp-title">{{"Regeln"}}</h1>
 
-        <section v-for="section in sections" :key="section.label" class="ru-section" :class="`ru-section--${section.tone}`">
+        <!-- Allgemeine Regeln oder Liga & Cup -->
+        <nav class="ru-toggle">
+            <SelectButton v-model="ruleSet" :options="RULE_SETS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid />
+        </nav>
+
+        <section v-for="section in visibleSections" :key="section.label" class="ru-section" :class="`ru-section--${section.tone}`">
             <h2 class="ru-label">{{ section.label }}</h2>
 
             <div class="ru-card">
@@ -47,10 +52,20 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import SelectButton from 'primevue/selectbutton';
 import { useGrayPage } from '@/components/shared/useGrayPage';
 
 useGrayPage();
+
+const RULE_SETS = [
+    { label: 'Allgemein', value: 'general' },
+    { label: 'Liga & Cup', value: 'league' },
+];
+
+// /Regeln?Liga oeffnet direkt die Liga-Regeln
+const ruleSet = ref<'general' | 'league'>('Liga' in useRoute().query ? 'league' : 'general');
 
 // Alle Regeln starten eingeklappt
 const openRules = reactive(new Set<string>());
@@ -77,6 +92,9 @@ const icons = {
     trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
     repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
     clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    list: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
+    updown: '<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
+    pencil: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
 };
 
 // Becher pro Reihe, von der Spitze aus gezaehlt
@@ -136,6 +154,8 @@ const sections: Section[] = [
                 summary: 'wirft ein Spieler, kein On-Fire',
                 points: [
                     'Ein Spieler wirft beide Bälle des Zugs.',
+                    'Trifft er mit beiden, gilt Balls-Back, im selben Becher ist es eine Bombe.',
+                    'Beim Trickshot fängt und wirft der Spieler selbst.',
                     'Kein Heating Up und kein On-Fire.',
                     'Alle anderen Regeln gelten unverändert.',
                 ],
@@ -153,8 +173,10 @@ const sections: Section[] = [
                 summary: 'pro Zug, Ellenbogen hinter der Kante',
                 points: [
                     'Ball verlässt die Hand = geworfen.',
+                    'Reihenfolge der Werfer ist frei, jeder Spieler wirft aber nur einen Ball pro Zug.',
                     'Becher umgekippt durch den Ball = getroffen.',
                     'Eigene Becher vom Tisch gestoßen = getroffen, im 2 gegen 2 je 0,5 Treffer pro Becher für beide Gegner.',
+                    'Fällt dabei der letzte eigene Becher, zählt das als letzter Becher für den Gegner: Es folgt die Gentleman\'s Rule. Passiert es im eigenen Zug, endet der Zug sofort.',
                     'Gegner fängt den Ball vor Tisch/Becher = Treffer, Werfer wählt den Becher.',
                 ],
             },
@@ -165,7 +187,7 @@ const sections: Section[] = [
                 summary: 'wenn der Ball vorher aufspringt',
                 points: [
                     'Nach Tischkontakt darf verteidigt (weggeschlagen) werden.',
-                    'Den zweiten Becher wählt der Werfer.',
+                    'Den zweiten Becher wählt der Werfer – nie den letzten: steht sonst nur noch ein Becher, zählt der Bouncer als normaler Treffer.',
                     'Zählt als 2 Treffer.',
                     'Abpraller vom Becherrand zählt nicht doppelt.',
                 ],
@@ -209,6 +231,7 @@ const sections: Section[] = [
                     'Jeder Treffer zählt zur Serie, auch Bouncer, Bombe, gefangene Bälle und umgekippte Becher.',
                     'Trickshot setzt die Serie nicht fort, startet aber eine neue: nach 2 weiteren Treffern On-Fire.',
                     'Mit Balls-Back: erst On-Fire, danach je ein Extra-Wurf.',
+                    'Die Serie endet, sobald das andere Team wirft, und mit Beginn der Verlängerung. Balls-Back setzt sie fort.',
                     'Gilt nicht im 1 gegen 1.',
                 ],
             },
@@ -221,6 +244,7 @@ const sections: Section[] = [
                     'Solange der Ball auf dem Tisch ist, dürfen ihn beide Teams nehmen.',
                     'Fällt er auf den Boden, ist er aus dem Spiel.',
                     'Nimmt ihn das Wurfteam, wirft, wer ihn hat – und zwar einen Trickshot.',
+                    'Der verfehlte Wurf zählt als Fehlwurf des Werfers, ein Trickshot-Treffer zählt für den Fänger.',
                     'Wer so zwei Bälle hat, wirft beide, in beliebiger Reihenfolge.',
                     'Trickshots stapeln: Bleibt auch der Trickshot auf dem Tisch und man holt ihn, folgt ein weiterer.',
                     'Schwache Hand zählt nicht als Trickshot.',
@@ -272,6 +296,9 @@ const sections: Section[] = [
                     'Bouncer oder Bombe räumen nie den letzten Becher mit ab – einer bleibt immer stehen.',
                     'Als direkter Treffer zählen auch Bouncer, gefangene Bälle und Becher, die der Gegner selbst umstößt.',
                     'Beide Bälle im letzten Becher = direkt gewonnen, ohne Gentleman\'s Rule.',
+                    'Ist der letzte Becher getroffen, endet dieser Ball – auch bei On-Fire oder beim Nachwerfen. Die übrigen Bälle der Runde dürfen nur noch auf diesen Becher geworfen werden.',
+                    'Halbe Treffer (Bombe, eigene Becher) werden am Spielende innerhalb des Teams auf ganze Treffer verteilt, die Teamsumme bleibt gleich.',
+                    'Endet ein Spiel punktgleich (z. B. durch einen Deathcup im Nachwurf), bekommt der Sieger in der Statistik einen Siegpunkt.',
                 ],
             },
             {
@@ -280,9 +307,9 @@ const sections: Section[] = [
                 key: 'Nachwerfen',
                 summary: 'nach dem letzten Becher des Gegners',
                 points: [
-                    'Jeder Spieler wirft für sich: Wer trifft, bekommt den Ball zurück, bis er verfehlt.',
+                    'Jeder Spieler wirft für sich: Wer trifft, bekommt den Ball zurück, bis er verfehlt oder den letzten Becher trifft. Danach ist der Mitspieler dran, im 1 gegen 1 der zweite Ball.',
                     'Beide Bälle im letzten Becher beim Nachwerfen = Sieg.',
-                    'Alle Regeln gelten weiter, auch Trickshot, Bombe, Balls-Back und On-Fire – Extra-Würfe stapeln sich.',
+                    'Trickshot und Bombe gelten weiter, On-Fire und Balls-Back bringen im Nachwurf keine Extra-Würfe.',
                     'Fallen alle Becher, geht es in die Verlängerung.',
                 ],
             },
@@ -295,17 +322,106 @@ const sections: Section[] = [
                     'Es beginnt das Team, das vorgelegt hat.',
                     'Keine Re-Racks.',
                     'Die Gentleman\'s Rule gilt erneut.',
+                    'Es wird so lange verlängert, bis ein Sieger feststeht.',
                 ],
             },
         ],
     },
 ];
+
+const leagueSections: Section[] = [
+    {
+        label: 'Liga',
+        tone: 'blue',
+        rules: [
+            {
+                icon: 'user',
+                title: 'Modus',
+                key: '1 gegen 1',
+                summary: 'mit 10 Bechern nach den allgemeinen Regeln',
+                points: [
+                    'In der BiPo League und im League Cup hat jedes Team genau einen Spieler.',
+                    'Es gelten die allgemeinen Regeln für 1 gegen 1: beide Bälle pro Zug, kein Heating Up und kein On-Fire.',
+                ],
+            },
+            {
+                icon: 'list',
+                title: 'Tabelle',
+                key: 'Siege',
+                summary: 'dann Trefferdifferenz, dann Treffer',
+                points: [
+                    'Platzierung: 1. Siege, 2. Trefferdifferenz, 3. erzielte Treffer.',
+                    'Ein Unentschieden gibt es nicht.',
+                ],
+            },
+            {
+                icon: 'trophy',
+                title: 'Final Four',
+                key: 'Best of 3',
+                summary: 'die besten vier nach der Hauptrunde',
+                points: [
+                    'Halbfinale: 1. gegen 4. und 2. gegen 3., danach das Finale.',
+                    'Jede Paarung wird im Modus Best of 3 gespielt.',
+                ],
+            },
+            {
+                icon: 'updown',
+                title: 'Auf- und Abstieg',
+                key: '3 Teams',
+                summary: 'wechseln zwischen 1. und 2. Liga',
+                points: [
+                    'Die letzten drei Teams der 1. Liga steigen ab.',
+                    'Die besten drei Teams der 2. Liga steigen auf.',
+                ],
+            },
+        ],
+    },
+    {
+        label: 'League Cup',
+        tone: 'gold',
+        rules: [
+            {
+                icon: 'star',
+                title: 'League Cup',
+                key: 'K.-o.-System',
+                summary: 'Teams beider Ligen gegeneinander',
+                points: [
+                    'Für jede Runde wird festgelegt, wie viele Siege zum Weiterkommen nötig sind (Best of).',
+                    'Ein Unentschieden gibt es nicht.',
+                ],
+            },
+        ],
+    },
+    {
+        label: 'Eintragen',
+        tone: 'gray',
+        rules: [
+            {
+                icon: 'pencil',
+                title: 'Spiele eintragen',
+                key: 'Ergebnis oder BiPo Knecht',
+                summary: 'über „Eintragen“',
+                points: [
+                    'Liga- und Cup-Spiele direkt mit dem Ergebnis eintragen.',
+                    'Oder live mit dem BiPo Knecht zählen: er kennt die Regeln und trägt das Ergebnis automatisch ein.',
+                    'Im Schiedsrichter-Modus zählt eine dritte Person mit, ihr Name wird beim Eintragen gespeichert.',
+                ],
+            },
+        ],
+    },
+];
+
+const visibleSections = computed(() => ruleSet.value === 'league' ? leagueSections : sections);
 </script>
 
 <style scoped>
 .Rules{
     max-width: 720px;
     margin: 0 auto;
+}
+.ru-toggle{
+    max-width: 420px;
+    margin: 0 auto 24px;
 }
 
 /* Farbton je Abschnitt: Akzent fuer Label/Kernaussage/Punkte, Grund fuer das Icon-Feld */

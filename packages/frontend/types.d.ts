@@ -48,6 +48,8 @@ declare global {
         // Nur bei Pokalspielen gesetzt: zu welchem LeagueCup und welcher Runde das Spiel gehoert.
         cupId?: string;
         cupRound?: number;
+        // Schiedsrichter, falls das Spiel im BiPo Knecht von einer dritten Person eingetragen wurde
+        referee?: string;
     };
 
     type LeagueCupParticipant = {
@@ -94,20 +96,24 @@ declare global {
     type Turn = {
         playerIndex: number;
         teamIndex: number;
-        type: 'hit' | 'miss' | 'airball' | 'bomb' | 'bouncer' | 'trickshot' | 'onfire' | 'ballsback' | 'lastCup';
-        data: HitTurn | MissTurn | AirballTurn | BombTurn | BouncerTurn | TrickshotTurn | OnFireTurn | BallsBackTurn | LastCupTurn;
+        type: 'hit' | 'miss' | 'airball' | 'bomb' | 'bouncer' | 'trickshot' | 'onfire' | 'ballsback' | 'lastCup' | 'deathcup' | 'owncup';
+        data: HitTurn | MissTurn | AirballTurn | BombTurn | BouncerTurn | TrickshotTurn | OnFireTurn | BallsBackTurn | LastCupTurn | DeathcupTurn | OwnCupTurn;
         time: number; 
     };
 
+    // Zusatzbecher (Bouncer, Bombe) fehlen, wenn sonst der letzte Becher gefallen waere.
+    // bouncer: Treffer war zusaetzlich ein Bouncer (z.B. Balls Back per Bouncer).
     type HitTurn = { cupIndex: number };
     type MissTurn = { };
     type AirballTurn = { };
-    type BombTurn = { cupIndex1: number, cupIndex2: number, cupIndex3: number };
-    type BouncerTurn = { cupIndex1: number, cupIndex2: number };
-    type TrickshotTurn = {  };
-    type OnFireTurn = { cupIndex: number };
-    type BallsBackTurn = { cupIndex1: number };
-    type LastCupTurn = { cupIndex: number };
+    type BombTurn = { cupIndex1: number, cupIndex2?: number, cupIndex3?: number, cupIndex4?: number, bouncer?: boolean };   // cupIndex4 / bouncer: Bombe per Bouncer (4 Becher)
+    type BouncerTurn = { cupIndex1: number, cupIndex2?: number };
+    type TrickshotTurn = { catcherIndex?: number };     // wer den Ball gefangen hat und den Trickshot wirft
+    type OnFireTurn = { cupIndex: number, cupIndex2?: number, bouncer?: boolean };
+    type BallsBackTurn = { cupIndex1: number, cupIndex2?: number, bouncer?: boolean };
+    type LastCupTurn = { cupIndex: number, double?: boolean };   // double: weiterer Ball in den letzten Becher (Sofortsieg)
+    type DeathcupTurn = { cups: number[] };             // alle uebrigen Becher des Gegners
+    type OwnCupTurn = { cups: number[] };               // eigene Becher runtergeworfen, zaehlen fuer den Gegner
 
     // Stats
     type GroupWithStats = {  
@@ -235,6 +241,7 @@ declare global {
         partners: PartnerData[];
         extraStats: ExtraStats;
         badges: PlayerBadge[];
+        knecht: import('./src/components/frontend/biPoKnecht/knechtStats').KnechtCareerStats | null; // nur Spiele, die mit dem BiPo Knecht gezaehlt wurden
     };
 
     type PlayerEloSummary = {

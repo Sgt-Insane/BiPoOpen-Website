@@ -24,6 +24,8 @@
 
         <PlayerProfileActivity v-if="profileData.firstGameTime" :matchHistory="profileData.allMatchHistory"/>
 
+        <PlayerProfileKnechtCard v-if="profileData.knecht" :stats="profileData.knecht"/>
+
         <!-- Statistik je Spielart -->
         <section class="pp-section">
             <div class="pp-section-head">
@@ -75,6 +77,7 @@ import PlayerProfileEloCard from './PlayerProfileEloCard.vue';
 import PlayerProfileLeagueCard from './PlayerProfileLeagueCard.vue';
 import PlayerProfileAchievements from './PlayerProfileAchievements.vue';
 import PlayerProfileActivity from './PlayerProfileActivity.vue';
+import PlayerProfileKnechtCard from './PlayerProfileKnechtCard.vue';
 import PlayerProfileStats from './PlayerProfileStats.vue';
 import PlayerProfilePeers from './PlayerProfilePeers.vue';
 import PlayerProfileHistory from './PlayerProfileHistory.vue';

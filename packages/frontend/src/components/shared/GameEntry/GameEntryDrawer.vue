@@ -25,7 +25,7 @@
                     <span v-else class="ge-side-label">{{ sideLabels[sideIndex] }}</span>
 
                     <span v-if="winnerIndex === sideIndex" class="ge-win-badge">Sieg</span>
-                    <span class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
+                    <span v-if="!hideScores" class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
                 </div>
 
                 <div v-for="(player, playerIndex) in side.players" :key="playerIndex" class="ge-player">
@@ -56,6 +56,7 @@
                     </template>
 
                     <GameEntryScorePicker
+                        v-if="!hideScores"
                         v-model="player.score"
                         :max="maxScore"
                         :chances="getScoreChances(sides, sideIndex, playerIndex, maxScore)"
@@ -86,11 +87,24 @@
             </div>
             <EloExplainedSheet v-if="eloPreview" v-model:visible="eloExplainedVisible"/>
 
+            <!-- Spiel live im BiPo Knecht zaehlen statt das Ergebnis einzutragen -->
+            <button v-if="launch && !hideScores" type="button" class="ge-launch" :disabled="!canLaunch" @click="onLaunch()">
+                <span class="ge-launch-icon">🎯</span>
+                <span class="ge-launch-text">
+                    <span class="ge-launch-title">Mit BiPo Knecht spielen</span>
+                    <span class="ge-launch-subtitle">{{ canLaunch ? 'Jeden Wurf live zählen, Ergebnis wird automatisch eingetragen' : incompleteLabel }}</span>
+                </span>
+                <i class="pi pi-angle-right"></i>
+            </button>
+
             <div class="ge-footer">
                 <button v-if="remove" type="button" class="ge-button ge-button-delete" :disabled="loading" aria-label="Spiel löschen" @click="onDelete()">
                     <i class="pi pi-trash"></i>
                 </button>
-                <button type="button" class="ge-button ge-button-save" :disabled="!canSave || loading" @click="onSave()">
+                <button v-if="launch && hideScores" type="button" class="ge-button ge-button-save" :disabled="!canLaunch" @click="onLaunch()">
+                    {{ canLaunch ? 'BiPo Knecht starten' : launchIncompleteLabel }}
+                </button>
+                <button v-else type="button" class="ge-button ge-button-save" :disabled="!canSave || loading" @click="onSave()">
                     <i v-if="loading" class="pi pi-spin pi-spinner"></i>
                     <span v-else>{{ saveLabel }}</span>
                 </button>
@@ -106,6 +120,7 @@
  * - #player: ersetzt die Spielersuche (z.B. Liga-Team-Dropdown)
  * - #top: Inhalt ueber den Seiten (z.B. Pokal-Paarung), setzt die Seiten per setTeams
  * - lockedNames: Namen stehen fest (Turnier, Pokal), nur Treffer werden gewaehlt
+ * - launch: Spiel stattdessen live im BiPo Knecht zaehlen (hideScores: nur Teams waehlen, ohne Treffer)
  * - eloPreview: Elo-Wechsel unter den Seiten, nur fuer neue Spiele (bearbeitete sind schon eingerechnet)
  */
 import { computed, ref, watch } from 'vue';
@@ -140,6 +155,8 @@ const props = withDefaults(defineProps<{
     eloPreview?: boolean;
     save: (sides: GameEntrySide[]) => Promise<boolean | void>;
     remove?: () => Promise<boolean | void>;
+    launch?: (sides: GameEntrySide[]) => void;
+    hideScores?: boolean;
 }>(), {
     title: 'Spiel eintragen',
     sideLabels: () => ['Seite 1', 'Seite 2'],
@@ -289,6 +306,17 @@ const onDelete = () => {
     if (!props.remove || !confirm('Spiel wirklich löschen?')) return;
     const [name1, name2] = sides.value.map(getSideName);
     runAction(props.remove, `Gelöscht · ${name1} gegen ${name2}`, 'Spiel nicht gelöscht');
+}
+
+// ─── BiPo Knecht ───
+const canLaunch = computed(() => hasAllNames.value && !hasDuplicateNames.value);
+const launchIncompleteLabel = computed(() => hasDuplicateNames.value ? 'Doppelt gewählt' : props.incompleteLabel);
+
+const onLaunch = () => {
+    if (!canLaunch.value || !props.launch) return;
+    const result: GameEntrySide[] = JSON.parse(JSON.stringify(sides.value));
+    visible.value = false;
+    props.launch(result);
 }
 </script>
 
@@ -513,6 +541,49 @@ const onDelete = () => {
 }
 .ge-elo-up{ color: var(--bp-success); }
 .ge-elo-down{ color: var(--bp-danger); }
+
+/* ─── BiPo Knecht ─── */
+.ge-launch{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--bp-border);
+    border-radius: 16px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background .2s ease, opacity .2s ease;
+}
+.ge-launch:hover:not(:disabled){
+    background: var(--bp-fill-soft);
+}
+.ge-launch:disabled{
+    opacity: .55;
+    cursor: default;
+}
+.ge-launch-icon{
+    font-size: 22px;
+}
+.ge-launch-text{
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+.ge-launch-title{
+    font-size: 15px;
+    font-weight: 700;
+}
+.ge-launch-subtitle{
+    font-size: 12px;
+    color: var(--bp-text-muted);
+}
+.ge-launch .pi{
+    color: var(--bp-text-faint);
+}
 
 /* ─── Footer ─── */
 .ge-footer{

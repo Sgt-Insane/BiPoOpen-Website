@@ -36,7 +36,9 @@ const TurnSchema = new Schema(
         'trickshot',
         'onfire',
         'ballsback',
-        'lastCup'
+        'lastCup',
+        'deathcup',
+        'owncup'
       ],
       required: true
     },
@@ -56,6 +58,7 @@ const MatchSchema = new Schema(
     league: { type: Number }, // 1 | 2; fehlt bei Altdaten -> gilt als 1
     cupId: { type: String }, // gesetzt bei Pokalspielen -> _id des LeagueCup
     cupRound: { type: Number }, // Index der Pokalrunde
+    referee: { type: String }, // Schiedsrichter, falls das Spiel im BiPo Knecht von einer dritten Person eingetragen wurde
     turns: { type: [TurnSchema], default: [] }
   },
   { versionKey: false }

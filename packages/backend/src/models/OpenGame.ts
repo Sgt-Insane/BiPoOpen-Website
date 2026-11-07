@@ -36,7 +36,9 @@ const TurnSchema = new Schema(
         'trickshot',
         'onfire',
         'ballsback',
-        'lastCup'
+        'lastCup',
+        'deathcup',
+        'owncup'
       ],
       required: true
     },
@@ -52,6 +54,7 @@ const MatchSchema = new Schema(
     team2: { type: TeamSchema, required: true },
     time: { type: Number },
     endTime: { type: Number },
+    referee: { type: String }, // Schiedsrichter, falls das Spiel im BiPo Knecht von einer dritten Person eingetragen wurde
     turns: { type: [TurnSchema], default: [] }
   },
   { versionKey: false }

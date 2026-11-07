@@ -6,7 +6,9 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
-    "generate:league-logos": "node scripts/generate-league-logos.mjs"
+    "generate:league-logos": "node scripts/generate-league-logos.mjs",
+    "test": "vitest run",
+    "test:knecht": "vitest run src/components/frontend/biPoKnecht"
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",
@@ -31,12 +33,14 @@
     "@vercel/node": "^5.7.0",
     "@vercel/og": "^0.11.1",
     "@vitejs/plugin-vue": "^5.0.5",
+    "happy-dom": "^21.0.4",
     "sass-embedded": "^1.97.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.4.5",
     "vite": "^6.2.3",
     "vite-plugin-mkcert": "^1.17.5",
     "vite-plugin-pwa": "^0.19.8",
+    "vitest": "^5.1.0",
     "vue-tsc": "^2.0.21"
   }
 }
