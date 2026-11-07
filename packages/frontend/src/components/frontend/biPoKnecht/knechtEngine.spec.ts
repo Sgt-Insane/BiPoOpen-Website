@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    replay, canReRack, getAllowedThrowers, getHittableCups, getPlayerPoints, getStandingCups, getTeamPoints, previewHit,
+    replay, canReRack, getAllowedThrowers, getFinalPlayerPoints, getHittableCups, getPlayerPoints, getStandingCups, getTeamPoints, previewHit,
     type KnechtAction, type KnechtConfig, type KnechtState,
 } from './knechtEngine';
 
@@ -79,11 +79,21 @@ describe('BiPo Knecht Regeln', () => {
         expect(state.racks[1].hit).toEqual([1, 2, 4]);
     });
 
-    it('zaehlt einen Bouncer vor der Bombe mit (insgesamt 3 Becher)', () => {
+    it('zaehlt einen Bouncer vor der Bombe als Extra-Becher (4 Becher, 2,5 + 1,5)', () => {
         const before = play(DUO, [hit(0, 4, { bouncer: true, extraCups: [7] })]);
-        expect(previewHit(before, 4, false, 1).extrasNeeded).toBe(1);
-        const state = play(DUO, [hit(0, 4, { bouncer: true, extraCups: [7] }), hit(1, 4, { extraCups: [8] })]);
-        expect(getPlayerPoints(state)[0]).toEqual([1.5, 1.5]);
+        expect(previewHit(before, 4, false, 1).extrasNeeded).toBe(2);
+        const state = play(DUO, [hit(0, 4, { bouncer: true, extraCups: [7] }), hit(1, 4, { extraCups: [8, 9] })]);
+        expect(getPlayerPoints(state)[0]).toEqual([2.5, 1.5]);
+        expect(state.racks[1].hit).toEqual([4, 7, 8, 9]);
+    });
+
+    it('gibt beim Bouncer in den Bombenbecher dem Bomber den Extra-Becher', () => {
+        const before = play(DUO, [hit(0, 4)]);
+        expect(previewHit(before, 4, true, 1)).toMatchObject({ type: 'bomb', extrasNeeded: 3 });
+        const state = play(DUO, [hit(0, 4), hit(1, 4, { bouncer: true, extraCups: [1, 2, 3] })]);
+        expect(state.turns.at(-1)).toMatchObject({ type: 'bomb', data: { cupIndex1: 4, cupIndex4: 3, bouncer: true } });
+        expect(getPlayerPoints(state)[0]).toEqual([1.5, 2.5]);
+        expectPointsMatchCups(state);
     });
 
     it('verlangt beim Bouncer einen zweiten Becher', () => {
@@ -111,25 +121,58 @@ describe('BiPo Knecht Regeln', () => {
 
     it('macht im 2 gegen 2 beim dritten Treffer in Folge On Fire und laesst weiterwerfen', () => {
         const state = play(DUO, [
-            hit(0, 0), miss(1), miss(0), miss(1),
-            hit(0, 1), miss(1), miss(0), miss(1),
-            hit(0, 2),
+            hit(0, 0), hit(1, 1),                   // Balls Back
+            hit(0, 2), hit(1, 3),                   // Balls Back
+            hit(0, 4),
         ]);
         expect(state.turns.at(-1)!.type).toBe('onfire');
         expect(getAllowedThrowers(state)).toEqual([0]);
         expect(state.banner).toBe('on-fire');
     });
 
-    it('spielt On Fire zuerst aus und gibt danach durch Balls Back beiden noch einen Wurf', () => {
+    it('beendet die Serie, sobald das andere Team an den Wurf kommt', () => {
         const state = play(DUO, [
             hit(0, 0), miss(1), miss(0), miss(1),
             hit(0, 1), miss(1), miss(0), miss(1),
-            hit(0, 2), hit(0, 3), miss(0),          // On Fire bis zum Fehlwurf
-            hit(1, 4),                               // zweiter Ball trifft -> Balls Back
+            hit(0, 2),
+        ]);
+        expect(state.turns.at(-1)!.type).toBe('hit');
+        expect(state.streaks[0][0]).toBe(1);
+    });
+
+    it('startet mit einem Trickshot-Treffer eine neue Serie des Faengers', () => {
+        const state = play(DUO, [
+            hit(0, 0), hit(1, 1),                   // Balls Back, Spieler 1 hat 1 Treffer
+            hit(0, 2), { type: 'trickshot', player: 1, catcher: 0, time: 0 }, hit(0, 3),
+        ]);
+        expect(state.turns.at(-1)!.type).toBe('ballsback');
+        expect(state.streaks[0]).toEqual([1, 0]);
+    });
+
+    it('spielt On Fire zuerst aus und gibt danach durch Balls Back beiden noch einen Wurf', () => {
+        const state = play(DUO, [
+            hit(0, 0), hit(1, 1),
+            hit(0, 2), { type: 'trickshot', player: 1, catcher: 1, time: 0 }, hit(1, 3),   // Serie von Spieler 1 neu
+            hit(0, 4), hit(0, 5), miss(0),          // On Fire bis zum Fehlwurf
+            hit(1, 6),                               // zweiter Ball trifft -> Balls Back
         ]);
         expect(state.activeTeamIndex).toBe(0);
         expect(state.round.ballsBack).toBe(true);
         expect(getAllowedThrowers(state)).toEqual([0, 1]);
+    });
+
+    it('beendet den Ball nach dem letzten Becher auch bei On Fire: den Doppeltreffer wirft ein anderer Ball', () => {
+        // Team 0 raeumt per Balls Back bis auf einen Becher ab, Spieler 0 ist On Fire
+        const base: KnechtAction[] = [hit(0, 0), hit(1, 1), hit(0, 2), hit(1, 3), hit(0, 4), hit(0, 5), hit(0, 6), hit(0, 7), hit(0, 8)];
+        const before = play(DUO, base);
+        expect(getStandingCups(before.racks[1])).toEqual([9]);
+        const state = play(DUO, [...base, hit(0, 9)]);
+        expect(state.turns.at(-1)!.type).toBe('lastCup');
+        expect(getAllowedThrowers(state)).toEqual([1]);
+        expect(getHittableCups(state)).toEqual([9]);
+        expectError(DUO, [...base, hit(0, 9), hit(0, 9)]);
+        const won = play(DUO, [...base, hit(0, 9), hit(1, 9)]);
+        expect(won.endReason).toBe('doubleLastCup');
     });
 
     it('laesst beim Trickshot den Faenger werfen und gibt ihm den Punkt', () => {
@@ -198,14 +241,24 @@ describe('BiPo Knecht Regeln', () => {
         hit(0, 0), hit(0, 1), hit(0, 2), hit(0, 3), hit(0, 4), hit(0, 5), hit(0, 6), hit(0, 7), hit(0, 8), hit(0, 9),
     ];
 
-    it('geht bei Ausgleich im Nachwurf in die Verlaengerung mit 2x3 Bechern', () => {
-        const state = play(SOLO, [...nachwurfEqualizer(), miss(0), miss(0)]);
+    it('geht bei Ausgleich im Nachwurf in die Verlaengerung mit 2x3 Bechern, ohne Re-Racks', () => {
+        // Der letzte Becher beendet den Ball, der zweite Ball verfehlt -> Ausgleich
+        const state = play(SOLO, [...nachwurfEqualizer(), miss(0)]);
         expect(state.overtimeCount).toBe(1);
-        expect(state.activeTeamIndex).toBe(1);               // Nachwurf-Team beginnt
+        expect(state.activeTeamIndex).toBe(0);               // wer vorgelegt hat, beginnt
         expect(getStandingCups(state.racks[0])).toEqual([0, 1, 2]);
         expect(getStandingCups(state.racks[1])).toEqual([0, 1, 2]);
-        expect(state.reRacksLeft).toEqual([2, 2]);
+        expect(state.reRacksLeft).toEqual([0, 0]);
         expect(state.banner).toBe('overtime');
+    });
+
+    it('erlaubt die Bombe auch im Nachwurf, danach wirft der Bomber weiter', () => {
+        const state = play(SOLO, [...soloClearWithFirstBall(), miss(0), hit(0, 4), miss(0), hit(0, 4, { extraCups: [5, 6] })]);
+        expect(state.turns.at(-1)!.type).toBe('bomb');
+        expect(state.nachwurfTeamIndex).toBe(1);
+        expect(getAllowedThrowers(state)).toEqual([0]);
+        expect(state.round.ballsDone).toBe(1);
+        expect(getPlayerPoints(state)[1]).toEqual([3]);
     });
 
     it('gewinnt den Nachwurf sofort mit einem weiteren Ball im letzten Becher', () => {
@@ -231,14 +284,56 @@ describe('BiPo Knecht Regeln', () => {
         expectPointsMatchCups(state);
     });
 
-    it('verliert sofort, wer seinen letzten eigenen Becher runterwirft', () => {
+    it('rundet am Spielende auf ganze Treffer, die Teamsumme bleibt gleich', () => {
+        // Bombe 1,5 + 1,5, danach Deathcup: Team 0 hat 3 + 7 Becher
+        const state = play(DUO, [hit(0, 4), hit(1, 4, { extraCups: [1, 2] }), { type: 'deathcup', player: 0, time: 0 }]);
+        expect(getPlayerPoints(state)[0]).toEqual([8.5, 1.5]);
+        expect(getFinalPlayerPoints(state)[0]).toEqual([9, 1]);
+        const ownCups = play({ playerCounts: [3, 1], startTeamIndex: 1 }, [
+            { type: 'ownCup', team: 1, player: 0, cups: [1, 2], time: 0 }, { type: 'deathcup', player: 0, time: 0 },
+        ]);
+        expect(getPlayerPoints(ownCups)[0].reduce((a, b) => a + b, 0)).toBeCloseTo(2);
+        expect(getFinalPlayerPoints(ownCups)[0]).toEqual([1, 1, 0]);
+        expect(getFinalPlayerPoints(ownCups)[1]).toEqual([10]);
+        expect(getFinalPlayerPoints(play(DUO, [hit(0, 4)]))[0]).toEqual([1, 0]);
+    });
+
+    it('gibt beim letzten eigenen Becher dem Gegner den Sieg nicht sofort, sondern dem Team den Nachwurf', () => {
         const state = play(SOLO, [
             { type: 'ownCup', team: 1, player: 0, cups: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], time: 0 },
         ]);
-        expect(state.status).toBe('over');
-        expect(state.winnerTeamIndex).toBe(0);
-        expect(state.endReason).toBe('owncup');
-        expectPointsMatchCups(state);
+        expect(state.status).toBe('playing');
+        expect(state.cleared).toEqual([true, false]);
+        expect(state.nachwurfTeamIndex).toBe(1);
+        expect(state.activeTeamIndex).toBe(1);
+        expect(state.banner).toBe('nachwurf');
+        const end = play(SOLO, [{ type: 'ownCup', team: 1, player: 0, cups: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], time: 0 }, miss(0), miss(0)]);
+        expect(end.status).toBe('over');
+        expect(end.winnerTeamIndex).toBe(0);
+        expect(end.endReason).toBe('cleared');
+        expectPointsMatchCups(end);
+    });
+
+    it('beendet den eigenen Zug, wenn das werfende Team den letzten eigenen Becher umstoesst', () => {
+        const state = play(DUO, [hit(0, 0), { type: 'ownCup', team: 0, player: 1, cups: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], time: 0 }]);
+        expect(state.racks[1].hit).toEqual([0]);
+        expect(state.nachwurfTeamIndex).toBe(0);
+        expect(state.activeTeamIndex).toBe(0);
+        expect(state.round.throwCount).toBe(0);
+        expect(getAllowedThrowers(state)).toEqual([0, 1]);
+    });
+
+    it('geht in die Verlaengerung, wenn im Nachwurf des Gegners der letzte eigene Becher faellt', () => {
+        const state = play(SOLO, [...soloClearWithFirstBall(), miss(0), { type: 'ownCup', team: 0, player: 0, cups: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], time: 0 }]);
+        expect(state.overtimeCount).toBe(1);
+        expect(state.activeTeamIndex).toBe(0);
+        expect(state.status).toBe('playing');
+    });
+
+    it('stellt nach einem eigenen Becher den einzelnen Restbecher sofort an die Spitze', () => {
+        const state = play(DUO, [{ type: 'ownCup', team: 1, player: 0, cups: [0, 1, 2, 3, 4, 5, 6, 7, 9], time: 0 }]);
+        expect(getStandingCups(state.racks[1])).toEqual([0]);
+        expect(getHittableCups(state)).toEqual([0]);
     });
 
     it('gibt dem Sieger bei Punktgleichstand einen Siegpunkt', () => {

@@ -13,7 +13,7 @@ vi.hoisted(() => {
 });
 
 import { useBiPoKnecht } from './useBiPoKnecht';
-import type { KnechtAction } from './knechtEngine';
+import { replay, type KnechtAction } from './knechtEngine';
 
 const team = (...names: string[]): Team => ({ _id: 'placeholder', players: names.map(name => ({ _id: 'placeholder', name, score: 0 })) });
 const createGame = () => {
@@ -91,5 +91,33 @@ describe('useBiPoKnecht (Oberflaeche)', () => {
         const game = useBiPoKnecht({ _id: 'placeholder', team1: team('Alice', 'Bob'), team2: team('Charlie', 'David') }, 0, stored.actions);
         expect(game.throwMiss('miss')).toBe(true);
         expect(game.actions.value).toHaveLength(2);
+    });
+
+    it('uebernimmt von einem gespeicherten Spiel nur den Teil, der zu den aktuellen Regeln passt', () => {
+        const stored: KnechtAction[] = [
+            { type: 'throw', player: 0, outcome: 'miss', time: 1 },
+            { type: 'throw', player: 0, outcome: 'miss', time: 2 },      // derselbe Spieler zweimal: ungueltig
+            { type: 'throw', player: 1, outcome: 'miss', time: 3 },
+        ];
+        const game = useBiPoKnecht({ _id: 'placeholder', team1: team('Alice', 'Bob'), team2: team('Charlie', 'David') }, 0, stored);
+        expect(game.droppedActions).toBe(2);
+        expect(game.actions.value).toHaveLength(1);
+        expect(game.throwMiss('miss')).toBe(true);
+        expect(game.state.value.turns).toHaveLength(2);
+        expect(game.state.value.activeTeamIndex).toBe(1);
+    });
+
+    it('rechnet beim Rueckgaengig und Bearbeiten mit Zwischenstaenden denselben Stand wie ein komplettes Nachspielen', () => {
+        const game = useBiPoKnecht({ _id: 'placeholder', team1: team('Alice', 'Bob'), team2: team('Charlie', 'David') }, 0);
+        game.tapCup(0); game.throwMiss('miss'); game.throwMiss('miss'); game.throwMiss('airball'); game.tapCup(3); game.tapCup(5);
+        const full = () => JSON.stringify(replay(game.config.value, game.actions.value).state);
+        expect(JSON.stringify(game.state.value)).toBe(full());
+        game.undo(); game.undo();
+        expect(JSON.stringify(game.state.value)).toBe(full());
+        expect(JSON.stringify(game.getStateAfter(2))).toBe(JSON.stringify(replay(game.config.value, game.actions.value.slice(0, 2)).state));
+        const [first, ...rest] = game.actions.value;
+        expect(game.replaceActions([{ type: 'throw', player: (first as { player: number }).player, outcome: 'miss', time: 0 }, ...rest])).toBeNull();
+        expect(game.state.value.turns[0].type).toBe('miss');
+        expect(JSON.stringify(game.state.value)).toBe(full());
     });
 });

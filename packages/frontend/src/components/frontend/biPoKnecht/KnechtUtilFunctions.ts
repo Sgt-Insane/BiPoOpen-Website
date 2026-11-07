@@ -5,7 +5,8 @@ import { clearPlayerCaches } from '../playerProfile/PlayerProfileUtilFunctions';
 import { clearGameDataCache } from '@/util/gameDataCache';
 import { addDemoGame, isDemoMode } from '@/util/demoGames';
 import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
-import { getPlayerPoints, isHitTurnType, type KnechtState } from './knechtEngine';
+import { getFinalPlayerPoints, isHitTurnType, type KnechtState } from './knechtEngine';
+import { getAccuracy, getTurnStats, type KnechtPlayerStats } from './knechtStats';
 
 export type KnechtGameKind = 'open' | 'league' | 'cup';
 
@@ -40,9 +41,9 @@ export const normalizeTeams = (match: Match): Match => {
     return { ...match, team1: normalize(match.team1), team2: normalize(match.team2) };
 };
 
-// Fertiges Spiel fuer die Datenbank: Punkte aus dem Regelwerk, Verlauf, Schiedsrichter
+// Fertiges Spiel fuer die Datenbank: ganzzahlige Punkte aus dem Regelwerk, Verlauf, Schiedsrichter
 export const buildKnechtMatch = (match: Match, state: KnechtState, referee?: string): Match => {
-    const points = getPlayerPoints(state);
+    const points = getFinalPlayerPoints(state);
     const withScores = (team: Team, teamIndex: number): Team => ({
         ...team,
         players: team.players.map((player, playerIndex) => ({ ...player, score: points[teamIndex][playerIndex] ?? 0 })),
@@ -130,80 +131,10 @@ export const formatDuration = (startTime?: number, endTime?: number) => {
 };
 
 // ─── Statistik je Spieler ───
-export type KnechtPlayerStats = {
-    teamIndex: number;
-    playerIndex: number;
-    name: string;
-    points: number;
-    throws: number;
-    hits: number;
-    misses: number;
-    airballs: number;
-    bouncers: number;
-    bombs: number;
-    ballsBacks: number;
-    onFires: number;
-    trickshotCatches: number;
-    trickshotHits: number;
-    lastCups: number;
-    deathcups: number;
-    ownCups: number;
-    bestStreak: number;
-};
+export { getAccuracy, type KnechtPlayerStats } from './knechtStats';
 
-export const getPlayerStats = (match: Match, state: KnechtState): KnechtPlayerStats[] => {
-    const points = getPlayerPoints(state);
-    const stats = [match.team1, match.team2].flatMap((team, teamIndex) => team.players.map((player, playerIndex) => ({
-        teamIndex, playerIndex, name: player.name, points: points[teamIndex][playerIndex] ?? 0,
-        throws: 0, hits: 0, misses: 0, airballs: 0, bouncers: 0, bombs: 0, ballsBacks: 0, onFires: 0,
-        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0,
-    })));
-    const find = (teamIndex: number, playerIndex: number) => stats.find(entry => entry.teamIndex === teamIndex && entry.playerIndex === playerIndex);
-    const streaks = new Map<KnechtPlayerStats, number>();
-    let pendingTrickshot: number | null = null;
-
-    state.turns.forEach(turn => {
-        const entry = find(turn.teamIndex, turn.playerIndex);
-        if (!entry) return;
-        const data = turn.data as Record<string, unknown>;
-
-        if (turn.type === 'owncup') { entry.ownCups += (data.cups as number[]).length; return; }
-        if (turn.type === 'deathcup') { entry.deathcups++; return; }
-        if (turn.type === 'trickshot') {
-            entry.throws++;
-            entry.misses++;
-            streaks.set(entry, 0);
-            const catcher = find(turn.teamIndex, data.catcherIndex as number);
-            if (catcher) catcher.trickshotCatches++;
-            pendingTrickshot = data.catcherIndex as number;
-            return;
-        }
-
-        entry.throws++;
-        if (isHitTurnType(turn.type)) {
-            entry.hits++;
-            if (pendingTrickshot === turn.playerIndex) entry.trickshotHits++;
-            const streak = (streaks.get(entry) ?? 0) + 1;
-            streaks.set(entry, streak);
-            entry.bestStreak = Math.max(entry.bestStreak, streak);
-        } else {
-            if (turn.type === 'airball') entry.airballs++;
-            else entry.misses++;
-            streaks.set(entry, 0);
-        }
-        pendingTrickshot = null;
-
-        if (turn.type === 'bouncer' || data.bouncer) entry.bouncers++;
-        if (turn.type === 'bomb') entry.bombs++;
-        if (turn.type === 'ballsback') entry.ballsBacks++;
-        if (turn.type === 'onfire') entry.onFires++;
-        if (turn.type === 'lastCup') entry.lastCups++;
-    });
-
-    return stats;
-};
-
-export const getAccuracy = (stats: KnechtPlayerStats) => stats.throws ? Math.round(stats.hits / stats.throws * 100) : 0;
+export const getPlayerStats = (match: Match, state: KnechtState): KnechtPlayerStats[] =>
+    getTurnStats(match, state.turns, getFinalPlayerPoints(state));
 
 // ─── Auszeichnungen ───
 // Jeder Spieler bekommt einen Titel. Die Liste ist nach Seltenheit sortiert, jeder Titel wird nur einmal vergeben.

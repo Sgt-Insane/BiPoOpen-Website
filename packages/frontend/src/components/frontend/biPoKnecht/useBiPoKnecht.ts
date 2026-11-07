@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef, toRaw, watch } from 'vue';
 import {
-    applyAction, canReRack, getAllowedThrowers, getHittableCups, getPlayersDone, previewHit, replay,
-    type BannerEvent, type KnechtAction, type KnechtConfig, type KnechtState,
+    applyAction, canReRack, continueReplay, createInitialState, getAllowedThrowers, getHittableCups, getPlayersDone, previewHit, replay,
+    type BannerEvent, type KnechtAction, type KnechtConfig, type KnechtState, type ReplayResult,
 } from './knechtEngine';
 import { useBiPoSound } from './biPoSound';
 
@@ -37,8 +37,42 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         startTeamIndex: startTeamIndex.value ?? 0,
     }));
 
-    const result = computed(() => replay(config.value, actions.value));
+    // Fortgesetztes Spiel aus einer aelteren Regelversion: nur den noch gueltigen Teil uebernehmen,
+    // sonst kaemen neue Wuerfe hinter der ungueltigen Aktion nie im Spielstand an
+    const loaded = replay(config.value, actions.value);
+    const droppedActions = loaded.error ? actions.value.length - loaded.error.index : 0;
+    if (loaded.error) actions.value = actions.value.slice(0, loaded.error.index);
+
+    // ─── Spielstand ───
+    // Zwischenstaende je Anzahl Aktionen: ein neuer Wurf, Rueckgaengig oder das Bearbeiten eines spaeten
+    // Wurfs rechnen nur ab dem letzten passenden Stand weiter, statt das ganze Spiel nachzuspielen.
+    const snapshots = new Map<number, KnechtState>();
+    let snapshotActions: KnechtAction[] = [];
+    let snapshotConfig: KnechtConfig | null = null;
+
+    const replayCached = (list: KnechtAction[], count = list.length): ReplayResult => {
+        if (snapshotConfig !== config.value) {
+            snapshotConfig = config.value;
+            snapshots.clear();
+            snapshotActions = [];
+            snapshots.set(0, createInitialState(config.value));
+        }
+        // Aktionen sind unveraenderlich: gleiches Objekt = gleiche Aktion
+        let same = 0;
+        while (same < list.length && same < snapshotActions.length && list[same] === snapshotActions[same]) same++;
+        snapshots.forEach((_, key) => { if (key > same) snapshots.delete(key); });
+        snapshotActions = list;
+
+        const start = Math.max(...[...snapshots.keys()].filter(key => key <= count));
+        const replayed = continueReplay(snapshots.get(start)!, list.slice(start, count), start);
+        snapshots.set(replayed.error ? replayed.error.index : count, replayed.state);
+        return replayed;
+    };
+
+    const result = computed(() => replayCached(actions.value));
     const state = computed<KnechtState>(() => result.value.state);
+    // Stand nach den ersten count Aktionen (z.B. fuer das Bearbeiten eines Wurfs)
+    const getStateAfter = (count: number) => replayCached(actions.value, count).state;
     const isStarted = computed(() => startTeamIndex.value !== null);
     const isOver = computed(() => state.value.status === 'over');
 
@@ -89,7 +123,11 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         } catch {
             return false;
         }
-        actions.value = [...actions.value, action];
+        const newActions = [...actions.value, action];
+        // Den neuen Stand direkt merken, dann muss nichts nachgespielt werden
+        snapshotActions = newActions;
+        snapshots.set(newActions.length, next);
+        actions.value = newActions;
         bouncerArmed.value = false;
         pick.value = null;
         playFeedback(next, action);
@@ -178,6 +216,8 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         startTeamIndex,
         actions,
         state,
+        getStateAfter,
+        droppedActions,
         isStarted,
         isOver,
         allowedThrowers,

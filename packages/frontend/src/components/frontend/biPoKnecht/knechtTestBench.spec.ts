@@ -4,13 +4,14 @@
  *
  *   npm run test:knecht                       (im Ordner packages/frontend)
  *   KNECHT_DEPTH=6 KNECHT_GAMES=2000 npm run test:knecht   (gruendlicher)
+ *   KNECHT_SIM_GAMES=10000 npm run test:knecht             (10.000 realistische Spielverlaeufe mit Bericht)
  *
  * Schreibt nie in die Datenbank: axios ist gemockt und jeder Aufruf laesst den Test scheitern.
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import {
-    applyAction, canReRack, createInitialState, getAllowedThrowers, getHittableCups, getStandingCups, getTeamPoints,
-    getPlayerPoints, previewHit, replay, CUP_COUNT, RE_RACKS_PER_TEAM,
+    applyAction, canReRack, createInitialState, getActionIndexOfTurn, getAllowedThrowers, getBombTargets, getHittableCups, getStandingCups,
+    getTeamPoints, getPlayerPoints, previewHit, replay, CUP_COUNT, RE_RACKS_PER_TEAM,
     type KnechtAction, type KnechtConfig, type KnechtState,
 } from './knechtEngine';
 
@@ -26,6 +27,7 @@ vi.mock('axios', () => {
 
 const DEPTH = Number(process.env.KNECHT_DEPTH ?? 4);
 const GAMES = Number(process.env.KNECHT_GAMES ?? 300);
+const SIM_GAMES = Number(process.env.KNECHT_SIM_GAMES ?? 400);
 const TIMEOUT = 10 * 60 * 1000;
 const MAX_ACTIONS = 3000;
 
@@ -82,7 +84,7 @@ const cupsOfTurn = (turn: Turn): number => {
     const data = turn.data as Record<string, unknown>;
     if (turn.type === 'deathcup' || turn.type === 'owncup') return (data.cups as number[]).length;
     if (turn.type === 'lastCup' && data.double) return 0;
-    const keys = turn.type === 'bomb' ? ['cupIndex2', 'cupIndex3'] : ['cupIndex', 'cupIndex1', 'cupIndex2', 'cupIndex3'];
+    const keys = turn.type === 'bomb' ? ['cupIndex2', 'cupIndex3', 'cupIndex4'] : ['cupIndex', 'cupIndex1', 'cupIndex2', 'cupIndex3'];
     return keys.filter(key => typeof data[key] === 'number').length;
 };
 
@@ -127,10 +129,30 @@ const checkInvariants = (state: KnechtState, previous: KnechtState | null, actio
         if (turn.type === 'onfire') expect(state.config.playerCounts[turn.teamIndex], context()).toBeGreaterThan(1);
     });
 
-    // 7. Re-Racks hoechstens zweimal pro Team und Phase
+    // 7. Re-Racks hoechstens zweimal pro Team, in der Verlaengerung keine
     state.reRacksLeft.forEach(left => expect(left >= 0 && left <= RE_RACKS_PER_TEAM, context()).toBe(true));
+    if (state.overtimeCount > 0) expect(state.reRacksLeft, `Re-Rack in der Verlaengerung ${context()}`).toEqual([0, 0]);
+
+    if (state.status === 'playing') {
+        // 10. Ein einzelner Becher steht vor dem ersten Wurf an der Spitze
+        const target = state.racks[1 - state.activeTeamIndex];
+        if (state.round.throwCount === 0 && target.pending.length === 0 && getStandingCups(target).length === 1)
+            expect(getStandingCups(target), `letzter Becher nicht an der Spitze ${context()}`).toEqual([0]);
+        // 11. Nach dem letzten Becher endet der Ball: den Doppeltreffer wirft ein anderer Ball
+        const newest = state.turns.at(-1);
+        if (previous && newest && state.turns.length > previous.turns.length && newest.type === 'lastCup' && !(newest.data as { double?: boolean }).double)
+            expect(state.round.current, `Ball laeuft nach letztem Becher weiter ${context()}`).toBeNull();
+    }
 
     if (!previous || !action) return;
+
+    // 12. Serien enden mit dem Teamwechsel und mit der Verlaengerung
+    if (state.status === 'playing' && (state.activeTeamIndex !== previous.activeTeamIndex || state.overtimeCount !== previous.overtimeCount))
+        expect(state.streaks.flat().every(streak => streak === 0), `Serie nicht zurueckgesetzt ${context()}`).toBe(true);
+
+    // 13. Die Verlaengerung beginnt das Team, das vorgelegt hat
+    if (state.overtimeCount > previous.overtimeCount && previous.nachwurfTeamIndex !== null)
+        expect(state.activeTeamIndex, `falsches Startteam der Verlaengerung ${context()}`).toBe(1 - previous.nachwurfTeamIndex);
 
     // 8. Zusatzbecher nehmen nie den letzten Becher: ein Rack wird nur durch letzten Becher, Deathcup oder eigene Becher leer
     const lastTurn = state.turns.at(-1);
@@ -307,5 +329,175 @@ describe('BiPo Knecht Testbench', () => {
         const { clearDemoGames, getDemoGames } = await import('@/util/demoGames');
         expect(getDemoGames('league')).toHaveLength(1);
         clearDemoGames();
+    });
+});
+
+// ─── Simulation: realistische Spielverlaeufe ───
+// Jeder Spieler bekommt ein Profil (Trefferquote, Bouncer, Airball, Trickshot ...), jedes 5. Spiel ist ein
+// "Chaos"-Spiel mit vielen Sonderaktionen. Alle Besetzungen bis 4 gegen 4, Startteam zufaellig.
+const SIM_LINEUPS: [number, number][] = [[1, 1], [2, 2], [2, 1], [1, 2], [3, 3], [3, 2], [2, 3], [4, 4]];
+
+type SimProfile = { hit: number; bouncer: number; airball: number; trick: number; deathcup: number; ownCup: number; reRack: number };
+
+const makeProfile = (random: () => number, chaos: boolean): SimProfile => ({
+    hit: 0.1 + random() * 0.55,
+    bouncer: random() * 0.08,
+    airball: random() * 0.06,
+    trick: chaos ? random() * 0.08 : random() * 0.015,
+    deathcup: chaos ? 0.004 : 0.0008,
+    ownCup: chaos ? 0.02 : 0.003,
+    reRack: random(),
+});
+
+const pickRandom = (random: () => number, candidates: number[], count: number) => {
+    const pool = [...candidates];
+    return Array.from({ length: count }, () => pool.splice(Math.floor(random() * pool.length), 1)[0]);
+};
+
+const simAction = (state: KnechtState, random: () => number, profiles: SimProfile[][]): KnechtAction => {
+    const team = state.activeTeamIndex;
+    if (canReRack(state) && random() < profiles[team][0].reRack * 0.6) return { type: 'reRack', time: 0 };
+
+    if (random() < profiles[team][0].ownCup) {
+        const ownTeam = random() < 0.5 ? 0 : 1;
+        const standing = getStandingCups(state.racks[ownTeam]);
+        const player = Math.floor(random() * state.config.playerCounts[ownTeam]);
+        if (standing.length) return { type: 'ownCup', team: ownTeam, player, cups: pickRandom(random, standing, Math.min(random() < 0.2 ? 2 : 1, standing.length)), time: 0 };
+    }
+
+    const allowed = getAllowedThrowers(state);
+    const player = allowed[Math.floor(random() * allowed.length)];
+    const profile = profiles[team][player];
+    const roll = random();
+    if (roll < profile.deathcup) return { type: 'deathcup', player, time: 0 };
+    if (roll < profile.deathcup + profile.trick)
+        return { type: 'trickshot', player, catcher: Math.floor(random() * state.config.playerCounts[team]), time: 0 };
+    if (roll < profile.deathcup + profile.trick + profile.airball) return { type: 'throw', player, outcome: 'airball', time: 0 };
+
+    const hittable = getHittableCups(state);
+    if (random() < profile.hit && hittable.length) {
+        const bombs = getBombTargets(state);
+        const cup = bombs.length && random() < 0.08 ? bombs[0] : hittable[Math.floor(random() * hittable.length)];
+        const bouncer = random() < profile.bouncer / profile.hit;
+        const preview = previewHit(state, cup, bouncer, player);
+        return { type: 'throw', player, outcome: 'hit', cup, bouncer, extraCups: pickRandom(random, preview.extraCandidates, preview.extrasNeeded), time: 0 };
+    }
+    return { type: 'throw', player, outcome: 'miss', time: 0 };
+};
+
+describe('BiPo Knecht Simulation', () => {
+    type BuildMatch = typeof import('./KnechtUtilFunctions')['buildKnechtMatch'];
+    let buildKnechtMatch: BuildMatch;
+    beforeAll(async () => {
+        networkCalls.length = 0;
+        ({ buildKnechtMatch } = await import('./KnechtUtilFunctions'));
+    });
+    afterAll(() => { expect(networkCalls, 'Die Testbench darf nichts speichern').toEqual([]); });
+
+    const placeholderMatch = (config: KnechtConfig): Match => {
+        const team = (name: string, count: number): Team => ({
+            _id: 'placeholder', name, players: Array.from({ length: count }, (_, index) => ({ _id: 'p', name: `${name} ${index + 1}`, score: 0 })),
+        });
+        return { _id: 'placeholder', team1: team('Rot', config.playerCounts[0]), team2: team('Blau', config.playerCounts[1]), time: 1 };
+    };
+
+    // Fertiges Spiel fuer die Datenbank: ganze Treffer, Teamsumme unveraendert, Sieger vorne
+    const checkMatch = (config: KnechtConfig, state: KnechtState) => {
+        const match = buildKnechtMatch(placeholderMatch(config), state);
+        const sums = [match.team1, match.team2].map(team => team.players.reduce((sum, player) => sum + player.score, 0));
+        const teamPoints = getTeamPoints(state);
+        [match.team1, match.team2].forEach(team => team.players.forEach(player => expect(Number.isInteger(player.score), 'ganze Treffer').toBe(true)));
+        expect(sums[0]).toBeCloseTo(teamPoints[0], 6);
+        expect(sums[1]).toBeCloseTo(teamPoints[1], 6);
+        expect(sums[state.winnerTeamIndex!]).toBeGreaterThan(sums[1 - state.winnerTeamIndex!]);
+        expect(match.turns).toHaveLength(state.turns.length);
+    };
+
+    it(`${SIM_GAMES} Spielverlaeufe mit Spielerprofilen in allen Besetzungen`, () => {
+        const count = <K,>(map: Map<K, number>, key: K) => map.set(key, (map.get(key) ?? 0) + 1);
+        const reasons = new Map<string, number>();
+        const turnTypes = new Map<string, number>();
+        const overtimes = new Map<number, number>();
+        const turnCounts: number[] = [];
+        let startTeamWins = 0;
+        let nachwurfBombs = 0;
+
+        for (let game = 0; game < SIM_GAMES; game++) {
+            const random = createRandom(1000 + game);
+            const lineup = SIM_LINEUPS[game % SIM_LINEUPS.length];
+            const config: KnechtConfig = { playerCounts: lineup, startTeamIndex: Math.floor(random() * 2) };
+            const profiles = lineup.map(players => Array.from({ length: players }, () => makeProfile(random, game % 5 === 0)));
+            const actions: KnechtAction[] = [];
+            let state = createInitialState(config);
+
+            while (state.status === 'playing') {
+                expect(actions.length, `Spiel ${game} endet nicht`).toBeLessThan(MAX_ACTIONS);
+                const action = simAction(state, random, profiles);
+                const next = applyAction(state, action);
+                checkInvariants(next, state, action);
+                if (next.turns.length > state.turns.length) {
+                    const turn = next.turns.at(-1)!;
+                    count(turnTypes, turn.type);
+                    if (turn.type === 'bomb' && state.nachwurfTeamIndex !== null) nachwurfBombs++;
+                }
+                actions.push(action);
+                state = next;
+            }
+
+            count(reasons, state.endReason!);
+            count(overtimes, state.overtimeCount);
+            turnCounts.push(state.turns.length);
+            if (state.winnerTeamIndex === config.startTeamIndex) startTeamWins++;
+
+            checkReplay(config, actions, state);
+            checkMatch(config, state);
+            if (game % 20 === 0) {
+                for (let cut = 1; cut < actions.length; cut += Math.max(1, Math.floor(actions.length / 10)))
+                    expect(replay(config, actions.slice(0, cut)).error).toBeNull();
+                state.turns.forEach((_, turnIndex) => {
+                    const index = getActionIndexOfTurn(actions, turnIndex);
+                    expect(index).toBeGreaterThanOrEqual(0);
+                    expect(actions[index].type).not.toBe('reRack');
+                });
+            }
+        }
+
+        turnCounts.sort((a, b) => a - b);
+        const quantile = (q: number) => turnCounts[Math.floor(q * (turnCounts.length - 1))];
+        console.log(`Knecht-Simulation (${SIM_GAMES} Spiele)\n${JSON.stringify({
+            endgruende: Object.fromEntries(reasons),
+            startteamSiegquote: Math.round(startTeamWins / SIM_GAMES * 1000) / 1000,
+            turnsProSpiel: { p50: quantile(0.5), p90: quantile(0.9), max: quantile(1) },
+            verlaengerungen: Object.fromEntries(overtimes),
+            bombenImNachwurf: nachwurfBombs,
+            turnTypen: Object.fromEntries(turnTypes),
+        }, null, 2)}`);
+
+        expect([...reasons.keys()]).toEqual(expect.arrayContaining(['cleared', 'doubleLastCup', 'nachwurfDouble', 'deathcup']));
+        expect(turnTypes.get('bomb') ?? 0).toBeGreaterThan(0);
+        expect([...overtimes.keys()].some(overtime => overtime > 0)).toBe(true);
+    }, TIMEOUT);
+
+    it('spielt auch ein langes Spiel schnell nach (Rueckgaengig, Bearbeiten, Fortsetzen)', () => {
+        // Schwache Werfer, viele Runden
+        const random = createRandom(7);
+        const config: KnechtConfig = { playerCounts: [2, 2], startTeamIndex: 0 };
+        const profiles = [0, 1].map(() => [0, 1].map(() => ({ ...makeProfile(random, false), hit: 0.12, ownCup: 0, deathcup: 0 })));
+        const actions: KnechtAction[] = [];
+        let state = createInitialState(config);
+        while (state.status === 'playing' && actions.length < 600) {
+            const action = simAction(state, random, profiles);
+            state = applyAction(state, action);
+            actions.push(action);
+        }
+        expect(state.turns.length).toBeGreaterThan(150);
+
+        replay(config, actions);
+        const started = performance.now();
+        const result = replay(config, actions);
+        const elapsed = performance.now() - started;
+        console.log(`Replay von ${actions.length} Aktionen: ${elapsed.toFixed(1)} ms`);
+        expect(JSON.stringify(result.state)).toBe(JSON.stringify(state));
+        expect(elapsed).toBeLessThan(100);
     });
 });
