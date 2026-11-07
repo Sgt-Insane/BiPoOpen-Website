@@ -106,7 +106,7 @@ declare global {
     type HitTurn = { cupIndex: number };
     type MissTurn = { };
     type AirballTurn = { };
-    type BombTurn = { cupIndex1: number, cupIndex2?: number, cupIndex3?: number };
+    type BombTurn = { cupIndex1: number, cupIndex2?: number, cupIndex3?: number, cupIndex4?: number, bouncer?: boolean };   // cupIndex4 / bouncer: Bombe per Bouncer (4 Becher)
     type BouncerTurn = { cupIndex1: number, cupIndex2?: number };
     type TrickshotTurn = { catcherIndex?: number };     // wer den Ball gefangen hat und den Trickshot wirft
     type OnFireTurn = { cupIndex: number, cupIndex2?: number, bouncer?: boolean };
@@ -241,6 +241,7 @@ declare global {
         partners: PartnerData[];
         extraStats: ExtraStats;
         badges: PlayerBadge[];
+        knecht: import('./src/components/frontend/biPoKnecht/knechtStats').KnechtCareerStats | null; // nur Spiele, die mit dem BiPo Knecht gezaehlt wurden
     };
 
     type PlayerEloSummary = {
