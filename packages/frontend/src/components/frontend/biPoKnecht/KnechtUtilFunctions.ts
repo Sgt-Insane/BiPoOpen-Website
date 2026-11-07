@@ -99,11 +99,11 @@ const TURN_LABELS: Record<Turn['type'], string> = {
 // Treffer mit Trickshot: der Faenger des vorherigen Wurfs hat getroffen
 const isTrickshotHit = (turn: Turn, previous?: Turn) =>
     previous?.type === 'trickshot' && previous.teamIndex === turn.teamIndex
-    && (previous.data as Record<string, unknown>).catcherIndex === turn.playerIndex;
+    && ((previous.data ?? {}) as Record<string, unknown>).catcherIndex === turn.playerIndex;
 
 // Treffer werden immer als "Treffer · Art" beschrieben, z.B. "Treffer · Bouncer (2 Becher)"
 export const getTurnLabel = (turn: Turn, match?: Match, previous?: Turn) => {
-    const data = turn.data as Record<string, unknown>;
+    const data = (turn.data ?? {}) as Record<string, unknown>;
     if (turn.type === 'trickshot') {
         const catcher = match && typeof data.catcherIndex === 'number' ? getPlayerName(match, turn.teamIndex, data.catcherIndex) : '';
         return catcher ? `Verfehlt · ${catcher} fängt (Trickshot)` : 'Verfehlt · Trickshot-Fang';

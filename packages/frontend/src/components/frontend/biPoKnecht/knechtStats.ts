@@ -38,9 +38,10 @@ export const getTurnStats = (match: Match, turns: Turn[], points: number[][]): K
     turns.forEach(turn => {
         const entry = find(turn.teamIndex, turn.playerIndex);
         if (!entry) return;
-        const data = turn.data as Record<string, unknown>;
+        // Alte Knecht-Spiele speichern Nullwurf, Airball und Trickshot ohne data
+        const data = (turn.data ?? {}) as Record<string, unknown>;
 
-        if (turn.type === 'owncup') { entry.ownCups += (data.cups as number[]).length; return; }
+        if (turn.type === 'owncup') { entry.ownCups += (data.cups as number[] | undefined)?.length ?? 0; return; }
         if (turn.type === 'deathcup') { entry.deathcups++; return; }
         if (turn.type === 'trickshot') {
             entry.throws++;
@@ -93,6 +94,7 @@ export const getTurnCups = (turn: Turn) => {
     if (turn.type === 'deathcup' || turn.type === 'owncup') return (data.cups as number[] | undefined)?.length ?? 0;
     if (turn.type === 'bomb') return Math.max(0, cupKeys - 1);
     if (turn.type === 'lastCup' && data.double) return 0;       // der erste Ball hat den Becher schon gezaehlt
+    if (turn.type === 'lastCup' && !cupKeys) return 1;          // alte Knecht-Spiele: letzter Becher ohne data
     if (isHitTurnType(turn.type) || turn.type === 'trickshot') return cupKeys;
     return 0;
 };
@@ -119,13 +121,21 @@ export const getKnechtCareerStats = (matches: Match[], playerName: string): Knec
         if (teamIndex < 0) return;
         const playerIndex = teams[teamIndex].players.findIndex(player => player.name.toLowerCase() === nameLower);
         const points = teams.map(team => team.players.map(player => player.score ?? 0));
-        const own = getTurnStats(match, match.turns, points).find(entry => entry.teamIndex === teamIndex && entry.playerIndex === playerIndex)!;
+        // Ein kaputter Spielverlauf darf nie das ganze Spielerprofil mitreissen: dieses Spiel dann auslassen
+        let own: KnechtPlayerStats | undefined;
+        try {
+            own = getTurnStats(match, match.turns, points).find(entry => entry.teamIndex === teamIndex && entry.playerIndex === playerIndex);
+        } catch {
+            return;
+        }
+        if (!own) return;
+        const stats = own;
 
         career.games++;
         if (teamScore(teams[teamIndex]) > teamScore(teams[1 - teamIndex])) career.wins++;
         (Object.keys(career) as (keyof KnechtCareerStats)[]).forEach(key => {
             if (key === 'games' || key === 'wins') return;
-            career[key] = key === 'bestStreak' ? Math.max(career[key], own[key]) : career[key] + own[key];
+            career[key] = key === 'bestStreak' ? Math.max(career[key], stats[key]) : career[key] + stats[key];
         });
     });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getKnechtCareerStats, getTurnStats } from './knechtStats';
+import { getKnechtCareerStats, getTurnCups, getTurnStats } from './knechtStats';
 
 const turn = (teamIndex: number, playerIndex: number, type: Turn['type'], data: Record<string, unknown> = {}): Turn =>
     ({ teamIndex, playerIndex, type, data, time: 0 } as Turn);
@@ -34,5 +34,15 @@ describe('Knecht-Statistik', () => {
         const stats = getKnechtCareerStats(games, 'Alice')!;
         expect(stats).toMatchObject({ games: 2, wins: 1, points: 16, throws: 4, hits: 3, bombs: 1, bestStreak: 2 });
         expect(getKnechtCareerStats(games, 'Niemand')).toBeNull();
+    });
+
+    it('verkraftet alte Knecht-Spiele, deren Nullwurf, Airball und Trickshot keine data haben', () => {
+        const legacy = (teamIndex: number, playerIndex: number, type: Turn['type']): Turn => ({ teamIndex, playerIndex, type, time: 0 } as unknown as Turn);
+        const game = match([['Alice'], ['Chris']], [[10], [3]], [
+            legacy(0, 0, 'miss'), legacy(0, 0, 'airball'), legacy(1, 0, 'trickshot'), turn(1, 0, 'hit', { cupIndex: 2 }), legacy(0, 0, 'lastCup'),
+        ]);
+        const stats = getKnechtCareerStats([game], 'Alice')!;
+        expect(stats).toMatchObject({ games: 1, wins: 1, throws: 3, hits: 1, misses: 1, airballs: 1, lastCups: 1 });
+        expect(game.turns!.map(getTurnCups)).toEqual([0, 0, 0, 1, 1]);
     });
 });
