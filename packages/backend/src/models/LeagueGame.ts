@@ -20,6 +20,17 @@ const TeamSchema = new Schema(
   { _id: false }
 );
 
+// Ereignisse aus dem BiPo Knecht ohne eigenen Wurf (Re-Rack, Beginn Nachwurf, Verlaengerung)
+const EventSchema = new Schema(
+  {
+    kind: { type: String, enum: ['reRack', 'nachwurf', 'overtime'], required: true },
+    teamIndex: { type: Number, required: true },
+    afterTurnIndex: { type: Number, required: true },
+    time: { type: Number }
+  },
+  { _id: false }
+);
+
 // TurnSchema
 const TurnSchema = new Schema(
   {
@@ -59,6 +70,7 @@ const MatchSchema = new Schema(
     cupId: { type: String }, // gesetzt bei Pokalspielen -> _id des LeagueCup
     cupRound: { type: Number }, // Index der Pokalrunde
     referee: { type: String }, // Schiedsrichter, falls das Spiel im BiPo Knecht von einer dritten Person eingetragen wurde
+    events: { type: [EventSchema], default: undefined },
     turns: { type: [TurnSchema], default: [] }
   },
   { versionKey: false }

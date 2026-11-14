@@ -56,6 +56,8 @@ export const buildKnechtMatch = (match: Match, state: KnechtState, referee?: str
         turns: state.turns,
         endTime: lastTime ?? new Date().getTime(),
     };
+    // Re-Racks, Nachwurf und Verlaengerung fuer den Spielverlauf auf der Webseite
+    if (state.markers.length) result.events = state.markers.map(({ kind, teamIndex, afterTurnIndex, time }) => ({ kind, teamIndex, afterTurnIndex, time }));
     if (referee?.trim()) result.referee = referee.trim();
     return result;
 };

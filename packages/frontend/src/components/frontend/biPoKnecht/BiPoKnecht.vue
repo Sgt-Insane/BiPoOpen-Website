@@ -151,7 +151,7 @@
             :key="game.ballMark.value.id"
             class="kn-ball"
             :class="`kn-ball--${game.ballMark.value.kind}`"
-            :style="{ left: `${game.ballMark.value.x}px`, top: `${game.ballMark.value.y}px` }"
+            :style="{ left: `${game.ballMark.value.x}px`, top: `${game.ballMark.value.y}px`, '--kn-ball-size': `${game.ballMark.value.size}px` }"
         ></span>
 
         <!-- Spielende -->
@@ -481,11 +481,13 @@ onUnmounted(() => {
 
 /* ─── Ball ─── */
 .kn-ball{
+    /* Groesse im echten Verhaeltnis zum Becher (siehe KnechtRack.vue) */
+    --kn-ball-size: 18px;
     position: absolute;
     z-index: 24;
-    width: 18px;
-    height: 18px;
-    margin: -9px 0 0 -9px;
+    width: var(--kn-ball-size);
+    height: var(--kn-ball-size);
+    margin: calc(var(--kn-ball-size) / -2) 0 0 calc(var(--kn-ball-size) / -2);
     border-radius: 50%;
     background: var(--bp-surface);
     box-shadow: 0 0 0 1px rgba(31, 35, 40, .12), 0 3px 6px rgba(31, 35, 40, .25);
@@ -496,9 +498,6 @@ onUnmounted(() => {
     animation-name: kn-ball-fly;
 }
 .kn-ball--hit{
-    width: 26px;
-    height: 26px;
-    margin: -13px 0 0 -13px;
     background: transparent;
     box-shadow: 0 0 0 3px rgba(255, 255, 255, .9);
     animation-name: kn-ball-splash;

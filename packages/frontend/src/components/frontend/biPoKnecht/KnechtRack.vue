@@ -1,5 +1,6 @@
 <template>
     <div
+        ref="root"
         class="KnechtRack"
         :class="[`kn-rack--${direction}`, { 'kn-rack--target': isTarget, 'kn-rack--waiting': !isTarget, 'kn-rack--rotated': rotated, 'kn-rack--picking': !!game.pick.value }]"
         :style="{ '--kn-team-color': TEAM_COLORS[teamIndex] }"
@@ -45,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
 import { CUP_ROWS, getStandingCups } from './knechtEngine';
 import type { KnechtIconName } from './knechtIcons';
@@ -97,15 +98,20 @@ const pickText = computed(() => {
 });
 
 // ─── Eingaben (Ball-Anzeige in Bildschirmkoordinaten, siehe useBiPoKnecht.markBall) ───
+// Ball (40 mm) zu Becheroeffnung (ca. 95 mm): der Ball wird immer im echten Verhaeltnis zum Becher gezeichnet
+const BALL_TO_CUP = 0.42;
+const root = ref<HTMLElement | null>(null);
+const getBallSize = () => (root.value?.querySelector('.kn-cup')?.getBoundingClientRect().width ?? 44) * BALL_TO_CUP;
+
 const onCupClick = (cup: number, event: MouseEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    if (props.game.tapCup(cup)) props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2);
+    if (props.game.tapCup(cup)) props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width * BALL_TO_CUP);
 };
 
 // Tippen auf den freien Tisch = Nullwurf, nur auf dem Feld, auf das geworfen wird
 const onTableClick = (event: MouseEvent) => {
     if (!props.isTarget || props.game.pick.value) return;
-    if (props.game.throwMiss('miss')) props.game.markBall('miss', event.clientX, event.clientY);
+    if (props.game.throwMiss('miss')) props.game.markBall('miss', event.clientX, event.clientY, getBallSize());
 };
 
 // Airball: der Ball landet irgendwo hinter dem Tisch
@@ -113,7 +119,7 @@ const onAirballClick = (event: MouseEvent) => {
     if (props.game.pick.value) return;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (props.game.throwMiss('airball')) {
-        props.game.markBall('airball', rect.left + rect.width * (.15 + Math.random() * .7), rect.top + rect.height * (.2 + Math.random() * .6));
+        props.game.markBall('airball', rect.left + rect.width * (.15 + Math.random() * .7), rect.top + rect.height * (.2 + Math.random() * .6), getBallSize());
     }
 };
 </script>
@@ -252,8 +258,8 @@ const onAirballClick = (event: MouseEvent) => {
     opacity: .6;
 }
 .kn-cup-ball{
-    width: 34%;
-    height: 34%;
+    width: 42%;
+    height: 42%;
     border-radius: 50%;
     background: var(--bp-surface);
     box-shadow: 0 0 0 1px rgba(31, 35, 40, .15);

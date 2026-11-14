@@ -56,7 +56,8 @@ export const getCelebrationKind = (next: KnechtState, action: KnechtAction, prev
 };
 const BALL_DURATION = 1500;
 
-export type BallMark = { id: number; kind: 'miss' | 'airball' | 'hit'; x: number; y: number };
+// size: Balldurchmesser in Pixeln, passend zur Bechergroesse auf dem Bildschirm
+export type BallMark = { id: number; kind: 'miss' | 'airball' | 'hit'; x: number; y: number; size: number };
 
 export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null = null, initialActions: KnechtAction[] = []) => {
     const startTeamIndex = ref<number | null>(initialStartTeamIndex);
@@ -261,9 +262,9 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     // Bildschirmkoordinaten: der Ball bleibt dort, wo getippt wurde, auch wenn sich das Feld danach dreht
     const ballMark = ref<BallMark | null>(null);
     let ballTimer: ReturnType<typeof setTimeout> | null = null;
-    const markBall = (kind: BallMark['kind'], x: number, y: number) => {
+    const markBall = (kind: BallMark['kind'], x: number, y: number, size = 18) => {
         if (ballTimer) clearTimeout(ballTimer);
-        ballMark.value = { id: now(), kind, x, y };
+        ballMark.value = { id: now(), kind, x, y, size };
         ballTimer = setTimeout(() => { ballMark.value = null; }, BALL_DURATION);
     };
 

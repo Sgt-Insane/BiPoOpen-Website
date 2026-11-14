@@ -50,6 +50,15 @@ declare global {
         cupRound?: number;
         // Schiedsrichter, falls das Spiel im BiPo Knecht von einer dritten Person eingetragen wurde
         referee?: string;
+        // BiPo Knecht: Ereignisse ohne eigenen Wurf (Re-Rack, Nachwurf, Verlaengerung)
+        events?: MatchEvent[];
+    };
+
+    type MatchEvent = {
+        kind: 'reRack' | 'nachwurf' | 'overtime';
+        teamIndex: number;          // Re-Rack: Team, das es verlangt hat; Nachwurf/Verlaengerung: Team, das beginnt
+        afterTurnIndex: number;     // steht vor dem Turn mit diesem Index
+        time?: number;
     };
 
     type LeagueCupParticipant = {

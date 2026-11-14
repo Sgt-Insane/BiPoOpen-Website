@@ -42,13 +42,17 @@
             <polyline v-for="line in chartLines" :key="line.teamIndex" :points="line.points" :stroke="TEAM_COLORS[line.teamIndex]" class="mtl-chart-line" vector-effect="non-scaling-stroke" />
         </svg>
 
-        <!-- Treffer: Team 1 links, Team 2 rechts, in der Mitte Zwischenstand. Jede Spielminute als graue Zahl, auch ohne Treffer. -->
+        <!-- Alle Wuerfe: Team 1 links, Team 2 rechts, in der Mitte Zwischenstand. Fehlwuerfe kleiner und grau,
+             Re-Rack/Nachwurf/Verlaengerung in der Mitte. Jede Spielminute als graue Zahl, auch ohne Wurf. -->
         <div class="mtl-list">
             <template v-for="item in items" :key="item.key">
             <div v-if="item.kind === 'minute'" class="mtl-minute-row">
                 <span class="mtl-minute-mark">{{ item.minute }}'</span>
             </div>
-            <div v-else class="mtl-row" :style="{ '--mtl-team-color': TEAM_COLORS[item.row.teamIndex] }">
+            <div v-else-if="item.kind === 'event'" class="mtl-event-row" :style="{ '--mtl-team-color': TEAM_COLORS[item.teamIndex] }">
+                <span class="mtl-event"><KnechtIcon :name="item.icon" /> {{ item.label }}</span>
+            </div>
+            <div v-else class="mtl-row" :class="{ 'mtl-row--quiet': item.row.quiet }" :style="{ '--mtl-team-color': TEAM_COLORS[item.row.teamIndex] }">
                 <template v-for="row in [item.row]" :key="row.key">
                 <div class="mtl-side mtl-side--left">
                     <template v-if="row.teamIndex === 0">
@@ -61,7 +65,8 @@
                 </div>
 
                 <div class="mtl-center">
-                    <span class="mtl-score">
+                    <span v-if="row.quiet" class="mtl-dot"></span>
+                    <span v-else class="mtl-score">
                         <span :class="{ 'mtl-score--changed': row.scoringTeam === 0 }">{{ row.score[0] }}</span>:<span :class="{ 'mtl-score--changed': row.scoringTeam === 1 }">{{ row.score[1] }}</span>
                     </span>
                     <span v-if="row.minute !== null && !hasMinuteGrid" class="mtl-minute">{{ row.minute }}'</span>
@@ -96,7 +101,7 @@ import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
 import { useEloRatings } from '@/components/shared/useEloRatings';
-import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
+import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
@@ -122,6 +127,7 @@ type Row = {
     minute: number | null;
     time: number;
     score: [number, number];
+    quiet: boolean;             // Fehlwurf, Airball, gefangener Trickshot: kein Becher
 };
 
 const turns = computed(() => props.match.turns ?? []);
@@ -132,8 +138,15 @@ const getData = (turn: Turn) => (turn.data ?? {}) as Record<string, unknown>;
 const isTrickshotHit = (turn: Turn, previous?: Turn) =>
     previous?.type === 'trickshot' && previous.teamIndex === turn.teamIndex && getData(previous).catcherIndex === turn.playerIndex;
 
+const QUIET_LABELS: Partial<Record<Turn['type'], string>> = {
+    miss: 'Nullwurf',
+    airball: 'Airball',
+    trickshot: 'Trickshot-Fang',
+};
+
 const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
     const data = getData(turn);
+    if (!cups && !isHitTurnType(turn.type)) return QUIET_LABELS[turn.type] ?? 'Verfehlt';
     const kinds = [
         SHORT_LABELS[turn.type],
         turn.type !== 'bouncer' && data.bouncer && 'Bouncer',
@@ -150,7 +163,7 @@ const rows = computed<Row[]>(() => {
 
     turns.value.forEach((turn, index) => {
         const cups = getTurnCups(turn);
-        if (!cups && !isHitTurnType(turn.type)) return;
+        const quiet = !cups && !isHitTurnType(turn.type);
         const scoringTeam = getScoringTeam(turn);
         score[scoringTeam] += cups;
         const team = getTeam(props.match, turn.teamIndex);
@@ -160,27 +173,65 @@ const rows = computed<Row[]>(() => {
             scoringTeam: cups ? scoringTeam : -1,
             icon: turn.type === 'hit' && isTrickshotHit(turn, turns.value[index - 1]) ? 'trickshot' : TURN_ICONS[turn.type],
             label: getLabel(turn, turns.value[index - 1], cups),
-            player: team.players.length > 1 ? getPlayerName(props.match, turn.teamIndex, turn.playerIndex) : '',
+            player: getRowPlayer(turn, team),
             minute: start && turn.time ? Math.max(0, Math.floor((turn.time - start) / 60000)) : null,
             time: turn.time,
             score: [score[0], score[1]],
+            quiet,
         });
     });
     return list;
 });
 
+// Beim Trickshot-Fang: wer verfehlt hat und wer gefangen hat
+const getRowPlayer = (turn: Turn, team: Team) => {
+    if (team.players.length <= 1) return '';
+    const name = getPlayerName(props.match, turn.teamIndex, turn.playerIndex);
+    const catcher = getData(turn).catcherIndex;
+    if (turn.type === 'trickshot' && typeof catcher === 'number') return `${name} → ${getPlayerName(props.match, turn.teamIndex, catcher)}`;
+    return name;
+};
+
+// Re-Rack, Nachwurf, Verlaengerung (gespeichert seit dem neuen Knecht, aeltere Spiele haben keine)
+const EVENT_LOOKS: Record<MatchEvent['kind'], { icon: KnechtIconName; label: (team: string) => string }> = {
+    reRack: { icon: 'reRack', label: team => `Re-Rack · ${team}` },
+    nachwurf: { icon: 'nachwurf', label: team => `Nachwurf · ${team}` },
+    overtime: { icon: 'overtime', label: () => 'Verlängerung' },
+};
+
 // Zeitachse: vor den Treffern jeder Minute eine Minutenmarke, auch fuer Minuten ohne Treffer
-type TimelineItem = { kind: 'minute'; key: string; minute: number } | { kind: 'row'; key: string; row: Row };
+type EventItem = { kind: 'event'; key: string; icon: KnechtIconName; label: string; teamIndex: number };
+type TimelineItem = { kind: 'minute'; key: string; minute: number } | { kind: 'row'; key: string; row: Row } | EventItem;
 const hasMinuteGrid = computed(() => rows.value.length > 0 && rows.value.every(row => row.minute !== null));
-const items = computed<TimelineItem[]>(() => {
-    if (!hasMinuteGrid.value) return rows.value.map(row => ({ kind: 'row', key: `r${row.key}`, row }));
+
+// Wuerfe und Ereignisse in Spielreihenfolge: ein Ereignis steht vor dem Turn afterTurnIndex
+const entries = computed(() => {
     const start = props.match.time ?? 0;
-    const lastRowMinute = rows.value[rows.value.length - 1].minute!;
-    const endMinute = props.match.endTime && start ? Math.floor((props.match.endTime - start) / 60000) : lastRowMinute;
+    const list: { position: number; minute: number | null; item: TimelineItem }[] = rows.value.map(row => ({
+        position: row.key, minute: row.minute, item: { kind: 'row', key: `r${row.key}`, row },
+    }));
+    (props.match.events ?? []).forEach((event, index) => {
+        const look = EVENT_LOOKS[event.kind];
+        if (!look) return;
+        const previous = rows.value.filter(row => row.key < event.afterTurnIndex).at(-1);
+        list.push({
+            position: event.afterTurnIndex - .5,
+            minute: event.time && start ? Math.max(0, Math.floor((event.time - start) / 60000)) : previous?.minute ?? 0,
+            item: { kind: 'event', key: `e${index}`, icon: look.icon, label: look.label(getTeamName(props.match, event.teamIndex)), teamIndex: event.teamIndex },
+        });
+    });
+    return list.sort((a, b) => a.position - b.position);
+});
+
+const items = computed<TimelineItem[]>(() => {
+    if (!hasMinuteGrid.value) return entries.value.map(entry => entry.item);
+    const start = props.match.time ?? 0;
+    const lastMinute = Math.max(0, ...entries.value.map(entry => entry.minute ?? 0));
+    const endMinute = props.match.endTime && start ? Math.floor((props.match.endTime - start) / 60000) : lastMinute;
     const list: TimelineItem[] = [];
-    for (let minute = 0; minute <= Math.max(lastRowMinute, endMinute); minute++) {
+    for (let minute = 0; minute <= Math.max(lastMinute, endMinute); minute++) {
         list.push({ kind: 'minute', key: `m${minute}`, minute });
-        rows.value.filter(row => row.minute === minute).forEach(row => list.push({ kind: 'row', key: `r${row.key}`, row }));
+        entries.value.filter(entry => (entry.minute ?? 0) === minute).forEach(entry => list.push(entry.item));
     }
     return list;
 });
@@ -219,7 +270,7 @@ const awards = computed(() => {
 
 // Treppenlinie je Team: x = Spielzeit (oder Reihenfolge ohne Zeiten), y = abgeraeumte Becher
 const chartLines = computed(() => {
-    const list = rows.value;
+    const list = rows.value.filter(row => !row.quiet);
     if (list.length < 2) return [];
     const start = props.match.time ?? list[0].time;
     const end = props.match.endTime ?? list[list.length - 1].time;
@@ -447,6 +498,47 @@ const chartLines = computed(() => {
     font-size: 9px;
     line-height: 1.1;
     color: var(--bp-text-subtle);
+}
+.mtl-row--quiet{
+    min-height: 22px;
+}
+.mtl-row--quiet .mtl-label{
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bp-text-muted);
+}
+.mtl-row--quiet .mtl-icon{
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-subtle);
+}
+.mtl-dot{
+    position: relative;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--bp-border-strong, #C9CDD2);
+}
+.mtl-event-row{
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: 3px 0;
+}
+.mtl-event{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 10px;
+    border: 1.5px solid var(--mtl-team-color);
+    border-radius: 999px;
+    background: var(--bp-surface);
+    color: var(--bp-text);
+    font-size: 11px;
+    font-weight: 700;
 }
 .mtl-minute-row{
     position: relative;
