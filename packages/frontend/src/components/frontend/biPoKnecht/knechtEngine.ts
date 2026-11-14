@@ -302,8 +302,8 @@ const resetStreaks = (state: KnechtState) => {
 
 const startRound = (state: KnechtState, teamIndex: number, ballsBack = false) => {
     commitPending(state);
-    // Eine Serie endet mit dem Zug des Teams (Balls Back setzt sie fort)
-    if (teamIndex !== state.activeTeamIndex) resetStreaks(state);
+    // Serien laufen je Spieler ueber die Zuege weiter: sie enden erst mit einem eigenen Fehlwurf
+    // (oder mit der Verlaengerung), nicht wenn das andere Team wirft
     state.activeTeamIndex = teamIndex;
     state.round = newRound(ballsBack);
     state.decider = null;

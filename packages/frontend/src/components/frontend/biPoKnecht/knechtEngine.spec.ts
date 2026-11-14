@@ -130,11 +130,22 @@ describe('BiPo Knecht Regeln', () => {
         expect(state.banner).toBe('on-fire');
     });
 
-    it('beendet die Serie, sobald das andere Team an den Wurf kommt', () => {
+    it('zaehlt die Serie je Spieler ueber die Zuege weiter, auch wenn das andere Team dazwischen wirft', () => {
         const state = play(DUO, [
             hit(0, 0), miss(1), miss(0), miss(1),
-            hit(0, 1), miss(1), miss(0), miss(1),
-            hit(0, 2),
+            hit(0, 1), miss(1), miss(0), miss(1),   // Spieler 0: 2 Treffer in Folge -> Heating Up
+            hit(0, 2),                               // 3. Treffer in Folge -> On Fire
+        ]);
+        expect(state.turns.at(-1)!.type).toBe('onfire');
+        expect(state.streaks[0][0]).toBe(3);
+        expect(getAllowedThrowers(state)).toEqual([0]);
+    });
+
+    it('beendet die Serie mit einem eigenen Fehlwurf', () => {
+        const state = play(DUO, [
+            hit(0, 0), miss(1), miss(0), miss(1),
+            miss(0), miss(1), miss(0), miss(1),
+            hit(0, 1),
         ]);
         expect(state.turns.at(-1)!.type).toBe('hit');
         expect(state.streaks[0][0]).toBe(1);

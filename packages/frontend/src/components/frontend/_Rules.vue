@@ -231,7 +231,7 @@ const sections: Section[] = [
                     'Jeder Treffer zählt zur Serie, auch Bouncer, Bombe, gefangene Bälle und umgekippte Becher.',
                     'Trickshot setzt die Serie nicht fort, startet aber eine neue: nach 2 weiteren Treffern On-Fire.',
                     'Mit Balls-Back: erst On-Fire, danach je ein Extra-Wurf.',
-                    'Die Serie endet, sobald das andere Team wirft, und mit Beginn der Verlängerung. Balls-Back setzt sie fort.',
+                    'Die Serie zählt je Spieler und läuft über die Züge weiter, auch wenn das andere Team dazwischen wirft. Sie endet mit einem eigenen Fehlwurf und mit Beginn der Verlängerung.',
                     'Gilt nicht im 1 gegen 1.',
                 ],
             },
