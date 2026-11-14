@@ -22,9 +22,14 @@
             <polyline v-for="line in chartLines" :key="line.teamIndex" :points="line.points" :stroke="TEAM_COLORS[line.teamIndex]" class="mtl-chart-line" vector-effect="non-scaling-stroke" />
         </svg>
 
-        <!-- Treffer: Team 1 links, Team 2 rechts, in der Mitte Minute und Zwischenstand -->
+        <!-- Treffer: Team 1 links, Team 2 rechts, in der Mitte Zwischenstand. Jede Spielminute als graue Zahl, auch ohne Treffer. -->
         <div class="mtl-list">
-            <div v-for="row in rows" :key="row.key" class="mtl-row" :style="{ '--mtl-team-color': TEAM_COLORS[row.teamIndex] }">
+            <template v-for="item in items" :key="item.key">
+            <div v-if="item.kind === 'minute'" class="mtl-minute-row">
+                <span class="mtl-minute-mark">{{ item.minute }}'</span>
+            </div>
+            <div v-else class="mtl-row" :style="{ '--mtl-team-color': TEAM_COLORS[item.row.teamIndex] }">
+                <template v-for="row in [item.row]" :key="row.key">
                 <div class="mtl-side mtl-side--left">
                     <template v-if="row.teamIndex === 0">
                         <span class="mtl-text">
@@ -39,7 +44,7 @@
                     <span class="mtl-score">
                         <span :class="{ 'mtl-score--changed': row.scoringTeam === 0 }">{{ row.score[0] }}</span>:<span :class="{ 'mtl-score--changed': row.scoringTeam === 1 }">{{ row.score[1] }}</span>
                     </span>
-                    <span v-if="row.minute !== null" class="mtl-minute">{{ row.minute }}'</span>
+                    <span v-if="row.minute !== null && !hasMinuteGrid" class="mtl-minute">{{ row.minute }}'</span>
                 </div>
 
                 <div class="mtl-side mtl-side--right">
@@ -51,7 +56,9 @@
                         </span>
                     </template>
                 </div>
+                </template>
             </div>
+            </template>
 
             <div class="mtl-final">
                 Endstand <strong>{{ finalScore[0] }} : {{ finalScore[1] }}</strong>
@@ -166,6 +173,22 @@ const rows = computed<Row[]>(() => {
             score: [score[0], score[1]],
         });
     });
+    return list;
+});
+
+// Zeitachse: vor den Treffern jeder Minute eine Minutenmarke, auch fuer Minuten ohne Treffer
+type TimelineItem = { kind: 'minute'; key: string; minute: number } | { kind: 'row'; key: string; row: Row };
+const hasMinuteGrid = computed(() => rows.value.length > 0 && rows.value.every(row => row.minute !== null));
+const items = computed<TimelineItem[]>(() => {
+    if (!hasMinuteGrid.value) return rows.value.map(row => ({ kind: 'row', key: `r${row.key}`, row }));
+    const start = props.match.time ?? 0;
+    const lastRowMinute = rows.value[rows.value.length - 1].minute!;
+    const endMinute = props.match.endTime && start ? Math.floor((props.match.endTime - start) / 60000) : lastRowMinute;
+    const list: TimelineItem[] = [];
+    for (let minute = 0; minute <= Math.max(lastRowMinute, endMinute); minute++) {
+        list.push({ kind: 'minute', key: `m${minute}`, minute });
+        rows.value.filter(row => row.minute === minute).forEach(row => list.push({ kind: 'row', key: `r${row.key}`, row }));
+    }
     return list;
 });
 
@@ -475,6 +498,22 @@ const chartLines = computed(() => {
 .mtl-minute{
     font-size: 9px;
     line-height: 1.1;
+    color: var(--bp-text-subtle);
+}
+.mtl-minute-row{
+    position: relative;
+    display: flex;
+    justify-content: center;
+    height: 16px;
+}
+.mtl-minute-mark{
+    position: relative;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--bp-surface);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
     color: var(--bp-text-subtle);
 }
 .mtl-final{
