@@ -79,6 +79,7 @@ const LOOKS: Record<KnechtCelebrationKind, Look> = {
     bouncer: { title: 'Bouncer!', subtitle: player => `${player} · über den Tisch`, icon: 'bouncer', color: '#8E4EC6', dark: '#3A1260', particle: 'spark', count: 10, rings: [], ball: 'bounce' },
     rerack: { title: 'Re-Rack!', subtitle: () => 'Neue Formation', icon: 'reRack', color: '#1F8A70', dark: '#0A3D31', particle: null, count: 0, rings: [] },
     trickshot: { title: 'Gefangen!', subtitle: player => `${player} wirft den Trickshot`, icon: 'trickshot', color: '#F5A524', dark: '#6B4300', particle: 'star', count: 10, rings: [], ball: 'loop' },
+    lastcup: { title: 'Letzter Becher!', subtitle: player => `${player} räumt ab`, icon: 'lastCup', color: '#E0A800', dark: '#5C4300', particle: 'star', count: 24, rings: [1, 2] },
     formation: { title: 'Formation', icon: 'reRack', color: '#E5484D', dark: '#7A1418', particle: 'spark', count: 12, rings: [] },
     'trickshot-hit': { title: 'Trickshot!', subtitle: player => `${player} verwandelt`, icon: 'trickshot', color: '#F5A524', dark: '#6B4300', particle: 'star', count: 22, rings: [1] },
 };

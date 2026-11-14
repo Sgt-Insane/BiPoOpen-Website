@@ -28,7 +28,7 @@ const CELEBRATION_DURATION = 2200;
 // Grosse Animation wie beim Bowling. Zusaetzlich zu den Bannern der Engine auch fuer Aktionen ohne Regelfolge.
 export type KnechtCelebrationKind =
     | 'bomb' | 'on-fire' | 'heating-up' | 'ballsback' | 'deathcup' | 'nachwurf' | 'overtime'
-    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'formation';
+    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'lastcup' | 'formation';
 // teamIndex: wem die Animation zugewandt ist (bei Formationen das Team, das auf diese Becher wirft)
 export type KnechtCelebration = { id: number; kind: KnechtCelebrationKind; player: string; teamIndex: number; formation?: KnechtFormation };
 
@@ -193,7 +193,11 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         const playerIndex = action.type === 'trickshot' ? action.catcher : action.type === 'throw' || action.type === 'deathcup' ? action.player : null;
         const name = playerIndex === null ? '' : (throwingTeam === 0 ? match.team1 : match.team2).players[playerIndex]?.name ?? '';
         const kind = getCelebrationKind(next, action, newActions[newActions.length - 2]);
+        // Letzter Becher getroffen: eigene Animation vor allem anderen (z.B. danach der Nachwurf)
+        const newTurn = next.turns.length > before.turns.length ? next.turns[next.turns.length - 1] : null;
+        const lastCup = newTurn?.type === 'lastCup' && next.status === 'playing';
         celebrate([
+            ...(lastCup ? [{ kind: 'lastcup' as const, player: name, teamIndex: throwingTeam }] : []),
             ...(kind ? [{ kind, player: name, teamIndex: throwingTeam }] : []),
             ...getNewFormations(before, next).map(({ rackIndex, formation }) => ({ kind: 'formation' as const, player: '', teamIndex: 1 - rackIndex, formation })),
         ]);
