@@ -161,6 +161,8 @@ const QUIET_LABELS: Partial<Record<Turn['type'], string>> = {
     penalty: 'Gelbe Karte',
 };
 
+const HIT_FOLLOW_UPS = new Set<Turn['type']>(['hit', 'ballsback', 'onfire', 'bouncer']);
+
 const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
     const data = getData(turn);
     if (turn.type === 'miss' && data.edge) return formatEdge(data.edge as EdgeHit);
@@ -170,7 +172,8 @@ const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
         turn.type !== 'bouncer' && data.bouncer && 'Bouncer',
         (turn.type === 'trickshot' || isTrickshotHit(turn, previous)) && 'Trickshot',
     ].filter(Boolean);
-    const label = kinds.length ? kinds.join(' · ') : 'Treffer';
+    // Balls Back, On Fire, Bouncer und Trickshot sind Folgen eines Treffers: "Treffer · Balls Back"
+    const label = !kinds.length ? 'Treffer' : HIT_FOLLOW_UPS.has(turn.type) ? `Treffer · ${kinds.join(' · ')}` : kinds.join(' · ');
     return cups > 1 && turn.type !== 'owncup' && turn.type !== 'penalty' ? `${label} +${cups}` : label;
 };
 
