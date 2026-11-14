@@ -103,6 +103,7 @@ const TURN_LABELS: Record<Turn['type'], string> = {
     lastCup: 'Letzter Becher',
     deathcup: 'Deathcup',
     owncup: 'Eigener Becher',
+    penalty: 'Ellenbogen',
 };
 
 // Treffer mit Trickshot: der Faenger des vorherigen Wurfs hat getroffen
@@ -118,6 +119,7 @@ export const getTurnLabel = (turn: Turn, match?: Match, previous?: Turn) => {
         return catcher ? `Verfehlt · ${catcher} fängt (Trickshot)` : 'Verfehlt · Trickshot-Fang';
     }
     if (turn.type === 'miss' && data.edge) return `Verfehlt · ${formatEdge(data.edge as EdgeHit)}`;
+    if (turn.type === 'penalty') return data.card === 'red' ? 'Ellenbogen · Rote Karte, Strafbecher' : 'Ellenbogen · Gelbe Karte';
     if (turn.type === 'owncup') return `${(data.cups as number[]).length} eigene${(data.cups as number[]).length === 1 ? 'r' : ''} Becher runter`;
     if (!isHitTurnType(turn.type)) return TURN_LABELS[turn.type];
 

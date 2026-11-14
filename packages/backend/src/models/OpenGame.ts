@@ -49,7 +49,8 @@ const TurnSchema = new Schema(
         'ballsback',
         'lastCup',
         'deathcup',
-        'owncup'
+        'owncup',
+        'penalty'
       ],
       required: true
     },

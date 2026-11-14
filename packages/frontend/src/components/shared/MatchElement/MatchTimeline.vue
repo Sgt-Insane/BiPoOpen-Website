@@ -130,6 +130,7 @@ const SHORT_LABELS: Partial<Record<Turn['type'], string>> = {
     lastCup: 'Letzter Becher',
     deathcup: 'Deathcup',
     owncup: 'Eigener Becher',
+    penalty: 'Strafbecher',
 };
 
 type Row = {
@@ -157,6 +158,7 @@ const QUIET_LABELS: Partial<Record<Turn['type'], string>> = {
     miss: 'Nullwurf',
     airball: 'Airball',
     trickshot: 'Trickshot-Fang',
+    penalty: 'Gelbe Karte',
 };
 
 const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
@@ -169,7 +171,7 @@ const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
         (turn.type === 'trickshot' || isTrickshotHit(turn, previous)) && 'Trickshot',
     ].filter(Boolean);
     const label = kinds.length ? kinds.join(' · ') : 'Treffer';
-    return cups > 1 && turn.type !== 'owncup' ? `${label} +${cups}` : label;
+    return cups > 1 && turn.type !== 'owncup' && turn.type !== 'penalty' ? `${label} +${cups}` : label;
 };
 
 const rows = computed<Row[]>(() => {

@@ -107,8 +107,8 @@ declare global {
     type Turn = {
         playerIndex: number;
         teamIndex: number;
-        type: 'hit' | 'miss' | 'airball' | 'bomb' | 'bouncer' | 'trickshot' | 'onfire' | 'ballsback' | 'lastCup' | 'deathcup' | 'owncup';
-        data: HitTurn | MissTurn | AirballTurn | BombTurn | BouncerTurn | TrickshotTurn | OnFireTurn | BallsBackTurn | LastCupTurn | DeathcupTurn | OwnCupTurn;
+        type: 'hit' | 'miss' | 'airball' | 'bomb' | 'bouncer' | 'trickshot' | 'onfire' | 'ballsback' | 'lastCup' | 'deathcup' | 'owncup' | 'penalty';
+        data: HitTurn | MissTurn | AirballTurn | BombTurn | BouncerTurn | TrickshotTurn | OnFireTurn | BallsBackTurn | LastCupTurn | DeathcupTurn | OwnCupTurn | PenaltyTurn;
         time: number; 
     };
 
@@ -130,7 +130,9 @@ declare global {
     type BallsBackTurn = { cupIndex1: number, cupIndex2?: number, bouncer?: boolean };
     type LastCupTurn = { cupIndex: number, double?: boolean };   // double: weiterer Ball in den letzten Becher (Sofortsieg)
     type DeathcupTurn = { cups: number[] };             // alle uebrigen Becher des Gegners
-    type OwnCupTurn = { cups: number[] };               // eigene Becher runtergeworfen, zaehlen fuer den Gegner
+    type OwnCupTurn = { cups: number[] };
+    // Ellenbogen-Call: gelb = Verwarnung, rot = Strafbecher (eigener Becher, zaehlt fuer den Gegner)
+    type PenaltyTurn = { card: 'yellow' | 'red'; cups: number[] };               // eigene Becher runtergeworfen, zaehlen fuer den Gegner
 
     // Stats
     type GroupWithStats = {  

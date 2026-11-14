@@ -20,13 +20,13 @@ export const getThrowTimes = (turns: Turn[], events: TimedEvent[] = []): ThrowTi
     turns.forEach((turn, turnIndex) => {
         const start = starts.filter(event => event.afterTurnIndex === turnIndex).at(-1);
         if (start) { reference = start.time!; referenceTeam = turn.teamIndex; }
+        // Eigene Becher und Ellenbogen-Calls sind keine Wuerfe (koennen auch das andere Team betreffen)
+        if (turn.type === 'owncup' || turn.type === 'penalty') return;
         // Ohne "Zug starten" vor diesem Zug (anderes Team) keine Messung
         if (reference === null || referenceTeam !== turn.teamIndex || !turn.time) {
             reference = null;
             return;
         }
-        // Eigene Becher und Deathcup sind keine normalen Wuerfe
-        if (turn.type === 'owncup') return;
         const seconds = Math.max(0, (turn.time - reference) / 1000);
         reference = turn.time;
         net += seconds;

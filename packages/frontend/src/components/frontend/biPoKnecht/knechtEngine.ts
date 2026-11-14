@@ -32,7 +32,9 @@ export type KnechtAction =
     | { type: 'throw'; player: number; outcome: ThrowOutcome; cup?: number; bouncer?: boolean; extraCups?: number[]; time: number; spot?: { x: number; y: number }; edge?: EdgeHit }
     | { type: 'trickshot'; player: number; catcher: number; time: number }   // player hat verfehlt, catcher wirft den Trickshot
     | { type: 'reRack'; time: number }
-    | { type: 'turnStart'; time: number }           // Knecht Pro: Werfer haben die Baelle, die Zeit fuer den Zug laeuft
+    | { type: 'turnStart'; time: number }
+    // Ellenbogen ueber der Tischkante (Schiedsrichter): 1. Call je Person gelb, ab dem 2. rot mit Strafbecher
+    | { type: 'elbow'; team: number; player: number; cups: number[]; time: number }           // Knecht Pro: Werfer haben die Baelle, die Zeit fuer den Zug laeuft
     | { type: 'deathcup'; player: number; time: number }
     | { type: 'ownCup'; team: number; player: number; cups: number[]; time: number };
 
@@ -90,6 +92,7 @@ export type KnechtState = {
     endReason: EndReason | null;
     victoryBonus: number;                       // Siegpunkt(e) bei sonst punktgleichem Ende
     banner: BannerEvent;
+    elbowCalls: number[][];                     // Ellenbogen-Calls je Team und Spieler
 };
 
 export class KnechtRuleError extends Error {}
@@ -138,6 +141,7 @@ export const createInitialState = (config: KnechtConfig): KnechtState => ({
     reRacksLeft: [RE_RACKS_PER_TEAM, RE_RACKS_PER_TEAM],
     overtimeCount: 0,
     streaks: config.playerCounts.map(count => Array.from({ length: count }, () => 0)),
+    elbowCalls: config.playerCounts.map(count => Array.from({ length: count }, () => 0)),
     status: 'playing',
     winnerTeamIndex: null,
     endReason: null,
@@ -573,6 +577,34 @@ const applyOwnCup = (state: KnechtState, action: Extract<KnechtAction, { type: '
     else moveLastCupToTip(rack);
 };
 
+// Ellenbogen-Call: der erste je Person ist eine Verwarnung (gelb), ab dem zweiten rot mit Strafbecher.
+// Der Strafbecher kommt vom eigenen Tisch und zaehlt fuer den Gegner (wie ein eigener Becher).
+export const isNextElbowRed = (state: KnechtState, team: number, player: number) => (state.elbowCalls[team]?.[player] ?? 0) >= 1;
+
+const applyElbow = (state: KnechtState, action: Extract<KnechtAction, { type: 'elbow' }>) => {
+    const team = action.team;
+    if (team !== 0 && team !== 1) fail('Unbekanntes Team');
+    if (action.player < 0 || action.player >= state.config.playerCounts[team]) fail('Unbekannter Spieler');
+    const red = isNextElbowRed(state, team, action.player);
+    const rack = state.racks[team];
+    const standing = getStandingCups(rack);
+    if (!red && action.cups.length) fail('Die erste Verwarnung kostet keinen Becher');
+    if (red && (action.cups.length !== 1 || !standing.includes(action.cups[0]))) fail('Fuer die rote Karte einen stehenden eigenen Becher waehlen');
+    state.elbowCalls[team][action.player]++;
+
+    if (!red) {
+        pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'yellow', cups: [] } }, action.time, []);
+        return;
+    }
+    const opponent = enemyOf(team);
+    const opponentCount = state.config.playerCounts[opponent];
+    const credits = Array.from({ length: opponentCount }, (_, playerIndex) => ({ teamIndex: opponent, playerIndex, points: 1 / opponentCount }));
+    rack.hit = sorted([...rack.hit, ...action.cups]);
+    pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'red', cups: [...action.cups] } }, action.time, credits);
+    if (getStandingCups(rack).length === 0) ownRackCleared(state, team, action.time);
+    else moveLastCupToTip(rack);
+};
+
 // Letzter eigener Becher runtergeworfen: zaehlt als letzter Becher des Gegners, es folgt die Gentleman's Rule.
 // Hatten beide Teams damit abgeraeumt, geht es in die Verlaengerung.
 const ownRackCleared = (state: KnechtState, team: number, time: number) => {
@@ -595,6 +627,7 @@ const applyActionInPlace = (state: KnechtState, action: KnechtAction) => {
             break;
         case 'deathcup': applyDeathcup(state, action); break;
         case 'ownCup': applyOwnCup(state, action); break;
+        case 'elbow': applyElbow(state, action); break;
         default: fail('Unbekannte Aktion');
     }
 };

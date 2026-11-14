@@ -28,7 +28,7 @@ const CELEBRATION_DURATION = 2200;
 // Grosse Animation wie beim Bowling. Zusaetzlich zu den Bannern der Engine auch fuer Aktionen ohne Regelfolge.
 export type KnechtCelebrationKind =
     | 'bomb' | 'on-fire' | 'heating-up' | 'ballsback' | 'deathcup' | 'nachwurf' | 'overtime'
-    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'lastcup' | 'formation';
+    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'lastcup' | 'formation' | 'yellow-card' | 'red-card';
 // teamIndex: wem die Animation zugewandt ist (bei Formationen das Team, das auf diese Becher wirft)
 export type KnechtCelebration = { id: number; kind: KnechtCelebrationKind; player: string; teamIndex: number; formation?: KnechtFormation };
 
@@ -47,6 +47,7 @@ const ENGINE_CELEBRATIONS: KnechtCelebrationKind[] = ['bomb', 'on-fire', 'heatin
 export const getCelebrationKind = (next: KnechtState, action: KnechtAction, previous?: KnechtAction): KnechtCelebrationKind | null => {
     if (next.banner && (ENGINE_CELEBRATIONS as string[]).includes(next.banner)) return next.banner as KnechtCelebrationKind;
     if (action.type === 'reRack') return 'rerack';
+    if (action.type === 'elbow') return action.cups.length ? 'red-card' : 'yellow-card';
     if (action.type === 'trickshot') return 'trickshot';
     if (action.type === 'throw' && action.outcome === 'hit') {
         if (previous?.type === 'trickshot' && previous.catcher === action.player) return 'trickshot-hit';
@@ -199,15 +200,16 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         pick.value = null;
         playFeedback(next, action);
         // Name unter der Animation: der Werfer, beim Trickshot der Faenger
-        const playerIndex = action.type === 'trickshot' ? action.catcher : action.type === 'throw' || action.type === 'deathcup' ? action.player : null;
-        const name = playerIndex === null ? '' : (throwingTeam === 0 ? match.team1 : match.team2).players[playerIndex]?.name ?? '';
+        const playerIndex = action.type === 'trickshot' ? action.catcher : action.type === 'throw' || action.type === 'deathcup' || action.type === 'elbow' ? action.player : null;
+        const nameTeam = action.type === 'elbow' ? action.team : throwingTeam;
+        const name = playerIndex === null ? '' : (nameTeam === 0 ? match.team1 : match.team2).players[playerIndex]?.name ?? '';
         const kind = getCelebrationKind(next, action, newActions[newActions.length - 2]);
         // Letzter Becher getroffen: eigene Animation vor allem anderen (z.B. danach der Nachwurf)
         const newTurn = next.turns.length > before.turns.length ? next.turns[next.turns.length - 1] : null;
         const lastCup = newTurn?.type === 'lastCup' && next.status === 'playing';
         celebrate([
             ...(lastCup ? [{ kind: 'lastcup' as const, player: name, teamIndex: throwingTeam }] : []),
-            ...(kind ? [{ kind, player: name, teamIndex: throwingTeam }] : []),
+            ...(kind ? [{ kind, player: name, teamIndex: action.type === 'elbow' ? 1 - action.team : throwingTeam }] : []),
             ...getNewFormations(before, next).map(({ rackIndex, formation }) => ({ kind: 'formation' as const, player: '', teamIndex: 1 - rackIndex, formation })),
         ]);
         return true;
@@ -265,6 +267,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     });
     const deathcup = () => dispatch({ type: 'deathcup', player: selectedPlayer.value, time: now() });
     const ownCup = (team: number, player: number, cups: number[]) => dispatch({ type: 'ownCup', team, player, cups, time: now() });
+    const elbow = (team: number, player: number, cups: number[]) => dispatch({ type: 'elbow', team, player, cups, time: now() });
 
     const canUndo = computed(() => !!pick.value || actions.value.length > 0);
 
@@ -333,6 +336,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         canReRack: computed(() => canReRack(state.value)),
         deathcup,
         ownCup,
+        elbow,
         canUndo,
         undo,
         ballMark,

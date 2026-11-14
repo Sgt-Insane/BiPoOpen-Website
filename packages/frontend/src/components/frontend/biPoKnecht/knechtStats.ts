@@ -23,6 +23,7 @@ export type KnechtPlayerStats = {
     ownCups: number;
     bestStreak: number;
     edges: number;          // Nullwuerfe an die Kante (seit der Kanten-Erkennung)
+    penalties: number;      // Ellenbogen-Calls (gelb und rot)
 };
 
 // points: Punkte je Team und Spieler (aus dem Regelwerk oder die gespeicherten Scores)
@@ -30,7 +31,7 @@ export const getTurnStats = (match: Match, turns: Turn[], points: number[][]): K
     const stats = [match.team1, match.team2].flatMap((team, teamIndex) => team.players.map((player, playerIndex) => ({
         teamIndex, playerIndex, name: player.name, points: points[teamIndex]?.[playerIndex] ?? 0,
         throws: 0, hits: 0, misses: 0, airballs: 0, bouncers: 0, bombs: 0, ballsBacks: 0, onFires: 0,
-        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0, edges: 0,
+        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0, edges: 0, penalties: 0,
     })));
     const find = (teamIndex: number, playerIndex: number) => stats.find(entry => entry.teamIndex === teamIndex && entry.playerIndex === playerIndex);
     const streaks = new Map<KnechtPlayerStats, number>();
@@ -43,6 +44,7 @@ export const getTurnStats = (match: Match, turns: Turn[], points: number[][]): K
         const data = (turn.data ?? {}) as Record<string, unknown>;
 
         if (turn.type === 'owncup') { entry.ownCups += (data.cups as number[] | undefined)?.length ?? 0; return; }
+        if (turn.type === 'penalty') { entry.penalties++; return; }
         if (turn.type === 'deathcup') { entry.deathcups++; return; }
         if (turn.type === 'trickshot') {
             entry.throws++;
@@ -86,14 +88,14 @@ export const getAccuracy = (stats: { hits: number; throws: number }) => stats.th
 
 // ─── Becher je Eintrag (Spielverlauf auf der Webseite) ───
 // Wer bekommt die Becher dieses Eintrags? Beim eigenen Becher der Gegner.
-export const getScoringTeam = (turn: Turn) => turn.type === 'owncup' ? 1 - turn.teamIndex : turn.teamIndex;
+export const getScoringTeam = (turn: Turn) => turn.type === 'owncup' || turn.type === 'penalty' ? 1 - turn.teamIndex : turn.teamIndex;
 
 // Wie viele Becher ein Eintrag abraeumt. Bei der Bombe ist cupIndex1 der Becher des ersten Balls,
 // der schon mit dem ersten Wurf gezaehlt wurde. Alte Trickshots (vor dem neuen Knecht) waren selbst Treffer.
 export const getTurnCups = (turn: Turn) => {
     const data = (turn.data ?? {}) as Record<string, unknown>;
     const cupKeys = Object.keys(data).filter(key => key.startsWith('cupIndex')).length;
-    if (turn.type === 'deathcup' || turn.type === 'owncup') return (data.cups as number[] | undefined)?.length ?? 0;
+    if (turn.type === 'deathcup' || turn.type === 'owncup' || turn.type === 'penalty') return (data.cups as number[] | undefined)?.length ?? 0;
     if (turn.type === 'bomb') return Math.max(0, cupKeys - 1);
     if (turn.type === 'lastCup' && data.double) return 0;       // der erste Ball hat den Becher schon gezaehlt
     if (turn.type === 'lastCup' && !cupKeys) return 1;          // alte Knecht-Spiele: letzter Becher ohne data
@@ -113,7 +115,7 @@ export const getKnechtCareerStats = (matches: Match[], playerName: string): Knec
     const nameLower = playerName.toLowerCase();
     const career: KnechtCareerStats = {
         games: 0, wins: 0, points: 0, throws: 0, hits: 0, misses: 0, airballs: 0, bouncers: 0, bombs: 0, ballsBacks: 0, onFires: 0,
-        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0, edges: 0,
+        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0, edges: 0, penalties: 0,
     };
 
     matches.forEach(match => {

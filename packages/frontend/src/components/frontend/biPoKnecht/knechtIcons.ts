@@ -33,6 +33,8 @@ export const KNECHT_ICONS = {
     reRack: [{ cx: 12, cy: 6.5, r: 2.8 }, { cx: 7.5, cy: 15, r: 2.8 }, { cx: 16.5, cy: 15, r: 2.8 }, { d: TABLE }],
     nachwurf: [{ d: 'M12 4v16M7 20h10M5 7h14' }, { d: 'M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z' }],
     overtime: [{ d: 'M7 3h10M7 21h10' }, { d: 'M8 3c0 5 4 6 4 9s-4 4-4 9M16 3c0 5-4 6-4 9s4 4 4 9' }],
+    // Karte (Ellenbogen-Call)
+    penalty: [{ d: 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z' }, { d: 'M10 7h4' }],
     win: [{ d: 'M8 4h8v5a4 4 0 0 1-8 0z' }, { d: 'M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4' }, { d: 'M12 13v4M8 20h8M10 17h4v3h-4z' }],
 } satisfies Record<string, KnechtIconShape[]>;
 
@@ -50,4 +52,5 @@ export const TURN_ICONS: Record<Turn['type'], KnechtIconName> = {
     lastCup: 'lastCup',
     deathcup: 'deathcup',
     owncup: 'owncup',
+    penalty: 'penalty',
 };

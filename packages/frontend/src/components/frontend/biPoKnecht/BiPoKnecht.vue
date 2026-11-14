@@ -124,6 +124,10 @@
                 </div>
             </KnechtSheet>
 
+            <KnechtSheet :visible="sheet === 'elbow'" title="Ellenbogen-Call" subtitle="Wer war mit dem Ellenbogen über der Tischkante?" :flipped="sheetFlipped" @update:visible="sheet = null">
+                <KnechtElbow :game="game" @done="sheet = null" />
+            </KnechtSheet>
+
             <KnechtSheet :visible="sheet === 'ownCup'" title="Eigene Becher runter" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <KnechtOwnCup :game="game" @done="sheet = null" />
             </KnechtSheet>
@@ -157,6 +161,7 @@
 
                     <div class="kn-menu-label">Sonderfälle</div>
                     <button type="button" class="kn-menu-button" @click="sheet = 'ownCup'"><KnechtIcon name="owncup" /> Eigene Becher runtergeworfen</button>
+                    <button v-if="mode === 'referee'" type="button" class="kn-menu-button" @click="sheet = 'elbow'"><KnechtIcon name="penalty" /> Ellenbogen-Call</button>
                     <button type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmDeathcup"><KnechtIcon name="deathcup" /> Deathcup von {{ throwerName }}</button>
 
                     <div class="kn-menu-label">Spiel</div>
@@ -200,6 +205,7 @@ import KnechtScoreboard from './KnechtScoreboard.vue';
 import KnechtTimeline from './KnechtTimeline.vue';
 import KnechtCelebration from './KnechtCelebration.vue';
 import KnechtOwnCup from './KnechtOwnCup.vue';
+import KnechtElbow from './KnechtElbow.vue';
 import KnechtStartTeam from './KnechtStartTeam.vue';
 import KnechtGameOver from './KnechtGameOver.vue';
 import KnechtIcon from './KnechtIcon.vue';
@@ -242,7 +248,7 @@ const barSide = ref<'left' | 'right'>(localStorage.getItem(BAR_KEY) === 'left' ?
 const swapped = ref(false);
 const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
-const sheet = ref<'scoreboard' | 'timeline' | 'menu' | 'trickshot' | 'ownCup' | null>(null);
+const sheet = ref<'scoreboard' | 'timeline' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
 
 const setMode = (value: ModeSetting) => {
     modeSetting.value = value;
