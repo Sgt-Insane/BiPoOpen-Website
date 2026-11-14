@@ -248,8 +248,10 @@ describe('BiPo Knecht Regeln', () => {
 
     const nachwurfEqualizer = (): KnechtAction[] => [
         ...soloClearWithFirstBall(), miss(0),
-        // Team 1 hat 0 Becher getroffen: im Nachwurf alle 10 treffen (der letzte steht dann an der Spitze)
-        hit(0, 0), hit(0, 1), hit(0, 2), hit(0, 3), hit(0, 4), hit(0, 5), hit(0, 6), hit(0, 7), hit(0, 8), hit(0, 0),
+        // Team 1 hat 0 Becher getroffen: im Nachwurf alle 10 treffen, je Runde zwei Baelle.
+        // Der Bouncer laesst einen Becher uebrig, der an die Spitze kommt und mit Ball 1 faellt.
+        hit(0, 0), hit(0, 1), hit(0, 2), hit(0, 3), hit(0, 4), hit(0, 5), hit(0, 6), hit(0, 7, { bouncer: true, extraCups: [8] }),
+        hit(0, 0),
     ];
 
     it('geht bei Ausgleich im Nachwurf in die Verlaengerung mit 2x3 Bechern, ohne Re-Racks', () => {
@@ -263,17 +265,33 @@ describe('BiPo Knecht Regeln', () => {
         expect(state.banner).toBe('overtime');
     });
 
-    it('raeumt im Nachwurf getroffene Becher sofort ab, eine Bombe gibt es dort nicht', () => {
-        const state = play(SOLO, [...soloClearWithFirstBall(), miss(0), hit(0, 4), hit(0, 5)]);
-        expect(state.racks[0].pending).toEqual([]);
-        expect(state.racks[0].hit).toEqual(expect.arrayContaining([4, 5]));
-        expect(getHittableCups(state)).not.toContain(4);
-        // Zweiter Ball in einen schon getroffenen Becher ist nicht moeglich
-        expectError(SOLO, [...soloClearWithFirstBall(), miss(0), hit(0, 4), miss(0), hit(0, 4, { extraCups: [5, 6] })]);
+    it('raeumt im Nachwurf die Becher ab, sobald beide Baelle geworfen sind', () => {
+        const nachwurf = [...soloClearWithFirstBall(), miss(0)];
+        expect(play(SOLO, [...nachwurf, hit(0, 4)]).racks[0].pending).toEqual([4]);      // zweiter Ball kommt noch
+        const round = play(SOLO, [...nachwurf, hit(0, 4), hit(0, 5)]);
+        expect(round.racks[0].pending).toEqual([]);
+        expect(round.racks[0].hit).toEqual(expect.arrayContaining([4, 5]));
+        expect(round.round.ballCount).toBe(2);                                             // beide getroffen: beide werfen wieder
+    });
+
+    it('erlaubt im Nachwurf Bombe und Bouncer', () => {
+        const nachwurf = [...soloClearWithFirstBall(), miss(0)];
+        const bomb = play(SOLO, [...nachwurf, hit(0, 4), hit(0, 4, { extraCups: [5, 6] })]);
+        expect(bomb.turns.at(-1)!.type).toBe('bomb');
+        expect(getPlayerPoints(bomb)[1]).toEqual([3]);
+        const bouncer = play(SOLO, [...nachwurf, hit(0, 4, { bouncer: true, extraCups: [5] })]);
+        expect(bouncer.turns.at(-1)!.type).toBe('bouncer');
+    });
+
+    it('laesst im Nachwurf nach einem Fehlwurf nur noch den anderen Ball werfen', () => {
+        const state = play(SOLO, [...soloClearWithFirstBall(), miss(0), miss(0), hit(0, 4)]);
+        expect(state.round.ballCount).toBe(1);
+        expect(state.racks[0].pending).toEqual([]);                                        // ohne zweiten Ball sofort abgeraeumt
+        expect(state.status).toBe('playing');
     });
 
     it('gewinnt den Nachwurf sofort mit einem weiteren Ball im letzten Becher', () => {
-        const state = play(SOLO, [...nachwurfEqualizer(), hit(0, 0)]);
+        const state = play(SOLO, [...nachwurfEqualizer(), hit(0, 0)]);   // zweiter Ball in den letzten Becher
         expect(state.status).toBe('over');
         expect(state.winnerTeamIndex).toBe(1);
         expect(state.endReason).toBe('nachwurfDouble');

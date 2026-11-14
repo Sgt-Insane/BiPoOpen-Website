@@ -307,10 +307,10 @@ const sections: Section[] = [
                 key: 'Nachwerfen',
                 summary: 'nach dem letzten Becher des Gegners',
                 points: [
-                    'Jeder Spieler wirft für sich: Wer trifft, bekommt den Ball zurück, bis er verfehlt oder den letzten Becher trifft. Danach ist der Mitspieler dran, im 1 gegen 1 der zweite Ball.',
-                    'Getroffene Becher werden sofort abgeräumt.',
+                    'Beide Bälle werden abwechselnd geworfen (im 1 gegen 1 beide vom selben Spieler). Wer trifft, wirft in der nächsten Runde wieder, wer verfehlt, ist raus – dann wirft nur noch der andere.',
+                    'Getroffene Becher werden abgeräumt, sobald beide Bälle der Runde geworfen sind (ist nur noch ein Ball übrig, nach jedem Wurf).',
+                    'Bombe, Bouncer und Trickshot zählen weiter. Kein Balls-Back, kein Heating Up und kein On-Fire.',
                     'Beide Bälle im letzten Becher beim Nachwerfen = Sieg.',
-                    'Trickshot gilt weiter. Keine Bombe, kein Balls-Back, kein Heating Up und kein On-Fire.',
                     'Fallen alle Becher, geht es in die Verlängerung.',
                 ],
             },
