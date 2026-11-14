@@ -35,6 +35,22 @@
             </div>
         </div>
 
+        <!-- Highlights wie beim Fussball: besondere Wuerfe und Wendepunkte, antippen springt zur Stelle -->
+        <div v-if="highlights.length" class="mtl-highlights">
+            <span class="mtl-title">Highlights</span>
+            <div class="mtl-highlight-list">
+                <button v-for="highlight in highlights" :key="highlight.key" type="button" class="mtl-highlight"
+                    :style="{ '--mtl-team-color': getTeamColor(match, highlight.teamIndex) }" @click="scrollToRow(highlight.rowKey)">
+                    <span class="mtl-highlight-minute">{{ highlight.minute !== null ? `${highlight.minute}'` : '' }}</span>
+                    <span class="mtl-highlight-icon"><KnechtIcon :name="highlight.icon" /></span>
+                    <span class="mtl-text">
+                        <span class="mtl-label">{{ highlight.title }}</span>
+                        <span class="mtl-player">{{ highlight.detail }}</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+
         <!-- Auszeichnungen wie am Spielende im Knecht -->
         <div v-if="awards.length" class="mtl-awards">
             <span class="mtl-title">Auszeichnungen</span>
@@ -65,7 +81,9 @@
             <div v-else-if="item.kind === 'event'" class="mtl-event-row" :style="{ '--mtl-team-color': getTeamColor(match, item.teamIndex) }">
                 <span class="mtl-event"><KnechtIcon :name="item.icon" /> {{ item.label }}</span>
             </div>
-            <div v-else class="mtl-row" :class="{ 'mtl-row--quiet': item.row.quiet }" :style="{ '--mtl-team-color': getTeamColor(match, item.row.teamIndex) }">
+            <div v-else class="mtl-row" :ref="el => setRowElement(item.row.key, el)"
+                :class="{ 'mtl-row--quiet': item.row.quiet, 'mtl-row--highlight': highlightKeys.has(item.row.key), 'mtl-row--flash': flashKey === item.row.key }"
+                :style="{ '--mtl-team-color': getTeamColor(match, item.row.teamIndex) }">
                 <template v-for="row in [item.row]" :key="row.key">
                 <div class="mtl-side mtl-side--left">
                     <template v-if="row.teamIndex === 0">
@@ -107,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType } from 'vue';
+import { computed, PropType, ref } from 'vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
@@ -218,6 +236,56 @@ const EVENT_LOOKS: Partial<Record<MatchEvent['kind'], { icon: KnechtIconName; la
     reRack: { icon: 'reRack', label: team => `Re-Rack · ${team}` },
     nachwurf: { icon: 'nachwurf', label: team => `Nachwurf · ${team}` },
     overtime: { icon: 'overtime', label: () => 'Verlängerung' },
+};
+
+// ─── Highlights ───
+type Highlight = { key: string; rowKey: number; teamIndex: number; minute: number | null; icon: KnechtIconName; title: string; detail: string };
+
+const highlights = computed<Highlight[]>(() => {
+    const list: Highlight[] = [];
+    let leader = 0;     // -1 / 0 / 1: wer fuehrt
+    rows.value.forEach(row => {
+        const turn = turns.value[row.key];
+        if (!turn) return;
+        const name = getPlayerName(props.match, turn.teamIndex, turn.playerIndex);
+        const add = (icon: KnechtIconName, title: string, detail = name, teamIndex = row.teamIndex) =>
+            list.push({ key: `${row.key}-${title}`, rowKey: row.key, teamIndex, minute: row.minute, icon, title, detail });
+
+        // Besondere Wuerfe
+        if (turn.type === 'bomb') add('bomb', 'Bombe');
+        if (turn.type === 'deathcup') add('deathcup', 'Deathcup');
+        if (turn.type === 'lastCup') add('lastCup', 'Letzter Becher');
+        if (turn.type === 'hit' && isTrickshotHit(turn, turns.value[row.key - 1])) add('trickshot', 'Trickshot');
+        if (turn.type === 'penalty' && getData(turn).card === 'red') add('penalty', 'Rote Karte', name);
+        const previousTurn = turns.value[row.key - 1];
+        if (turn.type === 'onfire' && !(previousTurn?.type === 'onfire' && previousTurn.playerIndex === turn.playerIndex && previousTurn.teamIndex === turn.teamIndex))
+            add('onfire', 'On Fire');
+
+        // Wendepunkte im Spielstand (nur Becher-Eintraege)
+        if (!row.quiet) {
+            const lead = Math.sign(row.score[0] - row.score[1]);
+            const scoreText = `${row.score[0]} : ${row.score[1]}`;
+            if (lead === 0 && leader !== 0 && row.score[0] > 0) add('hit', 'Ausgleich', scoreText, row.scoringTeam >= 0 ? row.scoringTeam : row.teamIndex);
+            else if (lead !== 0 && leader !== 0 && lead !== leader) add('ballsback', 'Führungswechsel', scoreText, lead > 0 ? 0 : 1);
+            if (lead !== 0) leader = lead;
+            else if (row.score[0] > 0) leader = 0;
+        }
+    });
+    return list;
+});
+const highlightKeys = computed(() => new Set(highlights.value.map(highlight => highlight.rowKey)));
+
+// Antippen eines Highlights: zur Zeile scrollen und sie kurz aufleuchten lassen
+const rowElements = new Map<number, Element>();
+const setRowElement = (key: number, element: unknown) => {
+    if (element instanceof Element) rowElements.set(key, element);
+    else rowElements.delete(key);
+};
+const flashKey = ref<number | null>(null);
+const scrollToRow = (key: number) => {
+    rowElements.get(key)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    flashKey.value = key;
+    setTimeout(() => { if (flashKey.value === key) flashKey.value = null; }, 1600);
 };
 
 // Zeitachse: vor den Treffern jeder Minute eine Minutenmarke, auch fuer Minuten ohne Treffer
@@ -582,6 +650,59 @@ const chartLines = computed(() => {
     color: var(--bp-text);
     font-size: 11px;
     font-weight: 700;
+}
+/* ─── Highlights ─── */
+.mtl-highlights{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.mtl-highlight-list{
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+}
+.mtl-highlight{
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    max-width: 220px;
+    padding: 6px 10px 6px 8px;
+    border: none;
+    border-left: 3px solid var(--mtl-team-color);
+    border-radius: 8px;
+    background: var(--bp-fill-soft);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.mtl-highlight-minute{
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--bp-text-muted);
+}
+.mtl-highlight-icon{
+    display: flex;
+    font-size: 15px;
+    color: var(--mtl-team-color);
+}
+.mtl-row--highlight .mtl-label{
+    font-weight: 800;
+    color: var(--bp-text-strong);
+}
+.mtl-row--highlight .mtl-icon{
+    box-shadow: 0 0 0 2px var(--mtl-team-color);
+}
+.mtl-row--flash{
+    animation: mtl-flash 1.6s ease-out;
+    border-radius: 10px;
+}
+@keyframes mtl-flash{
+    0%, 40%{ background: color-mix(in srgb, var(--mtl-team-color) 22%, transparent); }
+    100%{ background: transparent; }
 }
 .mtl-minute-row{
     position: relative;
