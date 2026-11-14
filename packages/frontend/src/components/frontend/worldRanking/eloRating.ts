@@ -362,6 +362,26 @@ export const getEloMatchChanges = ({ games }: EloGames): Map<string, [EloMatchSi
     return changes;
 };
 
+// Elo-Verlauf eines Spielers: Rating nach jedem gewerteten Spiel (gleiche Rechnung wie getEloMatchChanges)
+export type EloHistoryPoint = { time: number; rating: number; delta: number; won: boolean };
+
+export const getEloHistory = ({ games }: EloGames, playerKey: string): EloHistoryPoint[] => {
+    const players = new Map<string, EloPlayerState>();
+    const history: EloHistoryPoint[] = [];
+
+    games.forEach(game => {
+        const before = game.sides.map(side => side.players.map(player => players.get(player) ?? { rating: ELO_START, games: 0 }));
+        const deltas = getEloDeltas(before, { winner: game.winner, scores: game.scores, hits: game.sides.map(side => side.hits) });
+        game.sides.forEach((side, sideIndex) => side.players.forEach((player, playerIndex) => {
+            const after = before[sideIndex][playerIndex].rating + deltas[sideIndex][playerIndex];
+            players.set(player, { rating: after, games: before[sideIndex][playerIndex].games + 1 });
+            if (player === playerKey) history.push({ time: game.time, rating: Math.round(after), delta: Math.round(deltas[sideIndex][playerIndex]), won: game.winner === sideIndex });
+        }));
+    });
+
+    return history;
+};
+
 ////////////////////////
 // RANGLISTE          //
 ////////////////////////
