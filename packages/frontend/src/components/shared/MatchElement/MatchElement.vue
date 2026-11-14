@@ -16,11 +16,11 @@
          <!-- Spielverlauf Timeline -->
          <MatchTimeline v-if="hasTurns && playersVisible" :match="match" />
 
-         <!-- Fusszeile: Eintragen-Button (Backend) und Wuerfe auf-/zuklappen -->
+         <!-- Fusszeile: Eintragen-Button (Backend) und Spielverlauf/Wuerfe auf-/zuklappen -->
          <div v-if="hasDetails || showEditButton" class="mt-footer">
             <div v-if="showEditButton" class="bp-button mt-button" @click="emit('edit', match)">{{ checkIfMatchFinished(match) ? 'Bearbeiten' : 'Eintragen'}}</div>
             <button v-if="hasDetails" type="button" class="mt-toggle" @click="togglePlayersVisible()">
-               {{ playersVisible ? 'Würfe ausblenden' : 'Würfe anzeigen' }}
+               {{ toggleLabel }}
                <i class="pi" :class="playersVisible ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
             </button>
          </div>
@@ -90,6 +90,8 @@ const hasDetails = computed(() => {
 });
 
 let playersVisible = ref(false);
+// Knecht-Spiele haben einen Spielverlauf, sonst gibt es nur die Wuerfe je Spieler
+const toggleLabel = computed(() => `${hasTurns.value ? 'Spielverlauf' : 'Würfe'} ${playersVisible.value ? 'ausblenden' : 'anzeigen'}`);
 let togglePlayersVisible = () => {
    playersVisible.value = !playersVisible.value;
 }

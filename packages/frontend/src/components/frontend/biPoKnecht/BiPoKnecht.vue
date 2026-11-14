@@ -262,6 +262,8 @@ const confirmDialog = ref<ConfirmDialog | null>(null);
 
 // ─── Aktionen ───
 const openTrickshot = () => {
+    // Umschalter: ein noch nicht geworfener Trickshot wird beim erneuten Tippen zurueckgenommen
+    if (game.trickshotPending.value) return game.undo();
     // Im 1 gegen 1 faengt nur einer: kein Auswahl-Sheet
     if (activeTeam.value.players.length === 1) game.trickshot(0);
     else sheet.value = 'trickshot';

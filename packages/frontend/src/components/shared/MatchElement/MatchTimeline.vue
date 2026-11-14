@@ -2,7 +2,10 @@
     <div class="MatchTimeline">
         <div class="mtl-header">
             <span class="mtl-title">Spielverlauf</span>
-            <span v-if="duration" class="mtl-duration">{{ duration }}</span>
+            <span v-if="duration || match.referee" class="mtl-duration">
+                <template v-if="match.referee"><i class="pi pi-flag" aria-hidden="true"></i> Schiri: {{ match.referee }}</template>
+                <template v-if="match.referee && duration"> · </template>{{ duration }}
+            </span>
         </div>
 
         <!-- Trefferquote je Team -->
@@ -54,6 +57,20 @@
                 Endstand <strong>{{ finalScore[0] }} : {{ finalScore[1] }}</strong>
             </div>
         </div>
+
+        <!-- Auszeichnungen wie am Spielende im Knecht -->
+        <div v-if="awards.length" class="mtl-awards">
+            <span class="mtl-title">Auszeichnungen</span>
+            <div class="mtl-award-list">
+                <div v-for="award in awards" :key="award.key" class="mtl-award" :style="{ '--mtl-team-color': TEAM_COLORS[award.teamIndex] }">
+                    <span class="mtl-award-icon" aria-hidden="true">{{ award.icon }}</span>
+                    <span class="mtl-text">
+                        <span class="mtl-label">{{ award.title }} · {{ award.player }}</span>
+                        <span class="mtl-player">{{ award.detail }}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -63,7 +80,7 @@ import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
-import { TEAM_COLORS, formatDuration, formatPoints, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
+import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
@@ -140,15 +157,27 @@ const rows = computed<Row[]>(() => {
 const finalScore = computed(() => [props.match.team1, props.match.team2]
     .map(team => formatPoints(team.players.reduce((sum, player) => sum + (player.score ?? 0), 0))));
 
-const teamSummaries = computed(() => {
+const playerStats = computed(() => {
     const points = [props.match.team1, props.match.team2].map(team => team.players.map(player => player.score ?? 0));
-    const stats = getTurnStats(props.match, turns.value, points);
+    return getTurnStats(props.match, turns.value, points);
+});
+
+const teamSummaries = computed(() => {
+    const stats = playerStats.value;
     return [0, 1].map(teamIndex => {
         const teamStats = stats.filter(entry => entry.teamIndex === teamIndex);
         const hits = teamStats.reduce((sum, entry) => sum + entry.hits, 0);
         const throws = teamStats.reduce((sum, entry) => sum + entry.throws, 0);
         return { teamIndex, name: getTeamName(props.match, teamIndex), hits, throws, accuracy: getAccuracy({ hits, throws }) };
     });
+});
+
+// Gleiche Regeln wie auf dem Spielende-Bildschirm, damit die Webseite dieselben Titel zeigt
+const awards = computed(() => {
+    const stats = playerStats.value;
+    return getAwards(stats).map((award, index) => ({
+        ...award, key: index, teamIndex: stats[index].teamIndex, player: stats[index].name,
+    }));
 });
 
 // Treppenlinie je Team: x = Spielzeit (oder Reihenfolge ohne Zeiten), y = abgeraeumte Becher
@@ -233,6 +262,33 @@ const chartLines = computed(() => {
 .mtl-team-stats{
     font-size: 11px;
     color: var(--bp-text-muted);
+}
+
+/* ─── Auszeichnungen ─── */
+.mtl-awards{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.mtl-award-list{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 6px;
+}
+.mtl-award{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--mtl-team-color);
+    border-radius: 8px;
+    background: var(--bp-fill-soft);
+}
+.mtl-award-icon{
+    flex: 0 0 auto;
+    font-size: 18px;
+    line-height: 1;
 }
 
 /* ─── Becherverlauf ─── */

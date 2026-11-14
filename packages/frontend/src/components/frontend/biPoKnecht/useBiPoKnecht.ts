@@ -171,6 +171,8 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     };
 
     const trickshot = (catcher: number) => dispatch({ type: 'trickshot', player: selectedPlayer.value, catcher, time: now() });
+    // Gefangen, aber noch nicht geworfen: der Trickshot-Knopf bleibt aktiv und nimmt ihn beim erneuten Tippen zurueck
+    const trickshotPending = computed(() => actions.value.at(-1)?.type === 'trickshot');
     const reRack = () => dispatch({ type: 'reRack', time: now() });
     const deathcup = () => dispatch({ type: 'deathcup', player: selectedPlayer.value, time: now() });
     const ownCup = (team: number, player: number, cups: number[]) => dispatch({ type: 'ownCup', team, player, cups, time: now() });
@@ -233,6 +235,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         cancelPick,
         throwMiss,
         trickshot,
+        trickshotPending,
         reRack,
         canReRack: computed(() => canReRack(state.value)),
         deathcup,
