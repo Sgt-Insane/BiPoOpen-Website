@@ -31,7 +31,7 @@ const classes = (shape: KnechtIconShape) => ({
     vertical-align: -.25em;
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.9;
+    stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
@@ -41,7 +41,7 @@ const classes = (shape: KnechtIconShape) => ({
 }
 /* Zweifarbig: Kontur plus helle Flaeche in derselben Farbe (passt auf hellem wie auf farbigem Grund) */
 .kn-icon-soft{
-    fill: color-mix(in srgb, currentColor 24%, transparent);
+    fill: color-mix(in srgb, currentColor 14%, transparent);
 }
 /* Ball immer weiss mit Kontur */
 .kn-icon-ball{

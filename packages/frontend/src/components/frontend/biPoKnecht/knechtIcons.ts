@@ -1,16 +1,15 @@
-// Eigene Piktogramme fuer alle Wurfarten (24x24) im Stil des Icon-Sets der Webseite:
-// kraeftige Kontur in currentColor, Flaechen zweifarbig (soft = Kontur + helle Fuellung in derselben Farbe),
-// der Ball immer weiss. Becher, Ball und Tisch sehen ueberall gleich aus, damit man die Symbole auf einen Blick unterscheidet.
+// Eigene Piktogramme fuer alle Wurfarten (24x24): minimalistische Linien in currentColor, Flaechen mit
+// dezenter Fuellung in derselben Farbe (soft, angelehnt an das Icon-Set der Webseite), der Ball immer weiss. Becher, Ball und Tisch sehen ueberall gleich aus, damit man die Symbole auf einen Blick unterscheidet.
 
 export type KnechtIconShape =
     | { d: string; fill?: boolean; soft?: boolean; dashed?: boolean }
     | { cx: number; cy: number; r: number; fill?: boolean; soft?: boolean; ball?: boolean };
 
-// Becher (Draufsicht von der Seite) mit Rand und Streifen wie ein roter Partybecher
+// Becher: schlichte Form wie bisher, nur mit dezenter Fuellung
 const CUP_BODY = 'M5.5 9.5h13l-1.6 10.6a1.3 1.3 0 0 1-1.3 1.1H8.4a1.3 1.3 0 0 1-1.3-1.1z';
-const CUP: KnechtIconShape[] = [{ d: CUP_BODY, soft: true }, { d: 'M4.8 9.5h14.4' }, { d: 'M6.3 14h11.4' }];
+const CUP: KnechtIconShape[] = [{ d: CUP_BODY, soft: true }];
 // Kleiner Becher rechts unten (Bouncer, Airball)
-const SMALL_CUP: KnechtIconShape[] = [{ d: 'M15 13.5h6.5l-.9 7a.9.9 0 0 1-.9.8h-2.9a.9.9 0 0 1-.9-.8z', soft: true }, { d: 'M14.6 13.5h7.3' }];
+const SMALL_CUP: KnechtIconShape[] = [{ d: 'M15 13.5h6.5l-.9 7a.9.9 0 0 1-.9.8h-2.9a.9.9 0 0 1-.9-.8z', soft: true }];
 const TABLE = 'M2 21.5h20';
 const ball = (cx: number, cy: number, r = 2.5): KnechtIconShape => ({ cx, cy, r, ball: true });
 
