@@ -107,6 +107,10 @@ const root = ref<HTMLElement | null>(null);
 const getBallSize = () => (root.value?.querySelector('.kn-cup')?.getBoundingClientRect().width ?? 44) * BALL_TO_CUP;
 
 const onCupClick = (cup: number, event: MouseEvent) => {
+    // Platz eines abgeraeumten Bechers (oder sonst nicht treffbar): zaehlt wie ein Tipp auf den Tisch
+    const pick = props.game.pick.value;
+    const tappable = pick ? pick.candidates.includes(cup) || pick.cup === cup : props.game.hittableCups.value.has(cup);
+    if (!tappable) return onTableClick(event);
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (props.game.tapCup(cup)) {
         props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width * BALL_TO_CUP);
