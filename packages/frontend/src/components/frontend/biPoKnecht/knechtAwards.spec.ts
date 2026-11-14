@@ -41,19 +41,36 @@ describe('Auszeichnungen', () => {
         expect(byName.Mittel).not.toBe('Solider Werfer');
     });
 
-    it('gibt im offenen Spiel allen ohne Becher "Nackt", in der Liga nicht', () => {
-        const stats = [
+    it('gibt allen ohne Becher "Nackt"', () => {
+        const titles = getAwards([
             player('A', { throws: 8, hits: 0, points: 0 }),
             player('B', { throws: 8, hits: 0, points: 0 }),
             player('C', { throws: 8, hits: 6, points: 6 }),
-        ];
-        const open = getAwards(stats, { nackteMeile: true }).map(award => award.title);
-        expect(open.slice(0, 2)).toEqual(['Nackt', 'Nackt']);
-        expect(getAwards(stats).map(award => award.title)).not.toContain('Nackt');
+        ]).map(award => award.title);
+        expect(titles.slice(0, 2)).toEqual(['Nackt', 'Nackt']);
+    });
+
+    it('zeichnet aus, wer alle 10 Becher allein abraeumt (nicht im 1 gegen 1)', () => {
+        const duo = getAwards([
+            player('A', { teamIndex: 0, throws: 14, hits: 10, points: 10 }),
+            player('B', { teamIndex: 0, playerIndex: 1, throws: 12, hits: 0, points: 0 }),
+            player('C', { teamIndex: 1, throws: 12, hits: 4, points: 4 }),
+        ]);
+        expect(duo[0].title).toBe('10/10');
+        const solo = getAwards([player('A', { teamIndex: 0, throws: 14, hits: 10, points: 10 }), player('C', { teamIndex: 1, throws: 12, hits: 4, points: 4 })]);
+        expect(solo[0].title).not.toBe('10/10');
+    });
+
+    it('lobt immer die laengste Serie des Spiels', () => {
+        const awards = getAwards([
+            player('A', { throws: 10, hits: 6, points: 6, bestStreak: 3, bombs: 1 }),
+            player('B', { throws: 10, hits: 5, points: 5, bestStreak: 2 }),
+        ]);
+        expect(awards[0]).toMatchObject({ title: 'Scharfschütze', detail: 'Längste Serie im Spiel: 3 Treffer in Folge' });
     });
 
     it('zeichnet ein Spiel ohne Fehlwurf aus', () => {
-        const awards = getAwards([player('A', { throws: 10, hits: 10, points: 10 }), player('B', { throws: 10, hits: 4, points: 4 })]);
+        const awards = getAwards([player('A', { throws: 10, hits: 10, points: 10 }), player('B', { teamIndex: 1, throws: 10, hits: 4, points: 4 })]);
         expect(awards[0]).toMatchObject({ title: 'Makellos', detail: '10/10 – jeder Wurf ein Treffer' });
     });
 

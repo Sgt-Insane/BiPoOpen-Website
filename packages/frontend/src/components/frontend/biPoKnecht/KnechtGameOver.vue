@@ -86,7 +86,7 @@ import KnechtSheet from './KnechtSheet.vue';
 import KnechtTurnEditor from './KnechtTurnEditor.vue';
 import { getTeamPoints } from './knechtEngine';
 import {
-    TEAM_COLORS, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getSaveLabel, getTeamName, isOpenGame, saveKnechtGame,
+    TEAM_COLORS, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getSaveLabel, getTeamName, saveKnechtGame,
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
@@ -106,7 +106,7 @@ const state = computed(() => props.game.state.value);
 const winner = computed(() => state.value.winnerTeamIndex ?? 0);
 const teamPoints = computed(() => getTeamPoints(state.value));
 const stats = computed(() => getPlayerStats(match, state.value));
-const awards = computed(() => getAwards(stats.value, { nackteMeile: isOpenGame(match) }));
+const awards = computed(() => getAwards(stats.value));
 const duration = computed(() => formatDuration(match.time, state.value.turns.at(-1)?.time));
 const saveLabel = getSaveLabel(match.time ?? 0);
 
