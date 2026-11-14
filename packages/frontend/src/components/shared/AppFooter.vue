@@ -18,6 +18,7 @@
 			@bipoopen
 		</a>
 
+		<router-link class="af-imprint" to="/Neuigkeiten">Neuigkeiten</router-link>
 		<router-link class="af-imprint" to="/Impressum">Impressum</router-link>
 	</div>
 </template>

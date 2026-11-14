@@ -126,6 +126,19 @@ export const sendToSubscription = async (subscription: StoredSubscription, paylo
     }
 };
 
+// Release-Push: an alle, die "Updates" aktiviert haben (unabhaengig von gefolgten Spielern)
+export const notifyAll = async (category: NotificationCategory, payload: NotificationPayload) => {
+    try {
+        if (!ensureVapid()) return 0;
+        const subscriptions = await PushSubscription.find({ [`preferences.${category}`]: { $ne: false } }).lean();
+        await Promise.allSettled(subscriptions.map((subscription) => sendToSubscription(subscription as StoredSubscription, payload)));
+        return subscriptions.length;
+    } catch (error) {
+        console.log('Notify error:', error);
+        return 0;
+    }
+};
+
 /**
  * Schickt eine Benachrichtigung an alle Subscriptions, die die Kategorie aktiviert haben
  * und (bei followModes[category] 'followed') mindestens einem der beteiligten Spieler folgen.

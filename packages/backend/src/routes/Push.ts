@@ -9,5 +9,6 @@ router.patch("/preferences", controller.updatePreferences);
 router.post("/status", controller.getStatus);
 router.post("/unsubscribe", controller.unsubscribe);
 router.post("/test", controller.sendTest);
+router.post("/release", controller.releasePush);
 
 export = router;

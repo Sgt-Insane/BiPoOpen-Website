@@ -38,7 +38,7 @@ import NotificationsUnavailable from './NotificationsUnavailable.vue';
 // Einstiege von aussen per Query:
 // ?folgen=Name1,Name2  (Folgen-Button im Profil, Hinweis nach dem ersten Spiel) -> nach dem Aktivieren gefolgt
 // ?kategorie=tournamentResults  (Hinweis auf der Turnierseite) -> Kategorie wird eingeschaltet
-const CATEGORIES: PushCategory[] = ['openGames', 'leagueGames', 'tournamentResults'];
+const CATEGORIES: PushCategory[] = ['openGames', 'leagueGames', 'tournamentResults', 'appUpdates'];
 
 useGrayPage();
 

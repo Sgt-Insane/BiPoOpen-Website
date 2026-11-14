@@ -2,7 +2,7 @@ import mongoose, { InferSchemaType, Schema } from 'mongoose';
 
 export type IPushSubscriptionModel = InferSchemaType<typeof PushSubscriptionSchema>;
 
-export const NOTIFICATION_CATEGORIES = ['openGames', 'leagueGames', 'tournamentResults'] as const;
+export const NOTIFICATION_CATEGORIES = ['openGames', 'leagueGames', 'tournamentResults', 'appUpdates'] as const;
 export type NotificationCategory = typeof NOTIFICATION_CATEGORIES[number];
 
 export const FOLLOW_MODES = ['all', 'followed'] as const;
@@ -17,7 +17,8 @@ const PushSubscriptionSchema = new Schema(
         preferences: {
             openGames: { type: Boolean, default: true },
             leagueGames: { type: Boolean, default: true },
-            tournamentResults: { type: Boolean, default: true }
+            tournamentResults: { type: Boolean, default: true },
+            appUpdates: { type: Boolean, default: true }     // neue Version der Webseite (Release-Push)
         },
         // Je Kategorie: 'all' = alle Spiele, 'followed' = nur Spiele mit followedPlayers.
         // Eigenes Feld, damit die Liste beim Zurueckschalten auf 'all' erhalten bleibt.

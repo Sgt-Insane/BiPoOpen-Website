@@ -1,0 +1,15 @@
+[
+    {
+        "version": "2.0",
+        "date": "2026-11-15",
+        "title": "BiPo Knecht 2.0",
+        "notes": [
+            "Bowling-Animationen für Bombe, On Fire, Re-Rack, letzten Becher und benannte Formationen",
+            "Becher-Nummern, Farbwahl vor dem Spiel und Seitentausch durch Drehen des Handys",
+            "Kanten-Erkennung, Ellenbogen-Call und Knecht Pro mit Wurfzeiten im Schiri-Modus",
+            "Spielverlauf mit allen Würfen, Minuten, Highlights, Elo je Spieler und Auszeichnungen",
+            "Offene Shots: nach 3 Airballs „Später“ trinken und auf der Webseite abhaken",
+            "Gentleman's Rule mit abwechselnden Bällen, On Fire zählt je Spieler über die Züge"
+        ]
+    }
+]

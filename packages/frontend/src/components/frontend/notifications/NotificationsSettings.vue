@@ -51,7 +51,7 @@
                 </div>
 
                 <!-- Alle Spiele oder nur gefolgte Spieler -->
-                <div v-if="preferences[category.key]" class="ns-segmented" role="radiogroup" :aria-label="`${category.title}: von welchen Spielen?`">
+                <div v-if="preferences[category.key] && !CATEGORIES_WITHOUT_PLAYERS.includes(category.key)" class="ns-segmented" role="radiogroup" :aria-label="`${category.title}: von welchen Spielen?`">
                     <button
                         v-for="option in followModeOptions"
                         :key="option.value"
@@ -114,7 +114,7 @@ import { computed, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Avatar from '@/components/shared/Avatar.vue';
 import BellIcon from '@/components/shared/BellIcon.vue';
-import { usePushNotifications, type PushCategory, type PushFollowMode } from '@/components/shared/usePushNotifications';
+import { usePushNotifications, type PushCategory, type PushFollowMode, CATEGORIES_WITHOUT_PLAYERS } from '@/components/shared/usePushNotifications';
 import { getAllPlayerNames, getPlayerMatchCounts } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
 import NotificationsPopupGuide from './NotificationsPopupGuide.vue';
 
@@ -130,6 +130,7 @@ const categories: { key: PushCategory, title: string, text: string, icon: string
     { key: 'openGames', title: 'Offene Spiele', text: 'Wenn jemand ein offenes Spiel einträgt', icon: 'pi-arrow-up-right', background: 'var(--bp-fill)', color: 'var(--bp-text)' },
     { key: 'leagueGames', title: 'BiPo League & Cup', text: 'Neue Liga- und Cup-Spiele', icon: 'pi-trophy', background: 'var(--secondary-color-weak)', color: 'var(--bp-secondary-text)' },
     { key: 'tournamentResults', title: 'Turnier-Ergebnisse', text: 'Gruppen- und K.o.-Phase beim BiPo Open', icon: 'pi-sitemap', background: 'var(--bp-primary-weak)', color: 'var(--main-color)' },
+    { key: 'appUpdates', title: 'Updates', text: 'Neue Version der Seite und des BiPo Knecht', icon: 'pi-sparkles', background: 'var(--bp-gold-weak)', color: 'var(--bp-gold)' },
 ];
 
 const followModeOptions: { value: PushFollowMode, label: string }[] = [

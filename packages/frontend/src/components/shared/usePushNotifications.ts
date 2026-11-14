@@ -6,7 +6,7 @@ import { getAllPlayerNames } from '@/components/frontend/playerProfile/PlayerPro
 // Push-Benachrichtigungen, geteilt ueber alle Komponenten (Glocke, Einstellungsseite, Folgen-Button).
 // Backend: packages/backend/src/controllers/Push.ts, Anzeige im Service Worker: public/push-sw.js
 
-export type PushCategory = 'openGames' | 'leagueGames' | 'tournamentResults';
+export type PushCategory = 'openGames' | 'leagueGames' | 'tournamentResults' | 'appUpdates';
 export type PushFollowMode = 'all' | 'followed';
 
 // unsupported: Browser kann kein Push; iosInstall: iPhone im Safari-Tab (Push nur als installierte App);
@@ -19,6 +19,7 @@ const DEFAULT_PREFERENCES: Record<PushCategory, boolean> = {
 	openGames: true,
 	leagueGames: true,
 	tournamentResults: true,
+	appUpdates: true,
 };
 
 const CATEGORIES = Object.keys(DEFAULT_PREFERENCES) as PushCategory[];
@@ -27,7 +28,11 @@ const DEFAULT_FOLLOW_MODES: Record<PushCategory, PushFollowMode> = {
 	openGames: 'all',
 	leagueGames: 'all',
 	tournamentResults: 'all',
+	appUpdates: 'all',
 };
+
+// Kategorien ohne Spieler (kein "Nur meine Spieler")
+export const CATEGORIES_WITHOUT_PLAYERS: PushCategory[] = ['appUpdates'];
 
 const status = ref<PushStatus>('loading');
 const preferences = reactive({ ...DEFAULT_PREFERENCES });
@@ -37,7 +42,7 @@ const followedPlayers = ref<string[]>([]);
 const settingsLoaded = ref(false);
 
 // Mindestens eine aktive Kategorie ist auf "Nur meine Spieler"
-const usesFollowedPlayers = computed(() => CATEGORIES.some(category => preferences[category] && followModes[category] === 'followed'));
+const usesFollowedPlayers = computed(() => CATEGORIES.some(category => !CATEGORIES_WITHOUT_PLAYERS.includes(category) && preferences[category] && followModes[category] === 'followed'));
 const allCategoriesOff = computed(() => CATEGORIES.every(category => !preferences[category]));
 
 let subscription: PushSubscription | null = null;
@@ -230,6 +235,7 @@ const FOLLOW_TOAST_LABELS: Record<PushCategory, string> = {
 	openGames: 'offene Spiele',
 	leagueGames: 'League- & Cup-Spiele',
 	tournamentResults: 'Turnier-Ergebnisse',
+	appUpdates: 'Updates',
 };
 
 // Zweite Zeile im Folgen-Toast; undefined, wenn Folgen gerade nichts bewirkt (ueberall "Alle Spiele")

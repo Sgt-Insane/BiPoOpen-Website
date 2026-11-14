@@ -123,6 +123,17 @@ const routes = [
 		}
 	},
 
+	{
+		path: '/Neuigkeiten',
+		name: 'Neuigkeiten',
+		component: () => import('@/components/frontend/news/_Neuigkeiten.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Neuigkeiten',
+			description: 'Was ist neu auf der Seite und im BiPo Knecht',
+			detailPage: true
+		}
+	},
+
 	// Frontend - Tournament
 	{
 		path: '/:TournamentName',
