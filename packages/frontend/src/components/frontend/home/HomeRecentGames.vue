@@ -85,6 +85,17 @@ const visibleGames = computed(() => allGames.value
 :deep(.hr-filter){
     padding: 0;
 }
+/* Alle Chips sichtbar und gleich aussehend: lieber umbrechen als seitlich scrollen (kein Ausblend-Verlauf) */
+:deep(.hr-filter .p-tablist-content){
+    overflow: visible;
+}
+:deep(.hr-filter .p-tablist-tab-list){
+    flex-wrap: wrap;
+    gap: 6px;
+}
+:deep(.hr-filter .p-tablist-nav-button){
+    display: none;
+}
 
 .hr-list{
     display: grid;
@@ -106,6 +117,9 @@ const visibleGames = computed(() => allGames.value
 @media (width <= 900px){
     .hr-title{
         font-size: 20px;
+    }
+    :deep(.hr-filter .p-tab){
+        padding-inline: 0.7rem;
     }
     .hr-list{
         grid-template-columns: minmax(0, 1fr);
