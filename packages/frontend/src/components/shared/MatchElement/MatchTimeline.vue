@@ -22,6 +22,19 @@
             </div>
         </div>
 
+        <!-- Knecht Pro: Wurfzeiten (nur wenn "Zug starten" genutzt wurde) -->
+        <div v-if="throwTimeRows.length" class="mtl-elo">
+            <span class="mtl-title">Wurfzeit <small class="mtl-subtitle">netto {{ formatSeconds(throwTimes!.netSeconds) }} ohne Bälleholen</small></span>
+            <div class="mtl-elo-teams">
+                <div v-for="team in throwTimeRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': getTeamColor(match, team.teamIndex) }">
+                    <div v-for="row in team.players" :key="row.name" class="mtl-elo-row">
+                        <span class="mtl-elo-name">{{ row.name }}</span>
+                        <span class="mtl-elo-rating">Ø {{ formatSeconds(row.average) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Auszeichnungen wie am Spielende im Knecht -->
         <div v-if="awards.length" class="mtl-awards">
             <span class="mtl-title">Auszeichnungen</span>
@@ -101,6 +114,7 @@ import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
 import { formatEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
+import { formatSeconds, getThrowTimes } from '@/components/frontend/biPoKnecht/knechtThrowTimes';
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import { getTeamColor, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
@@ -195,7 +209,7 @@ const getRowPlayer = (turn: Turn, team: Team) => {
 };
 
 // Re-Rack, Nachwurf, Verlaengerung (gespeichert seit dem neuen Knecht, aeltere Spiele haben keine)
-const EVENT_LOOKS: Record<MatchEvent['kind'], { icon: KnechtIconName; label: (team: string) => string }> = {
+const EVENT_LOOKS: Partial<Record<MatchEvent['kind'], { icon: KnechtIconName; label: (team: string) => string }>> = {
     reRack: { icon: 'reRack', label: team => `Re-Rack · ${team}` },
     nachwurf: { icon: 'nachwurf', label: team => `Nachwurf · ${team}` },
     overtime: { icon: 'overtime', label: () => 'Verlängerung' },
@@ -264,6 +278,18 @@ const eloRows = computed(() => {
             return change ? [{ name: player.name, delta: change.delta, rating: change.rating }] : [];
         }),
     }));
+});
+
+// Knecht Pro: Wurfzeit je Spieler
+const throwTimes = computed(() => getThrowTimes(turns.value, props.match.events));
+const throwTimeRows = computed(() => {
+    const times = throwTimes.value;
+    if (!times) return [];
+    return [0, 1].map(teamIndex => ({
+        teamIndex,
+        players: times.players.filter(entry => entry.teamIndex === teamIndex)
+            .map(entry => ({ name: getPlayerName(props.match, teamIndex, entry.playerIndex), average: entry.average })),
+    })).filter(team => team.players.length);
 });
 
 // Gleiche Regeln wie auf dem Spielende-Bildschirm, damit die Webseite dieselben Titel zeigt
@@ -359,6 +385,12 @@ const chartLines = computed(() => {
     white-space: nowrap;
     font-weight: 700;
     color: var(--bp-text);
+}
+.mtl-subtitle{
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bp-text-muted);
 }
 .mtl-elo-delta{
     font-weight: 800;

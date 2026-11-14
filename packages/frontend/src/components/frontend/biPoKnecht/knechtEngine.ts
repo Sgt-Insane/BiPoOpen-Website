@@ -32,6 +32,7 @@ export type KnechtAction =
     | { type: 'throw'; player: number; outcome: ThrowOutcome; cup?: number; bouncer?: boolean; extraCups?: number[]; time: number; spot?: { x: number; y: number }; edge?: EdgeHit }
     | { type: 'trickshot'; player: number; catcher: number; time: number }   // player hat verfehlt, catcher wirft den Trickshot
     | { type: 'reRack'; time: number }
+    | { type: 'turnStart'; time: number }           // Knecht Pro: Werfer haben die Baelle, die Zeit fuer den Zug laeuft
     | { type: 'deathcup'; player: number; time: number }
     | { type: 'ownCup'; team: number; player: number; cups: number[]; time: number };
 
@@ -40,7 +41,7 @@ export type Rack = { hit: number[]; pending: number[] };
 export type Credit = { teamIndex: number; playerIndex: number; points: number };
 
 export type KnechtMarker = {
-    kind: 'reRack' | 'nachwurf' | 'overtime';
+    kind: 'reRack' | 'nachwurf' | 'overtime' | 'turnStart';
     teamIndex: number;
     afterTurnIndex: number;     // Marker steht zwischen Turn afterTurnIndex-1 und afterTurnIndex
     time: number;
@@ -589,6 +590,9 @@ const applyActionInPlace = (state: KnechtState, action: KnechtAction) => {
         case 'throw': applyThrow(state, action); break;
         case 'trickshot': applyTrickshot(state, action); break;
         case 'reRack': applyReRack(state, action); break;
+        case 'turnStart':
+            state.markers.push({ kind: 'turnStart', teamIndex: state.activeTeamIndex, afterTurnIndex: state.turns.length, time: action.time });
+            break;
         case 'deathcup': applyDeathcup(state, action); break;
         case 'ownCup': applyOwnCup(state, action); break;
         default: fail('Unbekannte Aktion');
@@ -633,7 +637,7 @@ export const replay = (config: KnechtConfig, actions: KnechtAction[]): ReplayRes
 export const getActionIndexOfTurn = (actions: KnechtAction[], turnIndex: number) => {
     let turn = -1;
     for (let index = 0; index < actions.length; index++) {
-        if (actions[index].type !== 'reRack') turn++;
+        if (actions[index].type !== 'reRack' && actions[index].type !== 'turnStart') turn++;
         if (turn === turnIndex) return index;
     }
     return -1;

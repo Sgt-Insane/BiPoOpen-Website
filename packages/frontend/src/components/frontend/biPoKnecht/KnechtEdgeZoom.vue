@@ -28,7 +28,7 @@ import { computed } from 'vue';
 import { EDGE_REACH, formatEdge, getEdgeSide } from './knechtEdges';
 
 // Knecht Pro: Nahansicht des Bechers, an dessen Kante der Ball war. Ein Tipp auf den Rand legt die genaue
-// Stelle fest, ein zweiter Tipp macht daraus eine Doppelkante. Andere Becher in der Naehe lassen sich auch antippen.
+// Stelle fest, ein zweiter Tipp macht daraus eine Doppelkante.
 const props = defineProps<{ edge: EdgeHit; standing: number[] }>();
 const emit = defineEmits<{ update: [edge: EdgeHit]; close: []; activity: [] }>();
 
@@ -44,13 +44,11 @@ const positions = ROWS.flatMap((row, rowIndex) => row.map((index, position) => (
 })));
 const positionOf = (index: number) => positions.find(position => position.index === index)!;
 
-// Der Becher mit der Kante in der Mitte, Nachbarn drumherum
+// Nur der Becher mit der Kante, gross in der Mitte (Becher wechseln: Zuruecksetzen und auf dem Tisch neu tippen)
 const center = computed(() => positionOf(props.edge.cup));
-const visibleCups = computed(() => positions
-    .filter(position => Math.hypot(position.x - center.value.x, position.y - center.value.y) <= STEP * 1.05)
-    .map(position => ({ ...position, standing: props.standing.includes(position.index) })));
+const visibleCups = computed(() => [{ ...center.value, standing: true }]);
 const viewBox = computed(() => {
-    const size = STEP * 1.4 + RADIUS * 2;
+    const size = RADIUS * EDGE_REACH * 2.3;
     return `${center.value.x - size / 2} ${center.value.y - size / 2} ${size} ${size}`;
 });
 

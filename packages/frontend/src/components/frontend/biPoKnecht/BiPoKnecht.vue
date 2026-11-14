@@ -43,6 +43,17 @@
             <!-- Animation nach besonderen Aktionen (wie beim Bowling) -->
             <KnechtCelebration :celebration="game.celebration.value" :flipped="celebrationFlipped" />
 
+            <!-- Knecht Pro: Zug erst starten, wenn die Werfer die Baelle haben (misst die Wurfzeit ohne Baelleholen) -->
+            <div v-if="proActive && game.waitingForTurnStart.value && !paused && !confirmDialog" class="kn-overlay kn-turn-lock">
+                <button type="button" class="kn-turn-start" :style="{ '--kn-team-color': getTeamColor(game.match, state.activeTeamIndex) }" @click="game.startTurn()">
+                    <span class="kn-turn-start-icon">▶</span>
+                    <span class="kn-turn-start-text">
+                        <span class="kn-turn-start-title">Zug starten</span>
+                        <span class="kn-turn-start-team">{{ getTeamName(game.match, state.activeTeamIndex) }} hat die Bälle</span>
+                    </span>
+                </button>
+            </div>
+
             <!-- Knecht Pro: Details zur Kante, freiwillig, verschwindet von selbst -->
             <transition name="kn-edge">
                 <div v-if="edgePrompt" class="kn-edge-overlay" @click.self="edgePrompt = null">
@@ -123,7 +134,7 @@
                     <SelectButton :modelValue="modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setMode" />
                     <div v-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
                     <button v-if="mode === 'referee'" type="button" class="kn-menu-button" :class="{ 'kn-menu-button--on': proEnabled }" @click="toggleProMode">
-                        <KnechtIcon name="miss" /> Knecht Pro: Kanten-Details {{ proEnabled ? 'an' : 'aus' }}
+                        <KnechtIcon name="miss" /> Knecht Pro (Kanten, Wurfzeit) {{ proEnabled ? 'an' : 'aus' }}
                     </button>
                     <button type="button" class="kn-menu-button" @click="swapColors">
                         <i class="pi pi-palette"></i> Becherfarben tauschen
@@ -194,7 +205,7 @@ import KnechtGameOver from './KnechtGameOver.vue';
 import KnechtIcon from './KnechtIcon.vue';
 import type { KnechtIconName } from './knechtIcons';
 import { getTeamPoints, type KnechtAction } from './knechtEngine';
-import { formatPoints, getPlayerName, getTeam, getTeamName, swapCupColors } from './KnechtUtilFunctions';
+import { formatPoints, getPlayerName, getTeam, getTeamColor, getTeamName, swapCupColors } from './KnechtUtilFunctions';
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
 import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
 import { requestRotationPermission, useTableRotation } from './useTableRotation';
@@ -649,6 +660,50 @@ onUnmounted(() => {
 .kn-confirm-actions .kn-menu-button{
     justify-content: center;
 }
+/* ─── Knecht Pro: Zug starten ─── */
+.kn-turn-lock{
+    z-index: 24;
+    background: rgba(31, 35, 40, .3);
+}
+/* Seitenleiste (Rueckgaengig, Menue) bleibt bei der Sperre bedienbar */
+.KnechtSideBar{
+    position: relative;
+    z-index: 25;
+}
+.kn-turn-start{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 22px;
+    border: none;
+    border-radius: 20px;
+    background: var(--kn-team-color);
+    color: white;
+    font: inherit;
+    cursor: pointer;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .3);
+}
+.kn-turn-start:active{
+    transform: scale(.97);
+}
+.kn-turn-start-icon{
+    font-size: 30px;
+}
+.kn-turn-start-text{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.kn-turn-start-title{
+    font-size: 22px;
+    font-weight: 900;
+}
+.kn-turn-start-team{
+    font-size: 13px;
+    font-weight: 700;
+    opacity: .9;
+}
+
 /* ─── Knecht Pro: Nahansicht der Kante ─── */
 .kn-edge-overlay{
     position: absolute;

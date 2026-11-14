@@ -172,7 +172,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         if (next.banner === 'bomb' || action.type === 'deathcup') sound.playBomb();
         else if (action.type === 'throw' && action.outcome === 'hit') sound.playHit();
         else if (action.type === 'throw' && action.outcome === 'airball') sound.playAirball();
-        else if (action.type !== 'reRack') sound.playMiss();
+        else if (action.type !== 'reRack' && action.type !== 'turnStart') sound.playMiss();
         if (FANFARE_EVENTS.includes(next.banner)) setTimeout(sound.playFire, 350);
         showBanner(next.banner);
     };
@@ -254,6 +254,15 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     // Gefangen, aber noch nicht geworfen: der Trickshot-Knopf bleibt aktiv und nimmt ihn beim erneuten Tippen zurueck
     const trickshotPending = computed(() => actions.value.at(-1)?.type === 'trickshot');
     const reRack = () => dispatch({ type: 'reRack', time: now() });
+    const startTurn = () => dispatch({ type: 'turnStart', time: now() });
+    // Knecht Pro: neuer Zug (Runde) hat begonnen, aber noch kein "Zug starten" gedrueckt
+    const waitingForTurnStart = computed(() => {
+        const current = state.value;
+        if (current.status !== 'playing' || !isStarted.value) return false;
+        if (current.round.throwCount > 0) return false;
+        const last = actions.value[actions.value.length - 1];
+        return last?.type !== 'turnStart';
+    });
     const deathcup = () => dispatch({ type: 'deathcup', player: selectedPlayer.value, time: now() });
     const ownCup = (team: number, player: number, cups: number[]) => dispatch({ type: 'ownCup', team, player, cups, time: now() });
 
@@ -319,6 +328,8 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         trickshot,
         trickshotPending,
         reRack,
+        startTurn,
+        waitingForTurnStart,
         canReRack: computed(() => canReRack(state.value)),
         deathcup,
         ownCup,

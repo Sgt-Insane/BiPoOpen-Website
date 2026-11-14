@@ -37,6 +37,16 @@
                     <input id="kn-referee" v-model="referee" class="kn-referee" type="text" maxlength="40" placeholder="Name (optional)" autocomplete="off" />
                 </template>
 
+                <template v-if="throwTimes">
+                    <div class="kn-over-section-title">Wurfzeit <span class="kn-over-section-hint">netto {{ formatSeconds(throwTimes.netSeconds) }}</span></div>
+                    <div class="kn-over-times">
+                        <div v-for="entry in throwTimes.players" :key="`${entry.teamIndex}-${entry.playerIndex}`" class="kn-over-time" :style="{ '--kn-team-color': getTeamColor(match, entry.teamIndex) }">
+                            <span>{{ getPlayerName(match, entry.teamIndex, entry.playerIndex) }}</span>
+                            <strong>Ø {{ formatSeconds(entry.average) }}</strong>
+                        </div>
+                    </div>
+                </template>
+
                 <div class="kn-over-section-title">Punktestand</div>
                 <KnechtScoreboard :match="match" :state="game.state.value" />
 
@@ -85,8 +95,9 @@ import KnechtTimeline from './KnechtTimeline.vue';
 import KnechtSheet from './KnechtSheet.vue';
 import KnechtTurnEditor from './KnechtTurnEditor.vue';
 import { getTeamPoints } from './knechtEngine';
+import { formatSeconds, getThrowTimes } from './knechtThrowTimes';
 import {
-    getTeamColor, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getSaveLabel, getTeamName, saveKnechtGame,
+    getTeamColor, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getPlayerName, getSaveLabel, getTeamName, saveKnechtGame,
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
@@ -109,6 +120,8 @@ const stats = computed(() => getPlayerStats(match, state.value));
 const awards = computed(() => getAwards(stats.value));
 const duration = computed(() => formatDuration(match.time, state.value.turns.at(-1)?.time));
 const saveLabel = getSaveLabel(match.time ?? 0);
+// Knecht Pro: Wurfzeiten, falls "Zug starten" genutzt wurde
+const throwTimes = computed(() => getThrowTimes(state.value.turns, state.value.markers));
 
 const reasonText = computed(() => {
     const overtime = state.value.overtimeCount ? ` (nach ${state.value.overtimeCount}. Verlängerung)` : '';
@@ -267,6 +280,21 @@ const save = async (rematch: boolean) => {
     to{ opacity: 1; transform: none; }
 }
 
+.kn-over-times{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+.kn-over-time{
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--kn-team-color);
+    border-radius: 10px;
+    background: var(--bp-surface);
+    font-size: 13px;
+}
 .kn-referee{
     width: 100%;
     height: 48px;

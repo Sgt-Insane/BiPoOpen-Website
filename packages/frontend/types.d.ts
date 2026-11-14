@@ -57,7 +57,7 @@ declare global {
     };
 
     type MatchEvent = {
-        kind: 'reRack' | 'nachwurf' | 'overtime';
+        kind: 'reRack' | 'nachwurf' | 'overtime' | 'turnStart';
         teamIndex: number;          // Re-Rack: Team, das es verlangt hat; Nachwurf/Verlaengerung: Team, das beginnt
         afterTurnIndex: number;     // steht vor dem Turn mit diesem Index
         time?: number;

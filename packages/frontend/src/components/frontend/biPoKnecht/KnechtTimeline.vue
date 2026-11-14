@@ -62,8 +62,9 @@ const getMinute = (time: number) => {
 const entries = computed<Entry[]>(() => {
     const list: Entry[] = [];
     const markers = props.state.markers;
+    // "Zug starten" (Knecht Pro) ist nur Zeitmessung und erscheint nicht im Verlauf
     const addMarkers = (afterTurnIndex: number) => markers
-        .filter(marker => marker.afterTurnIndex === afterTurnIndex)
+        .filter((marker): marker is typeof marker & { kind: keyof typeof MARKERS } => marker.afterTurnIndex === afterTurnIndex && marker.kind in MARKERS)
         .forEach((marker, index) => list.push({
             kind: 'marker',
             key: `m-${afterTurnIndex}-${index}`,

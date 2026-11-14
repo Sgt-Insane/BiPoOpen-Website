@@ -23,7 +23,7 @@ const TeamSchema = new Schema(
 // Ereignisse aus dem BiPo Knecht ohne eigenen Wurf (Re-Rack, Beginn Nachwurf, Verlaengerung)
 const EventSchema = new Schema(
   {
-    kind: { type: String, enum: ['reRack', 'nachwurf', 'overtime'], required: true },
+    kind: { type: String, enum: ['reRack', 'nachwurf', 'overtime', 'turnStart'], required: true },
     teamIndex: { type: Number, required: true },
     afterTurnIndex: { type: Number, required: true },
     time: { type: Number }
