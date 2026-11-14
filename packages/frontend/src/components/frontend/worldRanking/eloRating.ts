@@ -330,7 +330,8 @@ export const computeElo = ({ games, displayNames }: EloGames, now: number, mode:
 ////////////////////////
 // Elo je Seite nach einem Spiel (Spieler-Wertung wie computeElo), z.B. fuer die Elo-Zeile im MatchElement.
 // rating = Stand nach dem Spiel, delta = Veraenderung, bei mehreren Spielern jeweils der Durchschnitt.
-export type EloMatchSide = { rating: number; delta: number; players: number };
+// players: Anzahl Spieler; playerChanges: Elo je Spieler (key wie getEloPlayerKey) nach dem Spiel
+export type EloMatchSide = { rating: number; delta: number; players: number; playerChanges: { key: string; rating: number; delta: number }[] };
 
 // Schluessel = Match-_id, Unentschieden und nicht gewertete Spiele fehlen.
 export const getEloMatchChanges = ({ games }: EloGames): Map<string, [EloMatchSide, EloMatchSide]> => {
@@ -351,6 +352,9 @@ export const getEloMatchChanges = ({ games }: EloGames): Map<string, [EloMatchSi
             rating: Math.round(average(after[sideIndex])),
             delta: Math.round(average(deltas[sideIndex])),
             players: before[sideIndex].length,
+            playerChanges: game.sides[sideIndex].players.map((key, playerIndex) => ({
+                key, rating: Math.round(after[sideIndex][playerIndex]), delta: Math.round(deltas[sideIndex][playerIndex]),
+            })),
         });
         changes.set(game.matchId, [toSide(0), toSide(1)]);
     });

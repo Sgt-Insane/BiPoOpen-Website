@@ -119,8 +119,13 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         return allowed.includes(chosenPlayer.value) ? chosenPlayer.value : allowed[0] ?? 0;
     });
 
-    // Neues Team am Wurf: Auswahl beginnt wieder beim ersten freien Spieler
-    watch(() => state.value.activeTeamIndex, () => { chosenPlayer.value = allowedThrowers.value[0] ?? 0; });
+    // Werfer-Reihenfolge merken: wer im letzten Zug seines Teams den ersten Ball geworfen hat,
+    // ist im naechsten Zug des Teams wieder zuerst ausgewaehlt (sonst der erste freie Spieler)
+    const firstThrower: (number | null)[] = [null, null];
+    watch(() => state.value.activeTeamIndex, (team) => {
+        const remembered = firstThrower[team];
+        chosenPlayer.value = remembered !== null && allowedThrowers.value.includes(remembered) ? remembered : allowedThrowers.value[0] ?? 0;
+    });
 
     const selectPlayer = (player: number) => {
         if (allowedThrowers.value.includes(player) && !pick.value) chosenPlayer.value = player;
@@ -176,6 +181,9 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         let next: KnechtState;
         const before = state.value;
         const throwingTeam = before.activeTeamIndex;
+        // Erster Ball eines normalen Zugs: Werfer fuer den naechsten Zug des Teams merken
+        if ((action.type === 'throw' || action.type === 'trickshot') && before.round.ballsDone === 0 && !before.round.current
+            && !before.round.ballsBack && before.nachwurfTeamIndex === null) firstThrower[throwingTeam] = action.player;
         try {
             next = applyAction(state.value, action);
         } catch {

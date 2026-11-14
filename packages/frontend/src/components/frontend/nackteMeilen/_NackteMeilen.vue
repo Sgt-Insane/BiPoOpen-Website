@@ -108,6 +108,7 @@ import Avatar from '@/components/shared/Avatar.vue';
 import SkeletonList from '@/components/shared/SkeletonList.vue';
 import { onGameSaved } from '@/components/shared/GameEntry/useAddGame';
 import { getAllOpenGames } from '@/components/frontend/openGames/OpenGamesUtilFunctions';
+import { getAllLeagueGames } from '@/components/frontend/league/LeagueUtilFunctions';
 import { formatPlayerName } from '@/components/frontend/home/homeUtil';
 import { getMatchScore } from '@/util/tournamentMatchFunctions';
 import { getNackteMeilen, type OffeneMeile } from './nackteMeilen';
@@ -118,18 +119,19 @@ const RECENT_RUN_COUNT = 3;
 
 const router = useRouter();
 
-// shallowRef: Spiele werden nur komplett ersetzt
-const openGames = shallowRef<Match[]>([]);
+// shallowRef: Spiele werden nur komplett ersetzt. Offene Spiele und Liga (inkl. Cup) zaehlen.
+const games = shallowRef<Match[]>([]);
 const isLoading = ref(true);
 
-const loadOpenGames = async () => {
-    openGames.value = await getAllOpenGames();
+const loadGames = async () => {
+    const [openGames, leagueGames] = await Promise.all([getAllOpenGames(), getAllLeagueGames().catch(() => [] as Match[])]);
+    games.value = [...openGames, ...leagueGames];
     isLoading.value = false;
 };
-loadOpenGames();
-onGameSaved(loadOpenGames);
+loadGames();
+onGameSaved(loadGames);
 
-const nackteMeilen = computed(() => getNackteMeilen(openGames.value));
+const nackteMeilen = computed(() => getNackteMeilen(games.value));
 const offen = computed(() => nackteMeilen.value.offen);
 const absolviert = computed(() => nackteMeilen.value.absolviert);
 

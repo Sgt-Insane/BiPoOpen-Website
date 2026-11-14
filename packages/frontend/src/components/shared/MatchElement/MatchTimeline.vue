@@ -58,6 +58,20 @@
             </div>
         </div>
 
+        <!-- Elo: wer wie viel gewonnen oder verloren hat -->
+        <div v-if="eloRows.length" class="mtl-elo">
+            <span class="mtl-title">Elo</span>
+            <div class="mtl-elo-teams">
+                <div v-for="team in eloRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': TEAM_COLORS[team.teamIndex] }">
+                    <div v-for="row in team.players" :key="row.name" class="mtl-elo-row">
+                        <span class="mtl-elo-name">{{ row.name }}</span>
+                        <span class="mtl-elo-delta" :class="row.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.delta) }}</span>
+                        <span class="mtl-elo-rating">{{ row.rating.toLocaleString('de-DE') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Auszeichnungen wie am Spielende im Knecht -->
         <div v-if="awards.length" class="mtl-awards">
             <span class="mtl-title">Auszeichnungen</span>
@@ -80,6 +94,8 @@ import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
+import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
+import { useEloRatings } from '@/components/shared/useEloRatings';
 import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 const props = defineProps({
@@ -172,6 +188,21 @@ const teamSummaries = computed(() => {
     });
 });
 
+// Elo je Spieler nach diesem Spiel (nicht gewertete Spiele, z.B. Unentschieden, zeigen nichts)
+const { loadEloRatings, getMatchElo } = useEloRatings();
+loadEloRatings();
+const eloRows = computed(() => {
+    const sides = getMatchElo(props.match);
+    if (!sides) return [];
+    return [props.match.team1, props.match.team2].map((team, teamIndex) => ({
+        teamIndex,
+        players: team.players.flatMap(player => {
+            const change = sides[teamIndex].playerChanges.find(entry => entry.key === getEloPlayerKey(player.name));
+            return change ? [{ name: player.name, delta: change.delta, rating: change.rating }] : [];
+        }),
+    }));
+});
+
 // Gleiche Regeln wie auf dem Spielende-Bildschirm, damit die Webseite dieselben Titel zeigt
 const awards = computed(() => {
     const stats = playerStats.value;
@@ -260,6 +291,53 @@ const chartLines = computed(() => {
     color: var(--bp-text-strong);
 }
 .mtl-team-stats{
+    font-size: 11px;
+    color: var(--bp-text-muted);
+}
+
+/* ─── Elo ─── */
+.mtl-elo{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.mtl-elo-teams{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.mtl-elo-team{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--mtl-team-color);
+    border-radius: 8px;
+    background: var(--bp-fill-soft);
+}
+.mtl-elo-row{
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12px;
+}
+.mtl-elo-name{
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+    color: var(--bp-text);
+}
+.mtl-elo-delta{
+    font-weight: 800;
+}
+.mtl-elo-delta--up{ color: #1F8A70; }
+.mtl-elo-delta--down{ color: #E5484D; }
+.mtl-elo-rating{
     font-size: 11px;
     color: var(--bp-text-muted);
 }

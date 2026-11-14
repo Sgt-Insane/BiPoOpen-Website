@@ -8,6 +8,8 @@
             <Avatar v-if="team.logo" :name="teamName" :avatarImage="team.logo" shape="square" class="kn-team-logo" />
             <span class="kn-team-name">{{ teamName }}</span>
             <span v-if="isActive" class="kn-turn-badge">{{ turnBadge }}</span>
+            <!-- Airballs bis zum naechsten Shot -->
+            <span v-if="airballsTowardsShot > 0" class="kn-shot-pill" :title="`${airballsTowardsShot} von 3 Airballs bis zum Shot`">🥃 {{ airballsTowardsShot }}/3</span>
             <!-- Serie auch sichtbar, wenn das Team gerade nicht wirft (Liste eingeklappt) -->
             <span v-for="hot in hotPlayers" :key="hot.playerIndex" class="kn-fire-pill" :class="`kn-fire-pill--${hot.fire}`" :title="`${hot.name}: ${hot.fire === 'on-fire' ? 'On Fire' : 'Heating Up'}`">
                 <KnechtIcon :name="hot.fire === 'on-fire' ? 'onfire' : 'heating'" />
@@ -74,6 +76,8 @@ const getFire = (playerIndex: number) => {
     return streak >= 3 ? 'on-fire' : streak === 2 ? 'heating-up' : 'normal';
 };
 
+const airballsTowardsShot = computed(() => state.value.turns.filter(turn => turn.type === 'airball' && turn.teamIndex === props.teamIndex).length % 3);
+
 const hotPlayers = computed(() => team.value.players
     .map((player, playerIndex) => ({ playerIndex, name: player.name, fire: getFire(playerIndex) }))
     .filter(entry => entry.fire !== 'normal'));
@@ -110,13 +114,22 @@ const getPlayerLine = (playerIndex: number) => {
     transition: opacity .25s ease, filter .25s ease;
 }
 .kn-players--rotated{ transform: rotate(180deg); }
-.KnechtPlayers:not(.kn-players--active) .kn-players-header > :not(.kn-fire-pill),
+.KnechtPlayers:not(.kn-players--active) .kn-players-header > :not(.kn-fire-pill):not(.kn-shot-pill),
 .KnechtPlayers:not(.kn-players--active) .kn-player-list{
     opacity: .5;
     filter: grayscale(.8);
 }
 
 /* Heating Up / On Fire: auch beim wartenden Team gut sichtbar */
+.kn-shot-pill{
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #FFF1D6;
+    color: #8A5A00;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
 .kn-fire-pill{
     display: inline-flex;
     align-items: center;

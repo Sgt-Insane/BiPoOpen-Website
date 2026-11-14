@@ -43,6 +43,23 @@
             <!-- Animation nach besonderen Aktionen (wie beim Bowling) -->
             <KnechtCelebration :celebration="game.celebration.value" :flipped="celebrationFlipped" />
 
+            <!-- Airball-Shots: je 3 Airballs eines Teams trinkt jede Person dieses Teams einen Shot -->
+            <transition name="kn-confirm">
+                <div v-if="shotTeam !== null && !game.isOver.value" class="kn-overlay kn-confirm kn-shot">
+                    <div class="kn-confirm-card" :style="{ transform: mode === 'player' && shotTeam === topTeam ? 'rotate(180deg)' : undefined }">
+                        <div class="kn-confirm-icon kn-shot-icon">🥃</div>
+                        <div class="kn-confirm-title">Shot-Zeit!</div>
+                        <div class="kn-confirm-text">
+                            {{ airballs[shotTeam] }} Airballs von {{ getTeamName(game.match, shotTeam) }} –
+                            {{ getTeam(game.match, shotTeam).players.length > 1 ? 'jede Person aus dem Team trinkt' : `${getTeam(game.match, shotTeam).players[0].name} trinkt` }} einen Shot.
+                        </div>
+                        <button type="button" class="kn-menu-button kn-menu-button--primary kn-shot-button" @click="confirmShot(shotTeam)">
+                            <i class="pi pi-check"></i> Shot getrunken
+                        </button>
+                    </div>
+                </div>
+            </transition>
+
             <!-- Wer faengt an? -->
             <div v-if="!game.isStarted.value" class="kn-overlay">
                 <KnechtStartTeam :match="game.match" @start="startGame" @cancel="$emit('exit')" />
@@ -96,9 +113,14 @@
             <KnechtSheet :visible="sheet === 'menu'" title="Menü" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <div class="kn-menu-list">
                     <div class="kn-menu-label">Modus</div>
-                    <SelectButton :modelValue="mode" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setMode" />
+                    <SelectButton :modelValue="modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setMode" />
+                    <div v-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
                     <button type="button" class="kn-menu-button" @click="swapSides">
                         <i class="pi pi-sync"></i> Seiten tauschen
+                    </button>
+                    <button v-if="fullscreenSupported" type="button" class="kn-menu-button" @click="toggleFullscreen">
+                        <i :class="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"></i>
+                        {{ fullscreen ? 'Vollbild beenden' : 'Vollbild' }}
                     </button>
                     <button type="button" class="kn-menu-button" @click="game.sound.toggleMute()">
                         <i :class="game.sound.isMuted.value ? 'pi pi-volume-off' : 'pi pi-volume-up'"></i>
@@ -157,7 +179,7 @@ import type { KnechtIconName } from './knechtIcons';
 import { getTeamPoints, type KnechtAction } from './knechtEngine';
 import { formatPoints, getPlayerName, getTeam, getTeamName } from './KnechtUtilFunctions';
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
-import { enterFullscreen, exitFullscreen, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
+import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
 
 const props = defineProps<{
     match: Match;
@@ -179,24 +201,34 @@ const toast = useToast();
 // ─── Einstellungen (bleiben fuer das naechste Spiel erhalten) ───
 const MODE_KEY = 'bipo_knecht_mode';
 const BAR_KEY = 'bipo_knecht_bar';
-const MODE_OPTIONS = [{ label: 'Spieler', value: 'player' }, { label: 'Schiedsrichter', value: 'referee' }];
+const MODE_OPTIONS = [{ label: 'Auto', value: 'auto' }, { label: 'Spieler', value: 'player' }, { label: 'Schiri', value: 'referee' }];
 
-const mode = ref<KnechtMode>(localStorage.getItem(MODE_KEY) === 'referee' ? 'referee' : 'player');
+// Auto: der Modus folgt der Bildschirm-Orientierung (hochkant = Spieler, quer = Schiedsrichter)
+type ModeSetting = KnechtMode | 'auto';
+const storedMode = localStorage.getItem(MODE_KEY);
+const modeSetting = ref<ModeSetting>(storedMode === 'referee' || storedMode === 'player' ? storedMode : 'auto');
 const barSide = ref<'left' | 'right'>(localStorage.getItem(BAR_KEY) === 'left' ? 'left' : 'right');
 const swapped = ref(false);
-const refereeUsed = ref(props.refereeUsed || mode.value === 'referee');
+const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
 const sheet = ref<'scoreboard' | 'timeline' | 'menu' | 'trickshot' | 'ownCup' | null>(null);
 
-const setMode = (value: KnechtMode) => {
-    mode.value = value;
+const setMode = (value: ModeSetting) => {
+    modeSetting.value = value;
     localStorage.setItem(MODE_KEY, value);
-    if (value === 'referee') {
-        refereeUsed.value = true;
-        lockLandscape();
-    } else {
-        unlockOrientation();
-    }
+    // Fest Schiedsrichter: Querformat sperren. Auto darf nicht sperren, sonst kaeme man nicht mehr zurueck.
+    if (value === 'referee') lockLandscape();
+    else unlockOrientation();
+    sheet.value = null;
+};
+
+// ─── Vollbild (z.B. zwischendurch verlassen, um Nachrichten zu schreiben) ───
+const fullscreenSupported = isFullscreenSupported();
+const fullscreen = ref(isFullscreen());
+const onFullscreenChange = () => { fullscreen.value = isFullscreen(); };
+const toggleFullscreen = () => {
+    if (fullscreen.value) exitFullscreen();
+    else enterFullscreen(true);
     sheet.value = null;
 };
 
@@ -219,7 +251,10 @@ const pause = () => {
 const orientationQuery = window.matchMedia('(orientation: portrait)');
 const isPortrait = ref(orientationQuery.matches);
 const onOrientationChange = (event: MediaQueryListEvent) => { isPortrait.value = event.matches; };
+const mode = computed<KnechtMode>(() => modeSetting.value === 'auto' ? (isPortrait.value ? 'player' : 'referee') : modeSetting.value);
 const rotateBoard = computed(() => mode.value === 'referee' && isPortrait.value);
+// Schiedsrichter-Modus genutzt: am Ende nach dem Namen fragen
+watch(mode, value => { if (value === 'referee') refereeUsed.value = true; }, { immediate: true });
 
 // ─── Feld ───
 const state = computed(() => game.state.value);
@@ -243,6 +278,28 @@ const sheetFlipped = computed(() => mode.value === 'player' && state.value.activ
 // Animation zum Team, das geworfen hat (nicht zum Team, das danach dran ist)
 const celebrationFlipped = computed(() => mode.value === 'player' && game.celebration.value?.teamIndex === topTeam.value);
 
+
+// ─── Airball-Shots (nur Anzeige im Spiel, die Bestaetigung merkt sich nur dieses Handy) ───
+const SHOT_EVERY_AIRBALLS = 3;
+const shotStorageKey = () => `bipo_knecht_shots_${game.match.time ?? 0}`;
+const loadShots = (): number[] => {
+    try {
+        const stored = JSON.parse(localStorage.getItem(shotStorageKey()) ?? '[0,0]');
+        return Array.isArray(stored) ? stored : [0, 0];
+    } catch {
+        return [0, 0];
+    }
+};
+const shotsConfirmed = ref<number[]>(loadShots());
+const airballs = computed(() => [0, 1].map(teamIndex => state.value.turns.filter(turn => turn.type === 'airball' && turn.teamIndex === teamIndex).length));
+const shotTeam = computed(() => {
+    const due = [0, 1].find(teamIndex => Math.floor(airballs.value[teamIndex] / SHOT_EVERY_AIRBALLS) > (shotsConfirmed.value[teamIndex] ?? 0));
+    return due ?? null;
+});
+const confirmShot = (teamIndex: number) => {
+    shotsConfirmed.value = shotsConfirmed.value.map((count, index) => index === teamIndex ? Math.floor(airballs.value[teamIndex] / SHOT_EVERY_AIRBALLS) : count);
+    try { localStorage.setItem(shotStorageKey(), JSON.stringify(shotsConfirmed.value)); } catch { /* egal */ }
+};
 
 // ─── Sicherheitsabfrage ───
 type ConfirmDialog = { icon: KnechtIconName; title: string; text: string; confirmLabel: string; action: () => void };
@@ -289,7 +346,7 @@ const startGame = (teamIndex: number) => {
     game.start(teamIndex);
     enterFullscreen();
     requestWakeLock();
-    if (mode.value === 'referee') lockLandscape();
+    if (modeSetting.value === 'referee') lockLandscape();
 };
 
 // ─── Fortschritt melden (wird im localStorage gesichert) ───
@@ -301,6 +358,7 @@ watch(game.isOver, (isOver) => {
     sheet.value = null;
     paused.value = false;
     if (isOver) {
+        try { localStorage.removeItem(shotStorageKey()); } catch { /* egal */ }
         releaseWakeLock();
         exitFullscreen();
         unlockOrientation();
@@ -311,6 +369,7 @@ watch(game.isOver, (isOver) => {
 
 onMounted(() => {
     orientationQuery.addEventListener('change', onOrientationChange);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
     if (game.isStarted.value && !game.isOver.value) requestWakeLock();
     if (game.droppedActions)
         toast.add({ severity: 'warn', summary: `${game.droppedActions} Einträge passten nicht mehr zu den aktuellen Regeln und wurden entfernt`, life: 6000 });
@@ -318,6 +377,7 @@ onMounted(() => {
 
 onUnmounted(() => {
     orientationQuery.removeEventListener('change', onOrientationChange);
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
     releaseWakeLock();
     unlockOrientation();
     exitFullscreen();
@@ -515,6 +575,18 @@ onUnmounted(() => {
 .kn-confirm-actions .kn-menu-button{
     justify-content: center;
 }
+.kn-shot{
+    z-index: 28;
+}
+.kn-shot-icon{
+    background: #FFF1D6;
+    font-size: 30px;
+}
+.kn-shot-button{
+    justify-content: center;
+    width: 100%;
+    margin-top: 8px;
+}
 .kn-confirm-enter-active,
 .kn-confirm-leave-active{
     transition: opacity .2s ease;
@@ -549,6 +621,12 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+.kn-menu-hint{
+    margin-top: -2px;
+    font-size: 11px;
+    color: var(--bp-text-muted);
+    text-align: center;
 }
 .kn-menu-label{
     margin-top: 6px;
