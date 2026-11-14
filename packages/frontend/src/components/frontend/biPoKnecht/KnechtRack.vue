@@ -25,7 +25,11 @@
                     @click.stop="onCupClick(cup, $event)"
                 >
                     <KnechtIcon v-if="getCupMark(cup)" :name="getCupMark(cup)!" class="kn-cup-mark" />
-                    <span v-else-if="pending.has(cup)" class="kn-cup-ball"></span>
+                    <!-- In dieser Runde getroffen: der Ball liegt im Becher; kleines Abzeichen, falls ein Treffer hier eine Bombe waere -->
+                    <template v-else-if="pending.has(cup)">
+                        <span class="kn-cup-ball"></span>
+                        <span v-if="isBombTarget(cup)" class="kn-cup-bomb-badge" title="Treffer hier = Bombe"><KnechtIcon name="bomb" /></span>
+                    </template>
                     <span v-else class="kn-cup-number">{{ cup + 1 }}</span>
                 </button>
             </div>
@@ -88,9 +92,10 @@ const pickIcon = computed<KnechtIconName>(() => props.game.pick.value?.type === 
 const getCupMark = (cup: number): KnechtIconName | null => {
     const pick = props.game.pick.value;
     if (pick && props.isTarget && (pick.chosen.includes(cup) || pick.cup === cup)) return pickIcon.value;
-    if (pending.value.has(cup) && props.isTarget && props.game.hittableCups.value.has(cup) && !pick) return 'bomb';
     return null;
 };
+
+const isBombTarget = (cup: number) => props.isTarget && !props.game.pick.value && props.game.hittableCups.value.has(cup);
 
 const pickText = computed(() => {
     const pick = props.game.pick.value;
@@ -292,8 +297,8 @@ const onAirballClick = (event: MouseEvent) => {
     width: 42%;
     height: 42%;
     border-radius: 50%;
-    background: var(--bp-surface);
-    box-shadow: 0 0 0 1px rgba(31, 35, 40, .15);
+    background: radial-gradient(circle at 35% 35%, #FFFFFF 0%, #EFEFEF 55%, #CFCFCF 100%);
+    box-shadow: 0 1px 3px rgba(31, 35, 40, .3);
 }
 
 .kn-cup--hittable{
@@ -307,11 +312,29 @@ const onAirballClick = (event: MouseEvent) => {
     box-shadow: inset 0 0 0 1.5px var(--bp-border-strong);
 }
 .kn-cup--pending{
-    background: var(--bp-gold-weak);
-    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) #F5A524;
-    color: var(--bp-gold);
+    background: color-mix(in srgb, var(--kn-team-color) 10%, var(--bp-surface));
+    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) color-mix(in srgb, var(--kn-team-color) 55%, var(--bp-surface));
 }
-.kn-cup--bomb,
+.kn-cup--bomb{
+    cursor: pointer;
+}
+/* Kleines Abzeichen am Rand statt grossem Symbol: hier waere ein Treffer eine Bombe */
+.kn-cup-bomb-badge{
+    position: absolute;
+    top: -6%;
+    right: -6%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38%;
+    height: 38%;
+    border-radius: 50%;
+    background: var(--bp-surface);
+    box-shadow: 0 0 0 1.5px #F5A524, 0 2px 4px rgba(0, 0, 0, .15);
+    color: #C77700;
+    font-size: calc(var(--kn-cup) * .22);
+    pointer-events: none;
+}
 .kn-cup--candidate{
     cursor: pointer;
     animation: kn-glow 1.2s ease-in-out infinite;
