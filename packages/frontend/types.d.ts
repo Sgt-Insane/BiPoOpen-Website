@@ -290,6 +290,8 @@ declare global {
         // Rekorde: frueher gehalten, inzwischen von jemand anderem uebertroffen
         former?: boolean;
         progress?: { current: number; target: number };
+        // Rekorde: eigener Bestwert im Vergleich zum Rekord (Abschnitt "Rekorde" im Profil)
+        record?: { own: number; best: number; holder: string; unit: string; until: number | null };
         // Hinweis nach dem Eintragen eines Spiels (nur freigeschaltete Badges), highlight wird im Text fett
         award?: { title: string; text: string; highlight?: string };
     };

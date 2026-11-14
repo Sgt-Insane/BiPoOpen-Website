@@ -243,6 +243,7 @@ registerBadge(({ playerName, records }) => RECORDS.flatMap(({ key, label, unit, 
         locked: status !== 'current',
         former: status === 'former',
         progress: status === 'never' ? { current: own, target: record } : undefined,
+        record: { own, best: record, holder, unit, until },
         award: {
             title: label,
             text: `${playerName} hält jetzt den Rekord mit ${formatNumber(own)} ${unit}.`,

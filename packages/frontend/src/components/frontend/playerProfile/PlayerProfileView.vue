@@ -24,7 +24,9 @@
 
         <PlayerProfileLeagueCard v-if="profileData.leagueStandings.length" :standings="profileData.leagueStandings"/>
 
-        <PlayerProfileAchievements v-if="profileData.badges.length" :badges="profileData.badges" :playerName="profileData.name"/>
+        <PlayerProfileAchievements v-if="profileData.badges.some(badge => badge.group !== 'record')" :badges="profileData.badges" :playerName="profileData.name"/>
+
+        <PlayerProfileRecords :badges="profileData.badges"/>
 
         <PlayerProfileActivity v-if="profileData.firstGameTime" :matchHistory="profileData.allMatchHistory"/>
 
@@ -81,6 +83,7 @@ import PlayerProfileEloCard from './PlayerProfileEloCard.vue';
 import PlayerProfileDebtCard from './PlayerProfileDebtCard.vue';
 import PlayerProfileLeagueCard from './PlayerProfileLeagueCard.vue';
 import PlayerProfileAchievements from './PlayerProfileAchievements.vue';
+import PlayerProfileRecords from './PlayerProfileRecords.vue';
 import PlayerProfileActivity from './PlayerProfileActivity.vue';
 import PlayerProfileKnechtCard from './PlayerProfileKnechtCard.vue';
 import PlayerProfileStats from './PlayerProfileStats.vue';
