@@ -8,15 +8,23 @@
             </span>
         </div>
 
-        <!-- Elo: wer wie viel gewonnen oder verloren hat -->
-        <div v-if="eloRows.length" class="mtl-elo">
-            <span class="mtl-title">Elo</span>
+        <!-- Spieler: Trefferquote und Elo-Gewinn/-Verlust je Person -->
+        <div v-if="playerRows.length" class="mtl-elo">
+            <span class="mtl-title">Spieler</span>
             <div class="mtl-elo-teams">
-                <div v-for="team in eloRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': getTeamColor(match, team.teamIndex) }">
-                    <div v-for="row in team.players" :key="row.name" class="mtl-elo-row">
-                        <span class="mtl-elo-name">{{ row.name }}</span>
-                        <span class="mtl-elo-delta" :class="row.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.delta) }}</span>
-                        <span class="mtl-elo-rating">{{ row.rating.toLocaleString('de-DE') }}</span>
+                <div v-for="team in playerRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': getTeamColor(match, team.teamIndex) }">
+                    <div v-for="row in team.players" :key="row.name" class="mtl-player-row">
+                        <div class="mtl-elo-row">
+                            <span class="mtl-elo-name">{{ row.name }}</span>
+                            <template v-if="row.elo">
+                                <span class="mtl-elo-delta" :class="row.elo.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.elo.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.elo.delta) }}</span>
+                                <span class="mtl-elo-rating">{{ row.elo.rating.toLocaleString('de-DE') }}</span>
+                            </template>
+                        </div>
+                        <div class="mtl-accuracy">
+                            <span class="mtl-accuracy-bar"><span :style="{ width: `${row.accuracy}%` }"></span></span>
+                            <span class="mtl-accuracy-label">{{ row.hits }}/{{ row.throws }} · {{ row.accuracy }} %</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -129,7 +137,7 @@ import { computed, PropType, ref } from 'vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
-import { getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
+import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
 import { formatEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
 import { formatSeconds, getThrowTimes } from '@/components/frontend/biPoKnecht/knechtThrowTimes';
@@ -341,14 +349,22 @@ const playerStats = computed(() => {
 // Elo je Spieler nach diesem Spiel (nicht gewertete Spiele, z.B. Unentschieden, zeigen nichts)
 const { loadEloRatings, getMatchElo } = useEloRatings();
 loadEloRatings();
-const eloRows = computed(() => {
+// Je Spieler: Trefferquote aus dem Verlauf, dazu Elo (sobald geladen und das Spiel gewertet ist)
+const playerRows = computed(() => {
     const sides = getMatchElo(props.match);
-    if (!sides) return [];
+    const stats = playerStats.value;
     return [props.match.team1, props.match.team2].map((team, teamIndex) => ({
         teamIndex,
-        players: team.players.flatMap(player => {
-            const change = sides[teamIndex].playerChanges.find(entry => entry.key === getEloPlayerKey(player.name));
-            return change ? [{ name: player.name, delta: change.delta, rating: change.rating }] : [];
+        players: team.players.map((player, playerIndex) => {
+            const entry = stats.find(stat => stat.teamIndex === teamIndex && stat.playerIndex === playerIndex);
+            const change = sides?.[teamIndex].playerChanges.find(item => item.key === getEloPlayerKey(player.name));
+            return {
+                name: player.name,
+                hits: entry?.hits ?? 0,
+                throws: entry?.throws ?? 0,
+                accuracy: entry ? getAccuracy(entry) : 0,
+                elo: change ? { delta: change.delta, rating: change.rating } : null,
+            };
         }),
     }));
 });
@@ -464,6 +480,35 @@ const chartLines = computed(() => {
     font-size: 11px;
     font-weight: 600;
     color: var(--bp-text-muted);
+}
+.mtl-player-row{
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 3px 0;
+}
+.mtl-accuracy{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.mtl-accuracy-bar{
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bp-border);
+    overflow: hidden;
+}
+.mtl-accuracy-bar span{
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--mtl-team-color);
+}
+.mtl-accuracy-label{
+    font-size: 11px;
+    color: var(--bp-text-muted);
+    white-space: nowrap;
 }
 .mtl-elo-delta{
     font-weight: 800;
