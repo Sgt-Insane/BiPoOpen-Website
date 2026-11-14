@@ -79,8 +79,11 @@ const hasAny = computed(() => openTotal.value + miles.value.done + shots.value.d
     text-decoration: none;
 }
 .pp-debt-tile--open{
-    background: var(--bp-navy, #0C1E47);
-    color: white;
+    background: var(--bp-primary-weak);
+    color: var(--bp-text-strong);
+}
+.pp-debt-tile--open b{
+    color: var(--main-color);
 }
 .pp-debt-icon{
     font-size: 24px;
