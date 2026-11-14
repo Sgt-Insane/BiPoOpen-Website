@@ -1,15 +1,14 @@
 <template>
     <div class="BiPoKnecht" :class="[`kn--${mode}`, { 'kn--rotate': rotateBoard }]">
-        <div class="kn-board" :class="`kn-board--bar-${barSide}`">
+        <div class="kn-board">
+            <!-- Schwebendes Menue (drei Punkte), das Spielfeld bleibt in voller Breite -->
             <KnechtSideBar
                 v-if="game.isStarted.value"
-                :side="barSide"
                 :canUndo="game.canUndo.value"
                 @undo="game.undo()"
                 @scoreboard="sheet = 'scoreboard'"
                 @timeline="sheet = 'timeline'"
                 @menu="sheet = 'menu'"
-                @move="moveBar"
             />
 
             <!-- Spielermodus: Handy liegt auf dem Tisch, jedes Team tippt an seinem Tischende -->
@@ -244,14 +243,12 @@ const toast = useToast();
 
 // ─── Einstellungen (bleiben fuer das naechste Spiel erhalten) ───
 const MODE_KEY = 'bipo_knecht_mode';
-const BAR_KEY = 'bipo_knecht_bar';
 const MODE_OPTIONS = [{ label: 'Auto', value: 'auto' }, { label: 'Spieler', value: 'player' }, { label: 'Schiri', value: 'referee' }];
 
 // Auto: der Modus folgt der Bildschirm-Orientierung (hochkant = Spieler, quer = Schiedsrichter)
 type ModeSetting = KnechtMode | 'auto';
 const storedMode = localStorage.getItem(MODE_KEY);
 const modeSetting = ref<ModeSetting>(storedMode === 'referee' || storedMode === 'player' ? storedMode : 'auto');
-const barSide = ref<'left' | 'right'>(localStorage.getItem(BAR_KEY) === 'left' ? 'left' : 'right');
 const swapped = ref(false);
 const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
@@ -274,11 +271,6 @@ const toggleFullscreen = () => {
     if (fullscreen.value) exitFullscreen();
     else enterFullscreen(true);
     sheet.value = null;
-};
-
-const moveBar = () => {
-    barSide.value = barSide.value === 'right' ? 'left' : 'right';
-    localStorage.setItem(BAR_KEY, barSide.value);
 };
 
 const swapSides = () => {
@@ -515,8 +507,6 @@ onUnmounted(() => {
     inset: 0;
     display: flex;
 }
-.kn-board--bar-left{ flex-direction: row; }
-.kn-board--bar-right{ flex-direction: row-reverse; }
 
 /* Schiedsrichter im Hochformat: Feld um 90 Grad gedreht */
 .kn--rotate .kn-board{
@@ -693,9 +683,8 @@ onUnmounted(() => {
     z-index: 24;
     background: rgba(31, 35, 40, .3);
 }
-/* Seitenleiste (Rueckgaengig, Menue) bleibt bei der Sperre bedienbar */
+/* Schwebendes Menue (Rueckgaengig, Menue) bleibt bei der Sperre bedienbar */
 .KnechtSideBar{
-    position: relative;
     z-index: 25;
 }
 .kn-turn-start{
