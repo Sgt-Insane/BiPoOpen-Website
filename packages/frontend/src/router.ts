@@ -29,6 +29,16 @@ const routes = [
 	},
 
 	{
+		path: '/Offene-Shots',
+		name: 'Offene Shots',
+		component: () => import('@/components/frontend/shots/_OffeneShots.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Offene Shots',
+			description: 'Offene Shots aus dem BiPo Knecht'
+		}
+	},
+
+	{
 		path: '/Nackte-Meilen',
 		name: 'Nackte Meilen',
 		component: () => import('@/components/frontend/nackteMeilen/_NackteMeilen.vue'),

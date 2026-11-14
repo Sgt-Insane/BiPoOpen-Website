@@ -71,9 +71,15 @@
                             {{ airballs[shotTeam] }} Airballs von {{ getTeamName(game.match, shotTeam) }} –
                             {{ getTeam(game.match, shotTeam).players.length > 1 ? 'jede Person aus dem Team trinkt' : `${getTeam(game.match, shotTeam).players[0].name} trinkt` }} einen Shot.
                         </div>
-                        <button type="button" class="kn-menu-button kn-menu-button--primary kn-shot-button" @click="confirmShot(shotTeam)">
-                            <i class="pi pi-check"></i> Shot getrunken
-                        </button>
+                        <div class="kn-shot-actions">
+                            <button type="button" class="kn-menu-button kn-shot-button" @click="postponeShot(shotTeam)">
+                                <i class="pi pi-clock"></i> Später
+                            </button>
+                            <button type="button" class="kn-menu-button kn-menu-button--primary kn-shot-button" @click="confirmShot(shotTeam)">
+                                <i class="pi pi-check"></i> Getrunken
+                            </button>
+                        </div>
+                        <div class="kn-shot-hint">„Später“ setzt den Shot auf die Liste „Offene Shots“ auf der Webseite.</div>
                     </div>
                 </div>
             </transition>
@@ -214,6 +220,7 @@ import { getTeamPoints, type KnechtAction } from './knechtEngine';
 import { formatPoints, getPlayerName, getTeam, getTeamColor, getTeamName, swapCupColors } from './KnechtUtilFunctions';
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
 import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
+import { addShots } from '@/components/frontend/shots/shots';
 import { requestRotationPermission, useTableRotation } from './useTableRotation';
 import { isVibrationSupported, toggleVibration, vibrationEnabled } from './knechtHaptics';
 import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
@@ -390,6 +397,21 @@ const shotTeam = computed(() => {
 const confirmShot = (teamIndex: number) => {
     shotsConfirmed.value = shotsConfirmed.value.map((count, index) => index === teamIndex ? Math.floor(airballs.value[teamIndex] / SHOT_EVERY_AIRBALLS) : count);
     try { localStorage.setItem(shotStorageKey(), JSON.stringify(shotsConfirmed.value)); } catch { /* egal */ }
+};
+
+// "Später": jede Person des Teams bekommt einen offenen Shot auf der Webseite
+const postponeShot = async (teamIndex: number) => {
+    const team = getTeam(game.match, teamIndex);
+    confirmShot(teamIndex);
+    const success = await addShots(team.players.map(player => ({
+        name: player.name,
+        teamName: getTeamName(game.match, teamIndex),
+        opponentName: getTeamName(game.match, 1 - teamIndex),
+        gameTime: game.match.time,
+    })));
+    toast.add(success
+        ? { severity: 'info', summary: 'Shot auf die Liste „Offene Shots“ gesetzt', life: 2500 }
+        : { severity: 'error', summary: 'Offener Shot konnte nicht gespeichert werden', life: 3500 });
 };
 
 // ─── Sicherheitsabfrage ───
@@ -738,10 +760,19 @@ onUnmounted(() => {
     background: #FFF1D6;
     font-size: 30px;
 }
-.kn-shot-button{
-    justify-content: center;
+.kn-shot-actions{
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 8px;
     width: 100%;
     margin-top: 8px;
+}
+.kn-shot-button{
+    justify-content: center;
+}
+.kn-shot-hint{
+    font-size: 11px;
+    color: var(--bp-text-muted);
 }
 .kn-confirm-enter-active,
 .kn-confirm-leave-active{

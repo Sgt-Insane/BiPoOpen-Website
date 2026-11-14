@@ -25,6 +25,7 @@
                 <div class="nm-hero-hint">
                     Wann gibt es eine Meile?
                     <router-link to="/Regeln" class="nm-hero-link">Regeln <i class="pi pi-angle-right"></i></router-link>
+                    · <router-link to="/Offene-Shots" class="nm-hero-link">Offene Shots 🥃 <i class="pi pi-angle-right"></i></router-link>
                 </div>
             </div>
 

@@ -4,6 +4,7 @@
             'mt-team-win': isWinner,
             'mt-team-loose': isLoser
         }"
+        :style="knechtColor ? { '--mt-win-color': knechtColor } : undefined"
     >
         <!-- Team Header -->
         <div class="mt-team">
@@ -75,6 +76,7 @@
 import { PropType, computed, inject } from 'vue';
 import { getMatchScore } from "@/util/tournamentMatchFunctions";
 import Avatar from '@/components/shared/Avatar.vue';
+import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import { vFitText, type FitTextGroup } from '@/components/shared/fitText';
 import type { EloMatchSide } from '@/components/frontend/worldRanking/eloRating';
 
@@ -90,6 +92,8 @@ const props = defineProps({
 });
 
 const team = computed(() => props.isTeam2 ? props.match.team2 : props.match.team1);
+// Mit dem BiPo Knecht gezaehlte Spiele haben Becherfarben je Team (rot/blau, ggf. getauscht)
+const knechtColor = computed(() => props.match.turns?.length ? getTeamColor(props.match, props.isTeam2 ? 1 : 0) : null);
 
 let teamName = computed(() => {
     if(team.value){
@@ -216,7 +220,8 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     flex-shrink: 0;
 }
 .mt-team-win .mt-team-score{
-    background: var(--main-color);
+    /* Knecht-Spiele: Becherfarbe des Siegers (passt zum Spielverlauf), sonst Rot */
+    background: var(--mt-win-color, var(--main-color));
     color: white;
     font-weight: 700;
 }

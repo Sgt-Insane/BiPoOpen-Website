@@ -8,6 +8,7 @@ import leagueCupRoutes from './routes/LeagueCup';
 import playerImageRoutes from './routes/PlayerImage';
 import registrationRoutes from './routes/TournamentRegistration';
 import pushRoutes from './routes/Push';
+import shotRoutes from './routes/Shot';
 
 const router = express();
 
@@ -73,6 +74,7 @@ router.use('/leagueCups', leagueCupRoutes);
 router.use('/playerImages', playerImageRoutes);
 router.use('/registrations', registrationRoutes);
 router.use('/push', pushRoutes);
+router.use('/shots', shotRoutes);
 
 // Error handling
 router.use((req, res, next) => {
