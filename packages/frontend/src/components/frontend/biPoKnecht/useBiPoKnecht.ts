@@ -22,6 +22,27 @@ export type CupPick = {
 };
 
 const BANNER_DURATION = 1800;
+const CELEBRATION_DURATION = 2200;
+
+// Grosse Animation wie beim Bowling. Zusaetzlich zu den Bannern der Engine auch fuer Aktionen ohne Regelfolge.
+export type KnechtCelebrationKind =
+    | 'bomb' | 'on-fire' | 'heating-up' | 'ballsback' | 'deathcup' | 'nachwurf' | 'overtime'
+    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit';
+export type KnechtCelebration = { id: number; kind: KnechtCelebrationKind; player: string; teamIndex: number };
+
+const ENGINE_CELEBRATIONS: KnechtCelebrationKind[] = ['bomb', 'on-fire', 'heating-up', 'ballsback', 'deathcup', 'nachwurf', 'overtime'];
+
+// Welche Animation passt zu dieser Aktion? Regel-Ereignisse (Bombe, On Fire ...) gehen vor.
+export const getCelebrationKind = (next: KnechtState, action: KnechtAction, previous?: KnechtAction): KnechtCelebrationKind | null => {
+    if (next.banner && (ENGINE_CELEBRATIONS as string[]).includes(next.banner)) return next.banner as KnechtCelebrationKind;
+    if (action.type === 'reRack') return 'rerack';
+    if (action.type === 'trickshot') return 'trickshot';
+    if (action.type === 'throw' && action.outcome === 'hit') {
+        if (previous?.type === 'trickshot' && previous.catcher === action.player) return 'trickshot-hit';
+        if (action.bouncer) return 'bouncer';
+    }
+    return null;
+};
 const BALL_DURATION = 1500;
 
 export type BallMark = { id: number; kind: 'miss' | 'airball' | 'hit'; x: number; y: number };
@@ -103,6 +124,16 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         if (event) bannerTimer = setTimeout(() => { banner.value = null; }, BANNER_DURATION);
     };
 
+    // ─── Animationen ───
+    const celebration = ref<KnechtCelebration | null>(null);
+    let celebrationTimer: ReturnType<typeof setTimeout> | null = null;
+    const celebrate = (kind: KnechtCelebrationKind | null, player: string, teamIndex: number) => {
+        if (!kind) return;
+        if (celebrationTimer) clearTimeout(celebrationTimer);
+        celebration.value = { id: now(), kind, player, teamIndex };
+        celebrationTimer = setTimeout(() => { celebration.value = null; }, CELEBRATION_DURATION);
+    };
+
     const FANFARE_EVENTS: BannerEvent[] = ['on-fire', 'overtime', 'win', 'nachwurf'];
 
     // Erst das Geraeusch des Wurfs, bei besonderen Momenten danach die Fanfare
@@ -118,6 +149,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     // ─── Aktionen ───
     const dispatch = (action: KnechtAction) => {
         let next: KnechtState;
+        const throwingTeam = state.value.activeTeamIndex;
         try {
             next = applyAction(state.value, action);
         } catch {
@@ -131,6 +163,10 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         bouncerArmed.value = false;
         pick.value = null;
         playFeedback(next, action);
+        // Name unter der Animation: der Werfer, beim Trickshot der Faenger
+        const playerIndex = action.type === 'trickshot' ? action.catcher : action.type === 'throw' || action.type === 'deathcup' ? action.player : null;
+        const name = playerIndex === null ? '' : (throwingTeam === 0 ? match.team1 : match.team2).players[playerIndex]?.name ?? '';
+        celebrate(getCelebrationKind(next, action, newActions[newActions.length - 2]), name, throwingTeam);
         return true;
     };
 
@@ -195,6 +231,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         actions.value = actions.value.slice(0, -1);
         bouncerArmed.value = false;
         banner.value = null;
+        celebration.value = null;
     };
 
     // Verlauf bearbeiten: neue Aktionsliste nur uebernehmen, wenn sie komplett gueltig ist
@@ -227,6 +264,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         selectedPlayer,
         selectPlayer,
         banner,
+        celebration,
         bouncerArmed,
         toggleBouncer,
         pick,

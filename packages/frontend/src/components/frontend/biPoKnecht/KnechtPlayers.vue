@@ -8,6 +8,11 @@
             <Avatar v-if="team.logo" :name="teamName" :avatarImage="team.logo" shape="square" class="kn-team-logo" />
             <span class="kn-team-name">{{ teamName }}</span>
             <span v-if="isActive" class="kn-turn-badge">{{ turnBadge }}</span>
+            <!-- Serie auch sichtbar, wenn das Team gerade nicht wirft (Liste eingeklappt) -->
+            <span v-for="hot in hotPlayers" :key="hot.playerIndex" class="kn-fire-pill" :class="`kn-fire-pill--${hot.fire}`" :title="`${hot.name}: ${hot.fire === 'on-fire' ? 'On Fire' : 'Heating Up'}`">
+                <KnechtIcon :name="hot.fire === 'on-fire' ? 'onfire' : 'heating'" />
+                <span>{{ hot.name }}</span>
+            </span>
             <span class="kn-team-score">{{ formatPoints(teamPoints) }} <small>Becher</small></span>
         </div>
 
@@ -26,7 +31,7 @@
                     <span class="kn-player-name">
                         {{ player.name }}
                         <span v-if="getFire(playerIndex) === 'on-fire'" class="kn-fire" title="On Fire"><KnechtIcon name="onfire" /><KnechtIcon name="onfire" /></span>
-                        <span v-else-if="getFire(playerIndex) === 'heating-up'" class="kn-fire" title="Heating Up"><KnechtIcon name="onfire" /></span>
+                        <span v-else-if="getFire(playerIndex) === 'heating-up'" class="kn-fire" title="Heating Up"><KnechtIcon name="heating" /></span>
                     </span>
                     <span class="kn-player-stats">{{ getPlayerLine(playerIndex) }}</span>
                 </span>
@@ -69,12 +74,18 @@ const getFire = (playerIndex: number) => {
     return streak >= 3 ? 'on-fire' : streak === 2 ? 'heating-up' : 'normal';
 };
 
+const hotPlayers = computed(() => team.value.players
+    .map((player, playerIndex) => ({ playerIndex, name: player.name, fire: getFire(playerIndex) }))
+    .filter(entry => entry.fire !== 'normal'));
+
 const getPlayerClass = (playerIndex: number) => {
     const allowed = props.game.allowedThrowers.value.includes(playerIndex);
     return {
         'kn-player--selected': isActive.value && props.game.selectedPlayer.value === playerIndex,
         'kn-player--done': isActive.value && props.game.playersDone.value.includes(playerIndex),
         'kn-player--locked': isActive.value && !allowed,
+        'kn-player--heating-up': getFire(playerIndex) === 'heating-up',
+        'kn-player--on-fire': getFire(playerIndex) === 'on-fire',
     };
 };
 
@@ -99,9 +110,56 @@ const getPlayerLine = (playerIndex: number) => {
     transition: opacity .25s ease, filter .25s ease;
 }
 .kn-players--rotated{ transform: rotate(180deg); }
-.KnechtPlayers:not(.kn-players--active){
+.KnechtPlayers:not(.kn-players--active) .kn-players-header > :not(.kn-fire-pill),
+.KnechtPlayers:not(.kn-players--active) .kn-player-list{
     opacity: .5;
     filter: grayscale(.8);
+}
+
+/* Heating Up / On Fire: auch beim wartenden Team gut sichtbar */
+.kn-fire-pill{
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.kn-fire-pill--heating-up{
+    background: #F76B15;
+    animation: kn-fire-pulse 1.4s ease-in-out infinite;
+}
+.kn-fire-pill--on-fire{
+    background: linear-gradient(90deg, #E5484D, #F76B15, #F5A524, #F76B15, #E5484D);
+    background-size: 200% 100%;
+    animation: kn-fire-flow 1.2s linear infinite, kn-fire-pulse 1s ease-in-out infinite;
+}
+@keyframes kn-fire-pulse{
+    0%, 100%{ box-shadow: 0 0 0 0 rgba(247, 107, 21, .55); }
+    50%{ box-shadow: 0 0 0 5px rgba(247, 107, 21, 0); }
+}
+@keyframes kn-fire-flow{
+    0%{ background-position: 0 0; }
+    100%{ background-position: 200% 0; }
+}
+.kn-player--heating-up{
+    border-color: #F76B15;
+    box-shadow: 0 0 0 1px #F76B15, 0 0 12px rgba(247, 107, 21, .35);
+}
+.kn-player--on-fire{
+    border-color: #E5484D;
+    animation: kn-player-fire 1s ease-in-out infinite alternate;
+}
+@keyframes kn-player-fire{
+    0%{ box-shadow: 0 0 0 1px #E5484D, 0 0 10px rgba(229, 72, 77, .45); }
+    100%{ box-shadow: 0 0 0 2px #F5A524, 0 0 22px rgba(247, 107, 21, .7); }
+}
+@media (prefers-reduced-motion: reduce){
+    .kn-fire-pill, .kn-player--on-fire{ animation: none; }
 }
 
 .kn-players-header{

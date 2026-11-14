@@ -40,13 +40,8 @@
                 </div>
             </div>
 
-            <!-- Aktions-Banner -->
-            <transition name="kn-banner">
-                <div v-if="game.banner.value && BANNERS[game.banner.value]" class="kn-banner" :class="`kn-banner--${game.banner.value}`" :style="{ transform: bannerTransform }">
-                    <KnechtIcon :name="BANNERS[game.banner.value]!.icon" />
-                    {{ BANNERS[game.banner.value]!.text }}
-                </div>
-            </transition>
+            <!-- Animation nach besonderen Aktionen (wie beim Bowling) -->
+            <KnechtCelebration :celebration="game.celebration.value" :flipped="celebrationFlipped" />
 
             <!-- Wer faengt an? -->
             <div v-if="!game.isStarted.value" class="kn-overlay">
@@ -153,12 +148,13 @@ import KnechtSideBar from './KnechtSideBar.vue';
 import KnechtSheet from './KnechtSheet.vue';
 import KnechtScoreboard from './KnechtScoreboard.vue';
 import KnechtTimeline from './KnechtTimeline.vue';
+import KnechtCelebration from './KnechtCelebration.vue';
 import KnechtOwnCup from './KnechtOwnCup.vue';
 import KnechtStartTeam from './KnechtStartTeam.vue';
 import KnechtGameOver from './KnechtGameOver.vue';
 import KnechtIcon from './KnechtIcon.vue';
 import type { KnechtIconName } from './knechtIcons';
-import { getTeamPoints, type BannerEvent, type KnechtAction } from './knechtEngine';
+import { getTeamPoints, type KnechtAction } from './knechtEngine';
 import { formatPoints, getPlayerName, getTeam, getTeamName } from './KnechtUtilFunctions';
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
 import { enterFullscreen, exitFullscreen, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
@@ -244,17 +240,9 @@ const throwerName = computed(() => getPlayerName(game.match, state.value.activeT
 
 // Sheets und Banner zeigen zum werfenden Team (Spielermodus, Team am oberen Tischende)
 const sheetFlipped = computed(() => mode.value === 'player' && state.value.activeTeamIndex === topTeam.value);
-const bannerTransform = computed(() => `translate(-50%, -50%)${sheetFlipped.value ? ' rotate(180deg)' : ''}`);
+// Animation zum Team, das geworfen hat (nicht zum Team, das danach dran ist)
+const celebrationFlipped = computed(() => mode.value === 'player' && game.celebration.value?.teamIndex === topTeam.value);
 
-const BANNERS: Partial<Record<NonNullable<BannerEvent>, { icon: KnechtIconName; text: string }>> = {
-    'heating-up': { icon: 'heating', text: 'Heating Up!' },
-    'on-fire': { icon: 'onfire', text: 'On Fire!' },
-    bomb: { icon: 'bomb', text: 'Bombe! Balls Back!' },
-    ballsback: { icon: 'ballsback', text: 'Balls Back!' },
-    nachwurf: { icon: 'nachwurf', text: "Gentleman's Rule – Nachwurf!" },
-    overtime: { icon: 'overtime', text: 'Verlängerung (2×3)!' },
-    deathcup: { icon: 'deathcup', text: 'Deathcup!' },
-};
 
 // ─── Sicherheitsabfrage ───
 type ConfirmDialog = { icon: KnechtIconName; title: string; text: string; confirmLabel: string; action: () => void };
@@ -480,42 +468,6 @@ onUnmounted(() => {
     100%{ transform: scale(2.6); opacity: 0; }
 }
 
-/* ─── Banner ─── */
-.kn-banner{
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 22px;
-    border-radius: 18px;
-    background: #1F2328;
-    color: white;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    pointer-events: none;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, .25);
-}
-.kn-banner--bomb{ background: var(--main-color); }
-.kn-banner--ballsback{ background: var(--secondary-color); }
-.kn-banner--on-fire{ background: linear-gradient(90deg, #E5484D, #F76B15, #F5A524); }
-.kn-banner--heating-up{ background: #F76B15; }
-.kn-banner--nachwurf{ background: #1F8A70; }
-.kn-banner--overtime{ background: #F5A524; color: #1F2328; }
-.kn-banner--deathcup{ background: #111; color: #FF6B6B; }
-.kn-banner-enter-active,
-.kn-banner-leave-active{
-    transition: opacity .25s ease;
-}
-.kn-banner-enter-from,
-.kn-banner-leave-to{
-    opacity: 0;
-}
 
 /* ─── Sicherheitsabfrage ─── */
 .kn-confirm{
