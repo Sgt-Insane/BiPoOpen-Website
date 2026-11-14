@@ -248,8 +248,8 @@ describe('BiPo Knecht Regeln', () => {
 
     const nachwurfEqualizer = (): KnechtAction[] => [
         ...soloClearWithFirstBall(), miss(0),
-        // Team 1 hat 0 Becher getroffen: im Nachwurf alle 10 treffen
-        hit(0, 0), hit(0, 1), hit(0, 2), hit(0, 3), hit(0, 4), hit(0, 5), hit(0, 6), hit(0, 7), hit(0, 8), hit(0, 9),
+        // Team 1 hat 0 Becher getroffen: im Nachwurf alle 10 treffen (der letzte steht dann an der Spitze)
+        hit(0, 0), hit(0, 1), hit(0, 2), hit(0, 3), hit(0, 4), hit(0, 5), hit(0, 6), hit(0, 7), hit(0, 8), hit(0, 0),
     ];
 
     it('geht bei Ausgleich im Nachwurf in die Verlaengerung mit 2x3 Bechern, ohne Re-Racks', () => {
@@ -263,17 +263,17 @@ describe('BiPo Knecht Regeln', () => {
         expect(state.banner).toBe('overtime');
     });
 
-    it('erlaubt die Bombe auch im Nachwurf, danach wirft der Bomber weiter', () => {
-        const state = play(SOLO, [...soloClearWithFirstBall(), miss(0), hit(0, 4), miss(0), hit(0, 4, { extraCups: [5, 6] })]);
-        expect(state.turns.at(-1)!.type).toBe('bomb');
-        expect(state.nachwurfTeamIndex).toBe(1);
-        expect(getAllowedThrowers(state)).toEqual([0]);
-        expect(state.round.ballsDone).toBe(1);
-        expect(getPlayerPoints(state)[1]).toEqual([3]);
+    it('raeumt im Nachwurf getroffene Becher sofort ab, eine Bombe gibt es dort nicht', () => {
+        const state = play(SOLO, [...soloClearWithFirstBall(), miss(0), hit(0, 4), hit(0, 5)]);
+        expect(state.racks[0].pending).toEqual([]);
+        expect(state.racks[0].hit).toEqual(expect.arrayContaining([4, 5]));
+        expect(getHittableCups(state)).not.toContain(4);
+        // Zweiter Ball in einen schon getroffenen Becher ist nicht moeglich
+        expectError(SOLO, [...soloClearWithFirstBall(), miss(0), hit(0, 4), miss(0), hit(0, 4, { extraCups: [5, 6] })]);
     });
 
     it('gewinnt den Nachwurf sofort mit einem weiteren Ball im letzten Becher', () => {
-        const state = play(SOLO, [...nachwurfEqualizer(), hit(0, 9)]);
+        const state = play(SOLO, [...nachwurfEqualizer(), hit(0, 0)]);
         expect(state.status).toBe('over');
         expect(state.winnerTeamIndex).toBe(1);
         expect(state.endReason).toBe('nachwurfDouble');

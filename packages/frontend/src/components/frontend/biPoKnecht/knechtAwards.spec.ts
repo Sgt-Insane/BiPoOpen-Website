@@ -41,6 +41,22 @@ describe('Auszeichnungen', () => {
         expect(byName.Mittel).not.toBe('Solider Werfer');
     });
 
+    it('gibt im offenen Spiel allen ohne Becher "Nackt", in der Liga nicht', () => {
+        const stats = [
+            player('A', { throws: 8, hits: 0, points: 0 }),
+            player('B', { throws: 8, hits: 0, points: 0 }),
+            player('C', { throws: 8, hits: 6, points: 6 }),
+        ];
+        const open = getAwards(stats, { nackteMeile: true }).map(award => award.title);
+        expect(open.slice(0, 2)).toEqual(['Nackt', 'Nackt']);
+        expect(getAwards(stats).map(award => award.title)).not.toContain('Nackt');
+    });
+
+    it('zeichnet ein Spiel ohne Fehlwurf aus', () => {
+        const awards = getAwards([player('A', { throws: 10, hits: 10, points: 10 }), player('B', { throws: 10, hits: 4, points: 4 })]);
+        expect(awards[0]).toMatchObject({ title: 'Makellos', detail: '10/10 – jeder Wurf ein Treffer' });
+    });
+
     it('vergibt jeden besonderen Titel hoechstens einmal', () => {
         const awards = getAwards([
             player('A', { throws: 8, hits: 4, points: 4, bombs: 1 }),

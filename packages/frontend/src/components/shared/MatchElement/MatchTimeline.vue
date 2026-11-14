@@ -80,7 +80,7 @@ import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
-import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
+import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName, isOpenGame } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
@@ -175,7 +175,7 @@ const teamSummaries = computed(() => {
 // Gleiche Regeln wie auf dem Spielende-Bildschirm, damit die Webseite dieselben Titel zeigt
 const awards = computed(() => {
     const stats = playerStats.value;
-    return getAwards(stats).map((award, index) => ({
+    return getAwards(stats, { nackteMeile: isOpenGame(props.match) }).map((award, index) => ({
         ...award, key: index, teamIndex: stats[index].teamIndex, player: stats[index].name,
     }));
 });

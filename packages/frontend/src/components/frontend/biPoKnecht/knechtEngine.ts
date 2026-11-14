@@ -171,9 +171,10 @@ export const getPlayersDone = (state: KnechtState): number[] =>
 const isSecondBallFirstThrow = (state: KnechtState) =>
     state.round.ballsDone === 1 && (!state.round.current || !state.round.current.resolved);
 
-// Bombe: der zweite Ball landet im Becher, in dem schon der erste Ball dieser Runde liegt (auch im Nachwurf)
+// Bombe: der zweite Ball landet im Becher, in dem schon der erste Ball dieser Runde liegt.
+// Im Nachwurf gibt es keine Bombe: getroffene Becher werden dort sofort abgeraeumt.
 export const getBombTargets = (state: KnechtState): number[] => {
-    if (!isSecondBallFirstThrow(state) || state.decider) return [];
+    if (!isSecondBallFirstThrow(state) || state.decider || state.nachwurfTeamIndex !== null) return [];
     const pending = new Set(getTargetRack(state).pending);
     return state.round.landings.filter(landing => landing.ball === 0 && pending.has(landing.cup)).map(landing => landing.cup);
 };
@@ -480,6 +481,11 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
     if (preview.type === 'lastCup') {
         state.cleared[team] = true;
         state.decider = { teamIndex: team, cup };
+    } else if (state.nachwurfTeamIndex === team) {
+        // Gentleman's Rule: getroffene Becher kommen sofort vom Tisch (keine Bombe, kein Balls Back)
+        enemyRack.hit = sorted([...new Set([...enemyRack.hit, ...enemyRack.pending])]);
+        enemyRack.pending = [];
+        moveLastCupToTip(enemyRack);
     }
 
     if (onFireEnabled && state.nachwurfTeamIndex === null) {

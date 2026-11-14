@@ -151,6 +151,7 @@ const when = (condition: boolean, strength: number) => condition ? strength : nu
 
 // Nach Seltenheit sortiert: seltene Titel werden zuerst verteilt
 const AWARD_RULES: AwardRule[] = [
+    { icon: '💯', title: 'Makellos', strength: s => when(s.throws >= 5 && s.hits === s.throws, s.throws), detail: s => `${s.hits}/${s.throws} – jeder Wurf ein Treffer` },
     { icon: '💀', title: 'Sensenmann', strength: s => when(s.deathcups > 0, s.deathcups), detail: () => 'Deathcup versenkt – Spiel sofort beendet' },
     { icon: '🧨', title: 'Bombenleger', strength: s => when(s.bombs > 0, s.bombs), detail: s => plural(s.bombs, 'Bombe gelegt', 'Bomben gelegt') },
     { icon: '🎪', title: 'Zirkusartist', strength: s => when(s.trickshotHits > 0, s.trickshotHits), detail: s => plural(s.trickshotHits, 'Trickshot verwandelt', 'Trickshots verwandelt') },
@@ -177,14 +178,20 @@ const FALLBACK_AWARDS: { icon: string; title: string; applies: (s: KnechtPlayerS
     { icon: '🍀', title: 'Beim nächsten Mal', applies: () => true, detail: s => `${getAccuracy(s)} % Trefferquote – da geht noch was` },
 ];
 
-export const getAwards = (stats: KnechtPlayerStats[]): KnechtAward[] => {
+// Offene Spiele (kein Liga- oder Cup-Spiel): wer 0 Becher hat, schuldet eine nackte Meile
+export const isOpenGame = (match: Match) => !match.cupId && !match.season && match.league == undefined;
+
+const NACKT_AWARD: KnechtAward = { icon: '🍑', title: 'Nackt', detail: '0 Becher – die nackte Meile ruft' };
+
+export const getAwards = (stats: KnechtPlayerStats[], options: { nackteMeile?: boolean } = {}): KnechtAward[] => {
     const hits = stats.reduce((sum, entry) => sum + entry.hits, 0);
     const throws = stats.reduce((sum, entry) => sum + entry.throws, 0);
     const ctx: AwardContext = {
         averageAccuracy: getAccuracy({ hits, throws }),
         maxPoints: Math.max(0, ...stats.map(entry => entry.points)),
     };
-    const result: (KnechtAward | null)[] = stats.map(() => null);
+    // Nackt bekommt jeder ohne Becher im offenen Spiel, auch mehrere Spieler
+    const result: (KnechtAward | null)[] = stats.map(entry => options.nackteMeile && entry.points === 0 ? NACKT_AWARD : null);
 
     // Seltene Titel zuerst, je Titel an den Spieler, auf den er am besten passt
     AWARD_RULES.forEach(rule => {
