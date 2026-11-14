@@ -244,9 +244,10 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
 
     const cancelPick = () => { pick.value = null; };
 
-    const throwMiss = (outcome: 'miss' | 'airball') => {
+    // detail: Landestelle und Kante eines Nullwurfs (siehe knechtEdges)
+    const throwMiss = (outcome: 'miss' | 'airball', detail: { spot?: { x: number; y: number }; edge?: EdgeHit } = {}) => {
         if (pick.value) return false;
-        return dispatch({ type: 'throw', player: selectedPlayer.value, outcome, time: now() });
+        return dispatch({ type: 'throw', player: selectedPlayer.value, outcome, time: now(), ...(outcome === 'miss' ? detail : {}) });
     };
 
     const trickshot = (catcher: number) => dispatch({ type: 'trickshot', player: selectedPlayer.value, catcher, time: now() });

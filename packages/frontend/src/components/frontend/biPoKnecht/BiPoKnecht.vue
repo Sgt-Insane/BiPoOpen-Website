@@ -43,6 +43,19 @@
             <!-- Animation nach besonderen Aktionen (wie beim Bowling) -->
             <KnechtCelebration :celebration="game.celebration.value" :flipped="celebrationFlipped" />
 
+            <!-- Knecht Pro: Details zur Kante, freiwillig, verschwindet von selbst -->
+            <transition name="kn-edge">
+                <div v-if="edgePrompt" class="kn-edge-picker" @pointerdown="restartEdgeTimer">
+                    <div class="kn-edge-title">{{ formatEdge(edgePrompt.edge) }} – Details?</div>
+                    <div class="kn-edge-buttons">
+                        <button type="button" class="kn-edge-button" :class="{ 'kn-edge-button--active': edgePrompt.edge.double }" @click="setEdgeDetail({ double: !edgePrompt.edge.double })">Doppelkante</button>
+                        <button v-for="bounce in BOUNCES" :key="bounce.value" type="button" class="kn-edge-button"
+                            :class="{ 'kn-edge-button--active': edgePrompt.edge.bounce === bounce.value }"
+                            @click="setEdgeDetail({ bounce: bounce.value }, true)">{{ bounce.label }}</button>
+                    </div>
+                </div>
+            </transition>
+
             <!-- Airball-Shots: je 3 Airballs eines Teams trinkt jede Person dieses Teams einen Shot -->
             <transition name="kn-confirm">
                 <div v-if="shotTeam !== null && !game.isOver.value" class="kn-overlay kn-confirm kn-shot">
@@ -115,12 +128,18 @@
                     <div class="kn-menu-label">Modus</div>
                     <SelectButton :modelValue="modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setMode" />
                     <div v-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
+                    <button v-if="mode === 'referee'" type="button" class="kn-menu-button" :class="{ 'kn-menu-button--on': proEnabled }" @click="toggleProMode">
+                        <KnechtIcon name="miss" /> Knecht Pro: Kanten-Details {{ proEnabled ? 'an' : 'aus' }}
+                    </button>
                     <button type="button" class="kn-menu-button" @click="swapSides">
                         <i class="pi pi-sync"></i> Seiten tauschen
                     </button>
                     <button v-if="fullscreenSupported" type="button" class="kn-menu-button" @click="toggleFullscreen">
                         <i :class="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"></i>
                         {{ fullscreen ? 'Vollbild beenden' : 'Vollbild' }}
+                    </button>
+                    <button v-if="vibrationSupported" type="button" class="kn-menu-button" @click="toggleVibration">
+                        <i class="pi pi-mobile"></i> Vibration {{ vibrationEnabled ? 'ausschalten' : 'einschalten' }}
                     </button>
                     <button type="button" class="kn-menu-button" @click="game.sound.toggleMute()">
                         <i :class="game.sound.isMuted.value ? 'pi pi-volume-off' : 'pi pi-volume-up'"></i>
@@ -179,6 +198,8 @@ import type { KnechtIconName } from './knechtIcons';
 import { getTeamPoints, type KnechtAction } from './knechtEngine';
 import { formatPoints, getPlayerName, getTeam, getTeamName } from './KnechtUtilFunctions';
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
+import { formatEdge } from './knechtEdges';
+import { isVibrationSupported, toggleVibration, vibrationEnabled } from './knechtHaptics';
 import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
 
 const props = defineProps<{
@@ -278,6 +299,51 @@ const sheetFlipped = computed(() => mode.value === 'player' && state.value.activ
 // Animation zum Team, das geworfen hat (nicht zum Team, das danach dran ist)
 const celebrationFlipped = computed(() => mode.value === 'player' && game.celebration.value?.teamIndex === topTeam.value);
 
+
+// ─── Knecht Pro (nur Schiedsrichter): Doppelkante und Abprallrichtung nach einem Kanten-Nullwurf ───
+const PRO_KEY = 'bipo_knecht_pro';
+const proEnabled = ref(localStorage.getItem(PRO_KEY) === 'on');
+const proActive = computed(() => proEnabled.value && mode.value === 'referee');
+const toggleProMode = () => {
+    proEnabled.value = !proEnabled.value;
+    localStorage.setItem(PRO_KEY, proEnabled.value ? 'on' : 'off');
+};
+const vibrationSupported = isVibrationSupported();
+
+const BOUNCES: { value: NonNullable<EdgeHit['bounce']>; label: string }[] = [
+    { value: 'links', label: '← links' },
+    { value: 'hinten', label: '↑ hinten' },
+    { value: 'vorne', label: '↓ vorne' },
+    { value: 'rechts', label: 'rechts →' },
+];
+const EDGE_PROMPT_DURATION = 4000;
+const edgePrompt = ref<{ index: number; edge: EdgeHit } | null>(null);
+let edgeTimer: ReturnType<typeof setTimeout> | null = null;
+const restartEdgeTimer = () => {
+    if (edgeTimer) clearTimeout(edgeTimer);
+    edgeTimer = setTimeout(() => { edgePrompt.value = null; }, EDGE_PROMPT_DURATION);
+};
+watch(() => game.actions.value.length, (length, previous) => {
+    const last = game.actions.value[length - 1];
+    if (!proActive.value || length <= (previous ?? 0) || last?.type !== 'throw' || !last.edge) {
+        if (length < (previous ?? 0)) edgePrompt.value = null;
+        return;
+    }
+    edgePrompt.value = { index: length - 1, edge: last.edge };
+    restartEdgeTimer();
+});
+// Details in den gespeicherten Wurf uebernehmen; mit close schliesst die Auswahl danach
+const setEdgeDetail = (detail: Partial<EdgeHit>, close = false) => {
+    const prompt = edgePrompt.value;
+    const action = prompt ? game.actions.value[prompt.index] : undefined;
+    if (!prompt || action?.type !== 'throw' || !action.edge) return;
+    const edge = { ...action.edge, ...detail };
+    const actions = [...game.actions.value];
+    actions[prompt.index] = { ...action, edge };
+    game.replaceActions(actions);
+    edgePrompt.value = close ? null : { index: prompt.index, edge };
+    if (!close) restartEdgeTimer();
+};
 
 // ─── Airball-Shots (nur Anzeige im Spiel, die Bestaetigung merkt sich nur dieses Handy) ───
 const SHOT_EVERY_AIRBALLS = 3;
@@ -573,6 +639,61 @@ onUnmounted(() => {
 }
 .kn-confirm-actions .kn-menu-button{
     justify-content: center;
+}
+/* ─── Knecht Pro: Kanten-Details ─── */
+.kn-edge-picker{
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
+    z-index: 26;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: min(360px, calc(100% - 24px));
+    padding: 10px;
+    border-radius: 16px;
+    background: var(--bp-surface);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+    transform: translateX(-50%);
+}
+.kn-edge-title{
+    font-size: 12px;
+    font-weight: 800;
+    text-align: center;
+    color: var(--bp-text-strong);
+}
+.kn-edge-buttons{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+.kn-edge-button{
+    padding: 7px 10px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 10px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.kn-edge-button--active{
+    border-color: var(--main-color);
+    background: var(--bp-primary-faint);
+}
+.kn-edge-enter-active,
+.kn-edge-leave-active{
+    transition: opacity .2s ease, transform .2s ease;
+}
+.kn-edge-enter-from,
+.kn-edge-leave-to{
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+}
+.kn-menu-button--on{
+    border-color: var(--main-color);
 }
 .kn-shot{
     z-index: 28;

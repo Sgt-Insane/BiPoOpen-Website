@@ -129,7 +129,11 @@ const buildAction = (): KnechtAction | null => {
     const current = action.value;
     if (current?.type !== 'throw' && current?.type !== 'trickshot') return null;
     if (draft.outcome === 'trickshot') return { type: 'trickshot', player: draft.player, catcher: draft.catcher, time: current.time };
-    if (draft.outcome !== 'hit') return { type: 'throw', player: draft.player, outcome: draft.outcome, time: current.time };
+    if (draft.outcome !== 'hit') {
+        // Landestelle und Kante eines Nullwurfs bleiben beim Korrigieren erhalten
+        const keep = draft.outcome === 'miss' && current.type === 'throw' && current.outcome === 'miss' ? { spot: current.spot, edge: current.edge } : {};
+        return { type: 'throw', player: draft.player, outcome: draft.outcome, time: current.time, ...keep };
+    }
 
     const preview = previewHit(stateBefore.value, draft.cup!, draft.bouncer, draft.player);
     const kept = (current.type === 'throw' ? current.extraCups ?? [] : []).filter(cup => preview.extraCandidates.includes(cup));

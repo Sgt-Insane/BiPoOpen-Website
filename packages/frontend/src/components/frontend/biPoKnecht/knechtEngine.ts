@@ -29,7 +29,7 @@ export type KnechtConfig = {
 export type ThrowOutcome = 'hit' | 'miss' | 'airball';
 
 export type KnechtAction =
-    | { type: 'throw'; player: number; outcome: ThrowOutcome; cup?: number; bouncer?: boolean; extraCups?: number[]; time: number }
+    | { type: 'throw'; player: number; outcome: ThrowOutcome; cup?: number; bouncer?: boolean; extraCups?: number[]; time: number; spot?: { x: number; y: number }; edge?: EdgeHit }
     | { type: 'trickshot'; player: number; catcher: number; time: number }   // player hat verfehlt, catcher wirft den Trickshot
     | { type: 'reRack'; time: number }
     | { type: 'deathcup'; player: number; time: number }
@@ -441,7 +441,9 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
 
     if (!preview) {
         state.streaks[team][action.player] = 0;
-        pushTurn(state, { playerIndex: action.player, teamIndex: team, type: action.outcome, data: {} }, action.time, []);
+        // Nullwurf: Landestelle und Kante (nur Statistik, aendert nichts am Spielstand)
+        const data = action.outcome === 'miss' ? { ...(action.spot && { spot: action.spot }), ...(action.edge && { edge: action.edge }) } : {};
+        pushTurn(state, { playerIndex: action.player, teamIndex: team, type: action.outcome, data }, action.time, []);
         return endBall(state, action.time);
     }
 

@@ -100,6 +100,7 @@ import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnech
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
+import { formatEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
@@ -146,6 +147,7 @@ const QUIET_LABELS: Partial<Record<Turn['type'], string>> = {
 
 const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
     const data = getData(turn);
+    if (turn.type === 'miss' && data.edge) return formatEdge(data.edge as EdgeHit);
     if (!cups && !isHitTurnType(turn.type)) return QUIET_LABELS[turn.type] ?? 'Verfehlt';
     const kinds = [
         SHORT_LABELS[turn.type],

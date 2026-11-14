@@ -4,6 +4,7 @@ import { CUP_URL_SEGMENT } from '../league/cup/LeagueCupUtilFunctions';
 import { clearPlayerCaches } from '../playerProfile/PlayerProfileUtilFunctions';
 import { clearGameDataCache } from '@/util/gameDataCache';
 import { addDemoGame, isDemoMode } from '@/util/demoGames';
+import { formatEdge } from './knechtEdges';
 import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
 import { getFinalPlayerPoints, isHitTurnType, type KnechtState } from './knechtEngine';
 import { getAccuracy, getTurnStats, type KnechtPlayerStats } from './knechtStats';
@@ -110,6 +111,7 @@ export const getTurnLabel = (turn: Turn, match?: Match, previous?: Turn) => {
         const catcher = match && typeof data.catcherIndex === 'number' ? getPlayerName(match, turn.teamIndex, data.catcherIndex) : '';
         return catcher ? `Verfehlt · ${catcher} fängt (Trickshot)` : 'Verfehlt · Trickshot-Fang';
     }
+    if (turn.type === 'miss' && data.edge) return `Verfehlt · ${formatEdge(data.edge as EdgeHit)}`;
     if (turn.type === 'owncup') return `${(data.cups as number[]).length} eigene${(data.cups as number[]).length === 1 ? 'r' : ''} Becher runter`;
     if (!isHitTurnType(turn.type)) return TURN_LABELS[turn.type];
 
@@ -169,6 +171,7 @@ const AWARD_RULES: AwardRule[] = [
     { icon: '🤸', title: 'Fangkünstler', strength: s => when(s.trickshotCatches >= 2, s.trickshotCatches), detail: s => `${s.trickshotCatches} Bälle für einen Trickshot gefangen` },
     { icon: '🏆', title: 'Becherräumer', strength: (s, ctx) => when(s.points > 0 && s.points === ctx.maxPoints, s.points), detail: s => plural(s.points, 'Becher abgeräumt', 'Becher abgeräumt') },
     { icon: '🙈', title: 'Eigentor-Spezialist', strength: s => when(s.ownCups > 0, s.ownCups), detail: s => plural(s.ownCups, 'eigener Becher vom Tisch geräumt', 'eigene Becher vom Tisch geräumt') },
+    { icon: '😬', title: 'Kantenkönig', strength: s => when(s.edges >= 3, s.edges), detail: s => `${s.edges}× nur die Kante – so knapp` },
     { icon: '✈️', title: 'Luftpost', strength: s => when(s.airballs >= 3, s.airballs), detail: s => `${s.airballs} Airballs – die Wand freut sich` },
     // Nur wer deutlich schlechter als der Rest getroffen hat, nicht wenn alle schwach waren
     { icon: '🎳', title: 'Zielwasser vergessen', strength: (s, ctx) => when(s.throws >= 6 && getAccuracy(s) < 25 && getAccuracy(s) <= ctx.averageAccuracy - 10, 100 - getAccuracy(s)), detail: s => `Nur ${s.hits} Treffer bei ${s.throws} Würfen` },

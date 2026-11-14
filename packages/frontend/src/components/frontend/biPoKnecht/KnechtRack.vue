@@ -20,6 +20,7 @@
                     class="kn-cup"
                     :class="getCupClass(cup)"
                     :disabled="!isTarget"
+                    :data-cup="cup"
                     :aria-label="`Becher ${cup + 1}`"
                     @click.stop="onCupClick(cup, $event)"
                 >
@@ -48,6 +49,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
+import { classifyMiss, type RackGeometry } from './knechtEdges';
+import { vibrate } from './knechtHaptics';
 import { CUP_ROWS, getStandingCups } from './knechtEngine';
 import type { KnechtIconName } from './knechtIcons';
 import { TEAM_COLORS } from './KnechtUtilFunctions';
@@ -105,13 +108,36 @@ const getBallSize = () => (root.value?.querySelector('.kn-cup')?.getBoundingClie
 
 const onCupClick = (cup: number, event: MouseEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    if (props.game.tapCup(cup)) props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width * BALL_TO_CUP);
+    if (props.game.tapCup(cup)) {
+        props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width * BALL_TO_CUP);
+        vibrate('hit');
+    }
+};
+
+// Lage der Becher auf dem Bildschirm (nach allen Drehungen), fuer die Kanten-Erkennung
+const getGeometry = (): RackGeometry | null => {
+    const cups = [...(root.value?.querySelectorAll<HTMLElement>('.kn-cup[data-cup]') ?? [])];
+    if (cups.length !== 10) return null;
+    const centers: { x: number; y: number }[] = [];
+    let radius = 0;
+    cups.forEach(element => {
+        const rect = element.getBoundingClientRect();
+        centers[Number(element.dataset.cup)] = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        radius = Math.min(rect.width, rect.height) / 2;
+    });
+    const hit = new Set(rack.value.hit);
+    return { centers, radius, standing: centers.map((_, cup) => cup).filter(cup => !hit.has(cup)) };
 };
 
 // Tippen auf den freien Tisch = Nullwurf, nur auf dem Feld, auf das geworfen wird
 const onTableClick = (event: MouseEvent) => {
     if (!props.isTarget || props.game.pick.value) return;
-    if (props.game.throwMiss('miss')) props.game.markBall('miss', event.clientX, event.clientY, getBallSize());
+    const geometry = getGeometry();
+    const detail: { spot?: { x: number; y: number }; edge?: EdgeHit } = geometry ? classifyMiss({ x: event.clientX, y: event.clientY }, geometry) : {};
+    if (props.game.throwMiss('miss', detail)) {
+        props.game.markBall('miss', event.clientX, event.clientY, getBallSize());
+        vibrate(detail.edge ? 'edge' : 'table');
+    }
 };
 
 // Airball: der Ball landet irgendwo hinter dem Tisch
@@ -119,6 +145,7 @@ const onAirballClick = (event: MouseEvent) => {
     if (props.game.pick.value) return;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (props.game.throwMiss('airball')) {
+        vibrate('airball');
         props.game.markBall('airball', rect.left + rect.width * (.15 + Math.random() * .7), rect.top + rect.height * (.2 + Math.random() * .6), getBallSize());
     }
 };

@@ -22,6 +22,7 @@ export type KnechtPlayerStats = {
     deathcups: number;
     ownCups: number;
     bestStreak: number;
+    edges: number;          // Nullwuerfe an die Kante (seit der Kanten-Erkennung)
 };
 
 // points: Punkte je Team und Spieler (aus dem Regelwerk oder die gespeicherten Scores)
@@ -29,7 +30,7 @@ export const getTurnStats = (match: Match, turns: Turn[], points: number[][]): K
     const stats = [match.team1, match.team2].flatMap((team, teamIndex) => team.players.map((player, playerIndex) => ({
         teamIndex, playerIndex, name: player.name, points: points[teamIndex]?.[playerIndex] ?? 0,
         throws: 0, hits: 0, misses: 0, airballs: 0, bouncers: 0, bombs: 0, ballsBacks: 0, onFires: 0,
-        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0,
+        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0, edges: 0,
     })));
     const find = (teamIndex: number, playerIndex: number) => stats.find(entry => entry.teamIndex === teamIndex && entry.playerIndex === playerIndex);
     const streaks = new Map<KnechtPlayerStats, number>();
@@ -66,6 +67,7 @@ export const getTurnStats = (match: Match, turns: Turn[], points: number[][]): K
         } else {
             if (turn.type === 'airball') entry.airballs++;
             else entry.misses++;
+            if (turn.type === 'miss' && data.edge) entry.edges++;
             streaks.set(entry, 0);
         }
         pendingTrickshot = null;
@@ -111,7 +113,7 @@ export const getKnechtCareerStats = (matches: Match[], playerName: string): Knec
     const nameLower = playerName.toLowerCase();
     const career: KnechtCareerStats = {
         games: 0, wins: 0, points: 0, throws: 0, hits: 0, misses: 0, airballs: 0, bouncers: 0, bombs: 0, ballsBacks: 0, onFires: 0,
-        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0,
+        trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0, edges: 0,
     };
 
     matches.forEach(match => {

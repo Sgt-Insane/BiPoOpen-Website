@@ -3,7 +3,7 @@ import { getAwards, type KnechtPlayerStats } from './KnechtUtilFunctions';
 
 const player = (name: string, values: Partial<KnechtPlayerStats>): KnechtPlayerStats => ({
     teamIndex: 0, playerIndex: 0, name, points: 0, throws: 0, hits: 0, misses: 0, airballs: 0, bouncers: 0, bombs: 0,
-    ballsBacks: 0, onFires: 0, trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0,
+    ballsBacks: 0, onFires: 0, trickshotCatches: 0, trickshotHits: 0, lastCups: 0, deathcups: 0, ownCups: 0, bestStreak: 0, edges: 0,
     ...values,
 });
 
