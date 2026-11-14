@@ -214,11 +214,15 @@ const entries = computed(() => {
         const look = EVENT_LOOKS[event.kind];
         if (!look) return;
         const previous = rows.value.filter(row => row.key < event.afterTurnIndex).at(-1);
-        list.push({
-            position: event.afterTurnIndex - .5,
-            minute: event.time && start ? Math.max(0, Math.floor((event.time - start) / 60000)) : previous?.minute ?? 0,
-            item: { kind: 'event', key: `e${index}`, icon: look.icon, label: look.label(getTeamName(props.match, event.teamIndex)), teamIndex: event.teamIndex },
-        });
+        const minute = event.time && start ? Math.max(0, Math.floor((event.time - start) / 60000)) : previous?.minute ?? 0;
+        // Re-Rack steht auf der Seite des Teams, das es verlangt hat (wie ein Wurf), Nachwurf/Verlaengerung in der Mitte
+        const item: TimelineItem = event.kind === 'reRack'
+            ? { kind: 'row', key: `e${index}`, row: {
+                key: -1 - index, teamIndex: event.teamIndex, scoringTeam: -1, icon: look.icon, label: 'Re-Rack', player: '',
+                minute, time: event.time ?? 0, score: previous?.score ?? [0, 0], quiet: true,
+            } }
+            : { kind: 'event', key: `e${index}`, icon: look.icon, label: look.label(getTeamName(props.match, event.teamIndex)), teamIndex: event.teamIndex };
+        list.push({ position: event.afterTurnIndex - .5, minute, item });
     });
     return list.sort((a, b) => a.position - b.position);
 });
