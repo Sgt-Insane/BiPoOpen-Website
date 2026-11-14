@@ -45,14 +45,8 @@
 
             <!-- Knecht Pro: Details zur Kante, freiwillig, verschwindet von selbst -->
             <transition name="kn-edge">
-                <div v-if="edgePrompt" class="kn-edge-picker" @pointerdown="restartEdgeTimer">
-                    <div class="kn-edge-title">{{ formatEdge(edgePrompt.edge) }} – Details?</div>
-                    <div class="kn-edge-buttons">
-                        <button type="button" class="kn-edge-button" :class="{ 'kn-edge-button--active': edgePrompt.edge.double }" @click="setEdgeDetail({ double: !edgePrompt.edge.double })">Doppelkante</button>
-                        <button v-for="bounce in BOUNCES" :key="bounce.value" type="button" class="kn-edge-button"
-                            :class="{ 'kn-edge-button--active': edgePrompt.edge.bounce === bounce.value }"
-                            @click="setEdgeDetail({ bounce: bounce.value }, true)">{{ bounce.label }}</button>
-                    </div>
+                <div v-if="edgePrompt" class="kn-edge-overlay" @click.self="edgePrompt = null">
+                    <KnechtEdgeZoom :edge="edgePrompt.edge" :standing="edgePrompt.standing" @update="setEdge" @activity="restartEdgeTimer" @close="edgePrompt = null" />
                 </div>
             </transition>
 
@@ -198,7 +192,7 @@ import type { KnechtIconName } from './knechtIcons';
 import { getTeamPoints, type KnechtAction } from './knechtEngine';
 import { formatPoints, getPlayerName, getTeam, getTeamName } from './KnechtUtilFunctions';
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
-import { formatEdge } from './knechtEdges';
+import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
 import { isVibrationSupported, toggleVibration, vibrationEnabled } from './knechtHaptics';
 import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
 
@@ -310,14 +304,9 @@ const toggleProMode = () => {
 };
 const vibrationSupported = isVibrationSupported();
 
-const BOUNCES: { value: NonNullable<EdgeHit['bounce']>; label: string }[] = [
-    { value: 'links', label: '← links' },
-    { value: 'hinten', label: '↑ hinten' },
-    { value: 'vorne', label: '↓ vorne' },
-    { value: 'rechts', label: 'rechts →' },
-];
-const EDGE_PROMPT_DURATION = 4000;
-const edgePrompt = ref<{ index: number; edge: EdgeHit } | null>(null);
+// Nahansicht bleibt offen, solange getippt wird; ohne Eingabe schliesst sie von selbst
+const EDGE_PROMPT_DURATION = 6000;
+const edgePrompt = ref<{ index: number; edge: EdgeHit; standing: number[] } | null>(null);
 let edgeTimer: ReturnType<typeof setTimeout> | null = null;
 const restartEdgeTimer = () => {
     if (edgeTimer) clearTimeout(edgeTimer);
@@ -329,20 +318,22 @@ watch(() => game.actions.value.length, (length, previous) => {
         if (length < (previous ?? 0)) edgePrompt.value = null;
         return;
     }
-    edgePrompt.value = { index: length - 1, edge: last.edge };
+    // Becher, die zum Zeitpunkt des Wurfs noch standen (Ziel war das Rack des Gegners)
+    const before = game.getStateAfter(length - 1);
+    const hit = new Set(before.racks[1 - before.activeTeamIndex].hit);
+    edgePrompt.value = { index: length - 1, edge: last.edge, standing: Array.from({ length: 10 }, (_, cup) => cup).filter(cup => !hit.has(cup)) };
     restartEdgeTimer();
 });
-// Details in den gespeicherten Wurf uebernehmen; mit close schliesst die Auswahl danach
-const setEdgeDetail = (detail: Partial<EdgeHit>, close = false) => {
+// Genaue Kante aus der Nahansicht in den gespeicherten Wurf uebernehmen
+const setEdge = (edge: EdgeHit) => {
     const prompt = edgePrompt.value;
     const action = prompt ? game.actions.value[prompt.index] : undefined;
-    if (!prompt || action?.type !== 'throw' || !action.edge) return;
-    const edge = { ...action.edge, ...detail };
+    if (!prompt || action?.type !== 'throw' || action.outcome !== 'miss') return;
     const actions = [...game.actions.value];
     actions[prompt.index] = { ...action, edge };
     game.replaceActions(actions);
-    edgePrompt.value = close ? null : { index: prompt.index, edge };
-    if (!close) restartEdgeTimer();
+    edgePrompt.value = { ...prompt, edge };
+    restartEdgeTimer();
 };
 
 // ─── Airball-Shots (nur Anzeige im Spiel, die Bestaetigung merkt sich nur dieses Handy) ───
@@ -640,57 +631,23 @@ onUnmounted(() => {
 .kn-confirm-actions .kn-menu-button{
     justify-content: center;
 }
-/* ─── Knecht Pro: Kanten-Details ─── */
-.kn-edge-picker{
+/* ─── Knecht Pro: Nahansicht der Kante ─── */
+.kn-edge-overlay{
     position: absolute;
-    left: 50%;
-    bottom: 12px;
+    inset: 0;
     z-index: 26;
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: min(360px, calc(100% - 24px));
-    padding: 10px;
-    border-radius: 16px;
-    background: var(--bp-surface);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
-    transform: translateX(-50%);
-}
-.kn-edge-title{
-    font-size: 12px;
-    font-weight: 800;
-    text-align: center;
-    color: var(--bp-text-strong);
-}
-.kn-edge-buttons{
-    display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     justify-content: center;
-    gap: 6px;
-}
-.kn-edge-button{
-    padding: 7px 10px;
-    border: 1.5px solid var(--bp-border);
-    border-radius: 10px;
-    background: var(--bp-surface);
-    color: var(--bp-text-strong);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-}
-.kn-edge-button--active{
-    border-color: var(--main-color);
-    background: var(--bp-primary-faint);
+    background: rgba(31, 35, 40, .35);
 }
 .kn-edge-enter-active,
 .kn-edge-leave-active{
-    transition: opacity .2s ease, transform .2s ease;
+    transition: opacity .2s ease;
 }
 .kn-edge-enter-from,
 .kn-edge-leave-to{
     opacity: 0;
-    transform: translateX(-50%) translateY(12px);
 }
 .kn-menu-button--on{
     border-color: var(--main-color);

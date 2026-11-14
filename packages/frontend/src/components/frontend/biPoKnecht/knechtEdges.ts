@@ -46,10 +46,12 @@ export const classifyMiss = (tap: Point, geometry: RackGeometry): { spot: Point;
 
     // Seite des Bechers, an der der Ball war (8 Richtungen aus Sicht des Werfers)
     const offset = sub(tap, geometry.centers[nearestCup]);
-    const angle = Math.atan2(dot(offset, right), dot(offset, front));   // 0 = vorne, positiv = rechts
-    const sector = Math.round(((angle + 2 * Math.PI) % (2 * Math.PI)) / (Math.PI / 4)) % 8;
-    return { spot, edge: { cup: nearestCup, side: SIDES[sector] } };
+    const angle = Math.atan2(dot(offset, right), dot(offset, front)) * 180 / Math.PI;   // 0 = vorne, positiv = rechts
+    return { spot, edge: { cup: nearestCup, side: getEdgeSide(angle) } };
 };
+
+// Winkel in Grad (0 = vorne, positiv = rechts) -> eine von 8 Seiten
+export const getEdgeSide = (angle: number): EdgeSide => SIDES[Math.round((((angle % 360) + 360) % 360) / 45) % 8];
 
 export const formatEdge = (edge: EdgeHit) =>
     `${edge.double ? 'Doppelkante' : 'Kante'} · Becher ${edge.cup + 1}`;

@@ -117,8 +117,9 @@ declare global {
     // aus Sicht des Werfers), edge = Ball hat die Kante eines Bechers getroffen
     type MissTurn = { spot?: { x: number; y: number }; edge?: EdgeHit };
     type EdgeSide = 'vorne' | 'vorne-rechts' | 'rechts' | 'hinten-rechts' | 'hinten' | 'hinten-links' | 'links' | 'vorne-links';
-    // cup: Becher-Index (0-9); double/bounce nur mit Knecht Pro
-    type EdgeHit = { cup: number; side: EdgeSide; double?: boolean; bounce?: 'vorne' | 'hinten' | 'links' | 'rechts' };
+    // cup: Becher-Index (0-9), side: grobe Seite aus dem Tipp. Knecht Pro: angle = genaue Stelle am Rand in Grad
+    // (0 = vorne zum Werfer, positiv = rechts), second = zweite Kontaktstelle bei einer Doppelkante
+    type EdgeHit = { cup: number; side: EdgeSide; angle?: number; double?: boolean; second?: { cup: number; angle: number } };
     type AirballTurn = { };
     type BombTurn = { cupIndex1: number, cupIndex2?: number, cupIndex3?: number, cupIndex4?: number, bouncer?: boolean };   // cupIndex4 / bouncer: Bombe per Bouncer (4 Becher)
     type BouncerTurn = { cupIndex1: number, cupIndex2?: number };
