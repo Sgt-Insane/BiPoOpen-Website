@@ -18,8 +18,6 @@
             :loading="isLoading"
         />
 
-        <HomeDebts :openGames="openGames" :leagueGames="leagueGames" :loading="gamesLoading" />
-
         <HomeRecentGames
             :openGames="openGames"
             :leagueGames="leagueGames"
@@ -33,7 +31,6 @@
 <script setup lang="ts">
 import HomeHero from './HomeHero.vue';
 import HomeRecentGames from './HomeRecentGames.vue';
-import HomeDebts from './HomeDebts.vue';
 import HomePhotoMosaic from './HomePhotoMosaic.vue';
 import { useHomeData } from './useHomeData';
 import { LAST_TOURNAMENT_YEAR } from './homeUtil';

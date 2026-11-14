@@ -1,6 +1,6 @@
 <template>
     <section class="HomeRecentGames">
-        <h2 class="hr-title">Zuletzt gespielt</h2>
+        <h2 class="hr-title">{{ title }}</h2>
 
         <Tabs v-model:value="activeFilter" class="p-tabs-chips">
             <TabList class="hr-filter">
@@ -8,7 +8,10 @@
             </TabList>
         </Tabs>
 
-        <div class="hr-list">
+        <!-- Nackte Meilen / Offene Shots: Kurzliste statt Spielen -->
+        <HomeDebtList v-if="activeFilter === 'miles' || activeFilter === 'shots'" :kind="activeFilter" :openGames="openGames" :leagueGames="leagueGames" :gamesLoading="loading" />
+
+        <div v-else class="hr-list">
             <template v-if="loading">
                 <Skeleton v-for="i in 4" :key="i" width="100%" height="116px" borderRadius="12px" />
             </template>
@@ -27,6 +30,7 @@ import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
+import HomeDebtList from './HomeDebtList.vue';
 import { isCupGame } from '@/components/frontend/league/LeagueUtilFunctions';
 import { withLeagueTeamLogos } from '@/components/frontend/league/LeaguePlayersData';
 
@@ -37,7 +41,7 @@ const props = defineProps<{
 }>();
 
 type GameType = 'league' | 'cup' | 'open';
-type Filter = 'all' | GameType;
+type Filter = 'all' | GameType | 'miles' | 'shots';
 
 const GAME_COUNT = 6;
 
@@ -46,9 +50,14 @@ const FILTERS: { label: string; value: Filter }[] = [
     { label: 'Liga', value: 'league' },
     { label: 'Cup', value: 'cup' },
     { label: 'Offen', value: 'open' },
+    { label: 'Meilen', value: 'miles' },
+    { label: 'Shots', value: 'shots' },
 ];
 
+const TITLES: Partial<Record<Filter, string>> = { miles: 'Nackte Meilen', shots: 'Offene Shots' };
+
 const activeFilter = ref<Filter>('all');
+const title = computed(() => TITLES[activeFilter.value] ?? 'Zuletzt gespielt');
 
 const allGames = computed(() => [
     ...props.openGames.map(match => ({ match, type: 'open' as GameType, time: match.time ?? 0 })),
