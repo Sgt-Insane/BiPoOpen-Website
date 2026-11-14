@@ -16,6 +16,9 @@
             <PlayerProfileFollowButton :playerName="profileData.name"/>
         </div>
 
+        <!-- Schulden zuerst: offene Nackte Meilen und Shots -->
+        <PlayerProfileDebtCard :playerName="profileData.name"/>
+
         <PlayerProfileEloCard v-if="profileData.elo" :elo="profileData.elo"/>
 
         <PlayerProfileLeagueCard v-if="profileData.leagueStandings.length" :standings="profileData.leagueStandings"/>
@@ -74,6 +77,7 @@ import { computed, ref } from 'vue';
 import Select from 'primevue/select';
 import Avatar from '@/components/shared/Avatar.vue';
 import PlayerProfileEloCard from './PlayerProfileEloCard.vue';
+import PlayerProfileDebtCard from './PlayerProfileDebtCard.vue';
 import PlayerProfileLeagueCard from './PlayerProfileLeagueCard.vue';
 import PlayerProfileAchievements from './PlayerProfileAchievements.vue';
 import PlayerProfileActivity from './PlayerProfileActivity.vue';
