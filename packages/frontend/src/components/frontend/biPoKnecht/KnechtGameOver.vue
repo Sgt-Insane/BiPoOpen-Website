@@ -2,13 +2,13 @@
     <div class="KnechtGameOver">
         <div class="kn-over-scroll">
             <!-- Kopf: Sieger und Ergebnis -->
-            <div class="kn-over-head" :style="{ '--kn-team-color': TEAM_COLORS[winner] }">
+            <div class="kn-over-head" :style="{ '--kn-team-color': getTeamColor(match, winner) }">
                 <div class="kn-over-trophy">🏆</div>
                 <div class="kn-over-winner">{{ getTeamName(match, winner) }} gewinnt!</div>
                 <div class="kn-over-score">
-                    <span :style="{ color: TEAM_COLORS[0] }">{{ formatPoints(teamPoints[0]) }}</span>
+                    <span :style="{ color: getTeamColor(match, 0) }">{{ formatPoints(teamPoints[0]) }}</span>
                     <span class="kn-over-colon">:</span>
-                    <span :style="{ color: TEAM_COLORS[1] }">{{ formatPoints(teamPoints[1]) }}</span>
+                    <span :style="{ color: getTeamColor(match, 1) }">{{ formatPoints(teamPoints[1]) }}</span>
                 </div>
                 <div class="kn-over-teams">{{ getTeamName(match, 0) }} gegen {{ getTeamName(match, 1) }}</div>
                 <div class="kn-over-reason">{{ reasonText }}<template v-if="duration"> · {{ duration }}</template></div>
@@ -18,7 +18,7 @@
             <template v-if="step === 'awards'">
                 <div class="kn-over-section-title">Auszeichnungen</div>
                 <div class="kn-awards">
-                    <div v-for="(award, index) in awards" :key="index" class="kn-award" :style="{ '--kn-team-color': TEAM_COLORS[stats[index].teamIndex] }">
+                    <div v-for="(award, index) in awards" :key="index" class="kn-award" :style="{ '--kn-team-color': getTeamColor(match, stats[index].teamIndex) }">
                         <span class="kn-award-icon">{{ award.icon }}</span>
                         <span class="kn-award-text">
                             <span class="kn-award-title">{{ award.title }}</span>
@@ -86,7 +86,7 @@ import KnechtSheet from './KnechtSheet.vue';
 import KnechtTurnEditor from './KnechtTurnEditor.vue';
 import { getTeamPoints } from './knechtEngine';
 import {
-    TEAM_COLORS, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getSaveLabel, getTeamName, saveKnechtGame,
+    getTeamColor, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getSaveLabel, getTeamName, saveKnechtGame,
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 

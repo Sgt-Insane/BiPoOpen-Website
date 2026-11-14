@@ -13,6 +13,12 @@ export type KnechtGameKind = 'open' | 'league' | 'cup';
 
 export const TEAM_COLORS = ['#EA5160', '#61C3D9'];
 
+// Becherfarbe je Team: rot/blau, vor Spielbeginn tauschbar (match.cupColors, wird mit dem Spiel gespeichert)
+export const getTeamColor = (match: Match, teamIndex: number) => match.cupColors?.[teamIndex] ?? TEAM_COLORS[teamIndex];
+export const swapCupColors = (match: Match) => {
+    match.cupColors = [getTeamColor(match, 1), getTeamColor(match, 0)];
+};
+
 // ─── Spiel ───
 export const getGameKind = (match: Match): KnechtGameKind =>
     match.cupId ? 'cup' : match.league !== undefined ? 'league' : 'open';

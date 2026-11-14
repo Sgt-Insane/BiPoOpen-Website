@@ -3,7 +3,7 @@
         ref="root"
         class="KnechtRack"
         :class="[`kn-rack--${direction}`, { 'kn-rack--target': isTarget, 'kn-rack--waiting': !isTarget, 'kn-rack--rotated': rotated, 'kn-rack--picking': !!game.pick.value }]"
-        :style="{ '--kn-team-color': TEAM_COLORS[teamIndex] }"
+        :style="{ '--kn-team-color': getTeamColor(game.match, teamIndex) }"
         @click="onTableClick"
     >
         <!-- Hinter den Bechern: Airball (Ball ueber den Tisch) -->
@@ -53,7 +53,7 @@ import { classifyMiss, type RackGeometry } from './knechtEdges';
 import { vibrate } from './knechtHaptics';
 import { CUP_ROWS, getStandingCups } from './knechtEngine';
 import type { KnechtIconName } from './knechtIcons';
-import { TEAM_COLORS } from './KnechtUtilFunctions';
+import { getTeamColor } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
 const props = defineProps<{

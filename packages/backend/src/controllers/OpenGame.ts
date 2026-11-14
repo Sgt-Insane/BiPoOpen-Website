@@ -4,7 +4,7 @@ import OpenGame from "../models/OpenGame";
 import { cardTeam, describeResult, gamePlayerNames, notify, playerProfilePath, pushEndpointOf, resultImageUrl } from "../util/notify";
 
 const createOpenGame = (req: Request, res: Response, next: NextFunction) => {
-    const { team1, team2, time, turns, endTime, referee, events } = req.body;
+    const { team1, team2, time, turns, endTime, referee, events, cupColors } = req.body;
 
     const openGame = new OpenGame({
         _id: new mongoose.Types.ObjectId(),
@@ -14,6 +14,7 @@ const createOpenGame = (req: Request, res: Response, next: NextFunction) => {
         endTime,
         referee,
         events,
+        cupColors,
         turns: turns || [] // Falls noch keine Runden vorhanden sind
     });
 

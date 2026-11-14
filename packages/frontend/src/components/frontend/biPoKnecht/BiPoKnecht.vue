@@ -125,9 +125,13 @@
                     <button v-if="mode === 'referee'" type="button" class="kn-menu-button" :class="{ 'kn-menu-button--on': proEnabled }" @click="toggleProMode">
                         <KnechtIcon name="miss" /> Knecht Pro: Kanten-Details {{ proEnabled ? 'an' : 'aus' }}
                     </button>
+                    <button type="button" class="kn-menu-button" @click="swapColors">
+                        <i class="pi pi-palette"></i> Becherfarben tauschen
+                    </button>
                     <button type="button" class="kn-menu-button" @click="swapSides">
                         <i class="pi pi-sync"></i> Seiten tauschen
                     </button>
+                    <div v-if="rotationSupported && mode === 'player'" class="kn-menu-hint">Oder einfach das Handy auf dem Tisch umdrehen</div>
                     <button v-if="fullscreenSupported" type="button" class="kn-menu-button" @click="toggleFullscreen">
                         <i :class="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"></i>
                         {{ fullscreen ? 'Vollbild beenden' : 'Vollbild' }}
@@ -190,9 +194,10 @@ import KnechtGameOver from './KnechtGameOver.vue';
 import KnechtIcon from './KnechtIcon.vue';
 import type { KnechtIconName } from './knechtIcons';
 import { getTeamPoints, type KnechtAction } from './knechtEngine';
-import { formatPoints, getPlayerName, getTeam, getTeamName } from './KnechtUtilFunctions';
+import { formatPoints, getPlayerName, getTeam, getTeamName, swapCupColors } from './KnechtUtilFunctions';
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
 import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
+import { requestRotationPermission, useTableRotation } from './useTableRotation';
 import { isVibrationSupported, toggleVibration, vibrationEnabled } from './knechtHaptics';
 import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
 
@@ -256,6 +261,18 @@ const swapSides = () => {
     swapped.value = !swapped.value;
     sheet.value = null;
 };
+
+const swapColors = () => {
+    swapCupColors(game.match);
+    sheet.value = null;
+};
+
+// Handy flach auf dem Tisch um 180 Grad gedreht: Seiten tauschen (nur Spielermodus, laufendes Spiel)
+const rotationEnabled = computed(() => mode.value === 'player' && game.isStarted.value && !game.isOver.value && !sheet.value);
+const { supported: rotationSupported } = useTableRotation(rotationEnabled, () => {
+    swapSides();
+    toast.add({ severity: 'info', summary: 'Seiten getauscht', life: 1500 });
+});
 
 const pause = () => {
     paused.value = true;
@@ -399,6 +416,7 @@ const confirmAbort = () => {
 };
 
 const startGame = (teamIndex: number) => {
+    requestRotationPermission();
     game.match.time = new Date().getTime();
     game.start(teamIndex);
     enterFullscreen();

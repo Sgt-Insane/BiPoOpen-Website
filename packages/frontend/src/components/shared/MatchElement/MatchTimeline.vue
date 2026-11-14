@@ -12,7 +12,7 @@
         <div v-if="eloRows.length" class="mtl-elo">
             <span class="mtl-title">Elo</span>
             <div class="mtl-elo-teams">
-                <div v-for="team in eloRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': TEAM_COLORS[team.teamIndex] }">
+                <div v-for="team in eloRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': getTeamColor(match, team.teamIndex) }">
                     <div v-for="row in team.players" :key="row.name" class="mtl-elo-row">
                         <span class="mtl-elo-name">{{ row.name }}</span>
                         <span class="mtl-elo-delta" :class="row.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.delta) }}</span>
@@ -26,7 +26,7 @@
         <div v-if="awards.length" class="mtl-awards">
             <span class="mtl-title">Auszeichnungen</span>
             <div class="mtl-award-list">
-                <div v-for="award in awards" :key="award.key" class="mtl-award" :style="{ '--mtl-team-color': TEAM_COLORS[award.teamIndex] }">
+                <div v-for="award in awards" :key="award.key" class="mtl-award" :style="{ '--mtl-team-color': getTeamColor(match, award.teamIndex) }">
                     <span class="mtl-award-icon" aria-hidden="true">{{ award.icon }}</span>
                     <span class="mtl-text">
                         <span class="mtl-label">{{ award.title }} · {{ award.player }}</span>
@@ -39,7 +39,7 @@
         <!-- Becherverlauf: wer lag wann vorne? -->
         <svg v-if="chartLines.length" class="mtl-chart" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
             <line v-for="y in [2, 21, 40]" :key="y" x1="0" x2="100" :y1="y" :y2="y" class="mtl-chart-grid" vector-effect="non-scaling-stroke" />
-            <polyline v-for="line in chartLines" :key="line.teamIndex" :points="line.points" :stroke="TEAM_COLORS[line.teamIndex]" class="mtl-chart-line" vector-effect="non-scaling-stroke" />
+            <polyline v-for="line in chartLines" :key="line.teamIndex" :points="line.points" :stroke="getTeamColor(match, line.teamIndex)" class="mtl-chart-line" vector-effect="non-scaling-stroke" />
         </svg>
 
         <!-- Alle Wuerfe: Team 1 links, Team 2 rechts, in der Mitte Zwischenstand. Fehlwuerfe kleiner und grau,
@@ -49,10 +49,10 @@
             <div v-if="item.kind === 'minute'" class="mtl-minute-row">
                 <span class="mtl-minute-mark">{{ item.minute }}'</span>
             </div>
-            <div v-else-if="item.kind === 'event'" class="mtl-event-row" :style="{ '--mtl-team-color': TEAM_COLORS[item.teamIndex] }">
+            <div v-else-if="item.kind === 'event'" class="mtl-event-row" :style="{ '--mtl-team-color': getTeamColor(match, item.teamIndex) }">
                 <span class="mtl-event"><KnechtIcon :name="item.icon" /> {{ item.label }}</span>
             </div>
-            <div v-else class="mtl-row" :class="{ 'mtl-row--quiet': item.row.quiet }" :style="{ '--mtl-team-color': TEAM_COLORS[item.row.teamIndex] }">
+            <div v-else class="mtl-row" :class="{ 'mtl-row--quiet': item.row.quiet }" :style="{ '--mtl-team-color': getTeamColor(match, item.row.teamIndex) }">
                 <template v-for="row in [item.row]" :key="row.key">
                 <div class="mtl-side mtl-side--left">
                     <template v-if="row.teamIndex === 0">
@@ -102,7 +102,7 @@ import { getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
 import { formatEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
 import { useEloRatings } from '@/components/shared/useEloRatings';
-import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
+import { getTeamColor, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },

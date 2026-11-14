@@ -52,6 +52,8 @@ declare global {
         referee?: string;
         // BiPo Knecht: Ereignisse ohne eigenen Wurf (Re-Rack, Nachwurf, Verlaengerung)
         events?: MatchEvent[];
+        // BiPo Knecht: Becherfarbe je Team, falls getauscht (Standard rot / blau)
+        cupColors?: string[];
     };
 
     type MatchEvent = {

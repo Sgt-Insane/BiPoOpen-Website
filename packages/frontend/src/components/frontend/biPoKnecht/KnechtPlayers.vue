@@ -2,7 +2,7 @@
     <div
         class="KnechtPlayers"
         :class="{ 'kn-players--active': isActive, 'kn-players--rotated': rotated, 'kn-players--compact': compact }"
-        :style="{ '--kn-team-color': TEAM_COLORS[teamIndex] }"
+        :style="{ '--kn-team-color': getTeamColor(game.match, teamIndex) }"
     >
         <div class="kn-players-header">
             <Avatar v-if="team.logo" :name="teamName" :avatarImage="team.logo" shape="square" class="kn-team-logo" />
@@ -47,7 +47,7 @@ import { computed } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import KnechtIcon from './KnechtIcon.vue';
 import { getBallNumber, getFinalPlayerPoints, getTeamPoints, isOnFireEnabled } from './knechtEngine';
-import { TEAM_COLORS, formatPoints, getTeam, getTeamName } from './KnechtUtilFunctions';
+import { getTeamColor, formatPoints, getTeam, getTeamName } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
 const props = defineProps<{

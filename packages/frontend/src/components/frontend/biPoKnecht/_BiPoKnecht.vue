@@ -95,6 +95,7 @@ const toRematch = (match: Match): Match => ({
     ...(match.season !== undefined && { season: match.season }),
     ...(match.league !== undefined && { league: match.league }),
     ...(match.cupId !== undefined && { cupId: match.cupId, cupRound: match.cupRound }),
+    ...(match.cupColors && { cupColors: match.cupColors }),
 });
 
 const onSaved = (result: Match, rematch: boolean) => {

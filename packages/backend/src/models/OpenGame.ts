@@ -67,6 +67,7 @@ const MatchSchema = new Schema(
     endTime: { type: Number },
     referee: { type: String }, // Schiedsrichter, falls das Spiel im BiPo Knecht von einer dritten Person eingetragen wurde
     events: { type: [EventSchema], default: undefined },
+    cupColors: { type: [String], default: undefined }, // BiPo Knecht: Becherfarbe je Team, falls getauscht
     turns: { type: [TurnSchema], default: [] }
   },
   { versionKey: false }

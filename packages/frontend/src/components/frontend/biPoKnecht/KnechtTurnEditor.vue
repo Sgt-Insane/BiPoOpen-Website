@@ -48,7 +48,7 @@
                                 type="button"
                                 class="kn-edit-cup"
                                 :class="{ 'kn-edit-cup--active': draft.cup === cup }"
-                                :style="{ '--kn-team-color': TEAM_COLORS[1 - stateBefore.activeTeamIndex] }"
+                                :style="{ '--kn-team-color': getTeamColor(game.match, 1 - stateBefore.activeTeamIndex) }"
                                 :disabled="!hittable.includes(cup)"
                                 @click="draft.cup = cup"
                             >{{ cup + 1 }}</button>
@@ -84,7 +84,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
 import { CUP_ROWS, getActionIndexOfTurn, getAllowedThrowers, getHittableCups, previewHit, type KnechtAction, type ThrowOutcome } from './knechtEngine';
-import { TEAM_COLORS, getTeam } from './KnechtUtilFunctions';
+import { getTeamColor, getTeam } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
 const props = defineProps<{ game: BiPoKnechtGame; turnIndex: number }>();
