@@ -8,11 +8,31 @@
             </span>
         </div>
 
-        <!-- Trefferquote je Team -->
-        <div class="mtl-teams">
-            <div v-for="team in teamSummaries" :key="team.teamIndex" class="mtl-team" :style="{ '--mtl-team-color': TEAM_COLORS[team.teamIndex] }">
-                <span class="mtl-team-name">{{ team.name }}</span>
-                <span class="mtl-team-stats">{{ team.hits }}/{{ team.throws }} Treffer · {{ team.accuracy }} %</span>
+        <!-- Elo: wer wie viel gewonnen oder verloren hat -->
+        <div v-if="eloRows.length" class="mtl-elo">
+            <span class="mtl-title">Elo</span>
+            <div class="mtl-elo-teams">
+                <div v-for="team in eloRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': TEAM_COLORS[team.teamIndex] }">
+                    <div v-for="row in team.players" :key="row.name" class="mtl-elo-row">
+                        <span class="mtl-elo-name">{{ row.name }}</span>
+                        <span class="mtl-elo-delta" :class="row.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.delta) }}</span>
+                        <span class="mtl-elo-rating">{{ row.rating.toLocaleString('de-DE') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auszeichnungen wie am Spielende im Knecht -->
+        <div v-if="awards.length" class="mtl-awards">
+            <span class="mtl-title">Auszeichnungen</span>
+            <div class="mtl-award-list">
+                <div v-for="award in awards" :key="award.key" class="mtl-award" :style="{ '--mtl-team-color': TEAM_COLORS[award.teamIndex] }">
+                    <span class="mtl-award-icon" aria-hidden="true">{{ award.icon }}</span>
+                    <span class="mtl-text">
+                        <span class="mtl-label">{{ award.title }} · {{ award.player }}</span>
+                        <span class="mtl-player">{{ award.detail }}</span>
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -65,33 +85,6 @@
             </div>
         </div>
 
-        <!-- Elo: wer wie viel gewonnen oder verloren hat -->
-        <div v-if="eloRows.length" class="mtl-elo">
-            <span class="mtl-title">Elo</span>
-            <div class="mtl-elo-teams">
-                <div v-for="team in eloRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': TEAM_COLORS[team.teamIndex] }">
-                    <div v-for="row in team.players" :key="row.name" class="mtl-elo-row">
-                        <span class="mtl-elo-name">{{ row.name }}</span>
-                        <span class="mtl-elo-delta" :class="row.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.delta) }}</span>
-                        <span class="mtl-elo-rating">{{ row.rating.toLocaleString('de-DE') }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Auszeichnungen wie am Spielende im Knecht -->
-        <div v-if="awards.length" class="mtl-awards">
-            <span class="mtl-title">Auszeichnungen</span>
-            <div class="mtl-award-list">
-                <div v-for="award in awards" :key="award.key" class="mtl-award" :style="{ '--mtl-team-color': TEAM_COLORS[award.teamIndex] }">
-                    <span class="mtl-award-icon" aria-hidden="true">{{ award.icon }}</span>
-                    <span class="mtl-text">
-                        <span class="mtl-label">{{ award.title }} · {{ award.player }}</span>
-                        <span class="mtl-player">{{ award.detail }}</span>
-                    </span>
-                </div>
-            </div>
-        </div>
     </div>
 </template>
 
@@ -100,10 +93,10 @@ import { computed, PropType } from 'vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
-import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
+import { getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
 import { useEloRatings } from '@/components/shared/useEloRatings';
-import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
+import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
@@ -201,16 +194,6 @@ const playerStats = computed(() => {
     return getTurnStats(props.match, turns.value, points);
 });
 
-const teamSummaries = computed(() => {
-    const stats = playerStats.value;
-    return [0, 1].map(teamIndex => {
-        const teamStats = stats.filter(entry => entry.teamIndex === teamIndex);
-        const hits = teamStats.reduce((sum, entry) => sum + entry.hits, 0);
-        const throws = teamStats.reduce((sum, entry) => sum + entry.throws, 0);
-        return { teamIndex, name: getTeamName(props.match, teamIndex), hits, throws, accuracy: getAccuracy({ hits, throws }) };
-    });
-});
-
 // Elo je Spieler nach diesem Spiel (nicht gewertete Spiele, z.B. Unentschieden, zeigen nichts)
 const { loadEloRatings, getMatchElo } = useEloRatings();
 loadEloRatings();
@@ -280,41 +263,6 @@ const chartLines = computed(() => {
 }
 .mtl-duration{
     font-size: 12px;
-    color: var(--bp-text-muted);
-}
-
-/* ─── Teams ─── */
-.mtl-teams{
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-.mtl-team{
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    padding: 6px 10px;
-    border-left: 3px solid var(--mtl-team-color);
-    border-radius: 8px;
-    background: var(--bp-fill-soft);
-}
-.mtl-team + .mtl-team{
-    align-items: flex-end;
-    border-left: none;
-    border-right: 3px solid var(--mtl-team-color);
-    text-align: right;
-}
-.mtl-team-name{
-    overflow: hidden;
-    max-width: 100%;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--bp-text-strong);
-}
-.mtl-team-stats{
-    font-size: 11px;
     color: var(--bp-text-muted);
 }
 
