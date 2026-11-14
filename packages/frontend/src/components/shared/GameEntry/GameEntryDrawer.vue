@@ -28,6 +28,18 @@
                     <span class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
                 </div>
 
+                <!-- Optionaler Teamname, sobald eine Seite mehrere Spieler hat -->
+                <input
+                    v-if="allowTeamName && !lockedNames && side.players.length > 1"
+                    v-model="side.name"
+                    class="ge-team-name-input"
+                    type="text"
+                    maxlength="30"
+                    placeholder="Teamname (optional)"
+                    autocomplete="off"
+                    :aria-label="`Teamname ${sideLabels[sideIndex]}`"
+                />
+
                 <div v-for="(player, playerIndex) in side.players" :key="playerIndex" class="ge-player">
                     <!-- Feste Namen: bei mehreren Spielern pro Seite steht der Name ueber den Treffern -->
                     <div v-if="lockedNames && side.players.length > 1" class="ge-player-name">
@@ -144,6 +156,7 @@ const props = withDefaults(defineProps<{
     sideLabels?: [string, string];
     lockedNames?: boolean;
     allowExtraPlayers?: boolean;        // "+ Mitspieler" (2 gegen 2 ...)
+    allowTeamName?: boolean;            // optionaler Teamname bei mehreren Spielern pro Seite (offene Spiele)
     allowDraw?: boolean;
     maxScore?: number;
     incompleteLabel?: string;           // Button-Text, solange Namen fehlen
@@ -190,6 +203,8 @@ const clearPlayer = (side: GameEntrySide, playerIndex: number) => {
         side.players.splice(playerIndex, 1);
     else
         side.players[0] = { name: '', score: null };
+    // Teamname gibt es nur bei mehreren Spielern: im 1 gegen 1 heisst die Seite wie der Spieler
+    if (props.allowTeamName && side.players.length === 1) side.name = '';
 }
 
 const canAddPlayer = (side: GameEntrySide) =>
@@ -355,6 +370,26 @@ const onLaunch = () => {
     box-shadow: 0 0 0 1px var(--main-color);
 }
 
+.ge-team-name-input{
+    width: 100%;
+    height: 38px;
+    padding: 0 12px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 10px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+}
+.ge-team-name-input::placeholder{
+    font-weight: 500;
+    color: var(--bp-text-subtle);
+}
+.ge-team-name-input:focus{
+    outline: none;
+    border-color: var(--main-color);
+}
 .ge-side-header{
     display: flex;
     align-items: center;

@@ -88,7 +88,7 @@ import router from '@/router.js';
 // Drawer-Einstellungen je Spieltyp
 const TEAM_LABELS: [string, string] = ['Team 1', 'Team 2'];
 const MODE_PROPS = {
-    open: { allowExtraPlayers: true },
+    open: { allowExtraPlayers: true, allowTeamName: true },
     league: { sideLabels: TEAM_LABELS, incompleteLabel: 'Teams wÃ¤hlen' },
     cup: { sideLabels: TEAM_LABELS, lockedNames: true, allowDraw: false, avatarShape: 'square' as const, incompleteLabel: 'Paarung wÃ¤hlen' },
 };

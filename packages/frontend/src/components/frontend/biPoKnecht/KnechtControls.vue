@@ -14,12 +14,13 @@
         <button
             type="button"
             class="kn-control kn-control-trickshot"
-            :class="{ 'kn-control--armed': trickshotActive }"
+            :class="{ 'kn-control--armed': trickshotActive || game.trickshotPending.value }"
+            :aria-pressed="trickshotActive || game.trickshotPending.value"
             :disabled="!!game.pick.value"
             @click="$emit('trickshot')"
         >
             <KnechtIcon name="trickshot" />
-            <span>{{ trickshotActive ? 'Trickshot: Fänger wählen' : 'Trickshot' }}</span>
+            <span>{{ trickshotLabel }}</span>
         </button>
 
         <button v-if="game.canReRack.value" type="button" class="kn-chip" :disabled="!!game.pick.value" @click="game.reRack()">
@@ -35,6 +36,11 @@ import type { BiPoKnechtGame } from './useBiPoKnecht';
 
 const props = defineProps<{ game: BiPoKnechtGame; trickshotActive?: boolean }>();
 defineEmits<{ trickshot: [] }>();
+
+const trickshotLabel = computed(() => {
+    if (props.trickshotActive) return 'Trickshot: Fänger wählen';
+    return props.game.trickshotPending.value ? 'Trickshot aktiv' : 'Trickshot';
+});
 
 const reRacksLeft = computed(() => props.game.state.value.reRacksLeft[props.game.state.value.activeTeamIndex]);
 </script>

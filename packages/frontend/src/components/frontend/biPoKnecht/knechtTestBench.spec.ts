@@ -139,8 +139,8 @@ const checkInvariants = (state: KnechtState, previous: KnechtState | null, actio
 
     if (!previous || !action) return;
 
-    // 12. Serien enden mit dem Teamwechsel und mit der Verlaengerung
-    if (state.status === 'playing' && (state.activeTeamIndex !== previous.activeTeamIndex || state.overtimeCount !== previous.overtimeCount))
+    // 12. Serien enden mit der Verlaengerung (nicht mit dem Teamwechsel)
+    if (state.status === 'playing' && state.overtimeCount !== previous.overtimeCount)
         expect(state.streaks.flat().every(streak => streak === 0), `Serie nicht zurueckgesetzt ${context()}`).toBe(true);
 
     // 13. Die Verlaengerung beginnt das Team, das vorgelegt hat

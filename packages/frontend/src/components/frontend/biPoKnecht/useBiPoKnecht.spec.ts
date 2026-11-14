@@ -46,6 +46,28 @@ describe('useBiPoKnecht (Oberflaeche)', () => {
         expect(game.state.value.turns.at(-1)!.type).toBe('bomb');
     });
 
+    it('waehlt im naechsten Zug des Teams wieder den Spieler, der zuletzt zuerst geworfen hat', async () => {
+        const game = createGame();
+        game.selectPlayer(1);                   // Bob wirft den ersten Ball
+        game.throwMiss('miss');
+        game.throwMiss('miss');                 // Alice
+        await nextTick();
+        game.throwMiss('miss');                 // Team 2
+        game.throwMiss('miss');
+        await nextTick();
+        expect(game.state.value.activeTeamIndex).toBe(0);
+        expect(game.selectedPlayer.value).toBe(1);
+    });
+
+    it('haelt den Trickshot aktiv, bis der Faenger geworfen hat', () => {
+        const game = createGame();
+        expect(game.trickshotPending.value).toBe(false);
+        game.trickshot(1);
+        expect(game.trickshotPending.value).toBe(true);
+        game.throwMiss('miss');
+        expect(game.trickshotPending.value).toBe(false);
+    });
+
     it('bricht die Becherauswahl mit Rueckgaengig ab, danach wird der letzte Wurf entfernt', () => {
         const game = createGame();
         game.throwMiss('miss');

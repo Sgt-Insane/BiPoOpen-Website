@@ -19,6 +19,7 @@
             :subtitle="editingMatch?.time ? getGameTime(editingMatch.time) : 'Offenes Spiel'"
             :initialSides="editSides"
             allowExtraPlayers
+            allowTeamName
             :save="setGameResult"
             :remove="deleteMatch"
         />

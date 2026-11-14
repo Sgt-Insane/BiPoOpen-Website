@@ -1,6 +1,6 @@
 <template>
     <div class="KnechtTurnEditor">
-        <template v-if="action?.type === 'throw'">
+        <template v-if="isEditable">
             <div class="kn-edit-section">
                 <div class="kn-edit-label">Werfer</div>
                 <div class="kn-edit-chips">
@@ -23,6 +23,19 @@
                         :class="{ 'kn-edit-chip--active': draft.outcome === option.value }"
                         @click="draft.outcome = option.value"
                     ><KnechtIcon :name="option.value" /> {{ option.label }}</button>
+                </div>
+            </div>
+
+            <!-- Trickshot: wer hat den Ball gefangen? -->
+            <div v-if="draft.outcome === 'trickshot'" class="kn-edit-section">
+                <div class="kn-edit-label">Gefangen von</div>
+                <div class="kn-edit-chips">
+                    <button v-for="(player, playerIndex) in team.players" :key="playerIndex"
+                        type="button"
+                        class="kn-edit-chip"
+                        :class="{ 'kn-edit-chip--active': draft.catcher === playerIndex }"
+                        @click="draft.catcher = playerIndex"
+                    >{{ player.name }}</button>
                 </div>
             </div>
 
@@ -60,7 +73,7 @@
             <button type="button" class="kn-edit-button kn-edit-button-delete" @click="remove">
                 <i class="pi pi-trash"></i> Löschen
             </button>
-            <button v-if="action?.type === 'throw'" type="button" class="kn-edit-button kn-edit-button-save" :disabled="draft.outcome === 'hit' && draft.cup === undefined" @click="save">
+            <button v-if="isEditable" type="button" class="kn-edit-button kn-edit-button-save" :disabled="draft.outcome === 'hit' && draft.cup === undefined" @click="save">
                 Übernehmen
             </button>
         </div>
@@ -77,41 +90,49 @@ import type { BiPoKnechtGame } from './useBiPoKnecht';
 const props = defineProps<{ game: BiPoKnechtGame; turnIndex: number }>();
 const emit = defineEmits<{ done: [] }>();
 
-const OUTCOMES: { value: ThrowOutcome; label: string }[] = [
+// Ein Wurf kann auch nachtraeglich zum Trickshot werden (Ball verfehlt und gefangen) und umgekehrt
+type EditOutcome = ThrowOutcome | 'trickshot';
+const OUTCOMES: { value: EditOutcome; label: string }[] = [
     { value: 'hit', label: 'Treffer' },
     { value: 'miss', label: 'Nullwurf' },
     { value: 'airball', label: 'Airball' },
+    { value: 'trickshot', label: 'Gefangen (Trickshot)' },
 ];
 
 const actionIndex = computed(() => getActionIndexOfTurn(props.game.actions.value, props.turnIndex));
 const action = computed(() => props.game.actions.value[actionIndex.value]);
+const isEditable = computed(() => action.value?.type === 'throw' || action.value?.type === 'trickshot');
 
 // Spielstand direkt vor diesem Wurf: welche Werfer und Becher waren da moeglich?
 const stateBefore = computed(() => props.game.getStateAfter(actionIndex.value));
 const team = computed(() => getTeam(props.game.match, stateBefore.value.activeTeamIndex));
 const allowedThrowers = computed(() => {
     const allowed = getAllowedThrowers(stateBefore.value);
-    return action.value?.type === 'throw' ? [...new Set([...allowed, action.value.player])] : allowed;
+    const current = action.value;
+    return current?.type === 'throw' || current?.type === 'trickshot' ? [...new Set([...allowed, current.player])] : allowed;
 });
 const hittable = computed(() => getHittableCups(stateBefore.value));
 
-const draft = reactive<{ player: number; outcome: ThrowOutcome; cup?: number; bouncer: boolean }>({ player: 0, outcome: 'miss', bouncer: false });
+const draft = reactive<{ player: number; outcome: EditOutcome; cup?: number; bouncer: boolean; catcher: number }>({ player: 0, outcome: 'miss', bouncer: false, catcher: 0 });
 const error = ref('');
 
 watch(action, (current) => {
-    if (current?.type !== 'throw') return;
-    Object.assign(draft, { player: current.player, outcome: current.outcome, cup: current.cup, bouncer: !!current.bouncer });
+    if (current?.type === 'throw')
+        Object.assign(draft, { player: current.player, outcome: current.outcome, cup: current.cup, bouncer: !!current.bouncer, catcher: current.player });
+    else if (current?.type === 'trickshot')
+        Object.assign(draft, { player: current.player, outcome: 'trickshot', cup: undefined, bouncer: false, catcher: current.catcher });
     error.value = '';
 }, { immediate: true });
 
 // Zusatzbecher behalten, solange sie noch passen, sonst die ersten moeglichen nehmen
 const buildAction = (): KnechtAction | null => {
     const current = action.value;
-    if (current?.type !== 'throw') return null;
+    if (current?.type !== 'throw' && current?.type !== 'trickshot') return null;
+    if (draft.outcome === 'trickshot') return { type: 'trickshot', player: draft.player, catcher: draft.catcher, time: current.time };
     if (draft.outcome !== 'hit') return { type: 'throw', player: draft.player, outcome: draft.outcome, time: current.time };
 
     const preview = previewHit(stateBefore.value, draft.cup!, draft.bouncer, draft.player);
-    const kept = (current.extraCups ?? []).filter(cup => preview.extraCandidates.includes(cup));
+    const kept = (current.type === 'throw' ? current.extraCups ?? [] : []).filter(cup => preview.extraCandidates.includes(cup));
     const extraCups = [...kept, ...preview.extraCandidates.filter(cup => !kept.includes(cup))].slice(0, preview.extrasNeeded);
     return { type: 'throw', player: draft.player, outcome: 'hit', cup: draft.cup, bouncer: draft.bouncer, extraCups, time: current.time };
 };
@@ -129,7 +150,13 @@ const save = () => {
     const updated = buildAction();
     if (!updated) return;
     const actions = [...props.game.actions.value];
+    const current = actions[actionIndex.value];
     actions[actionIndex.value] = updated;
+    // Anderer Faenger: den Trickshot-Wurf danach hat dann dieser Spieler geworfen
+    const next = actions[actionIndex.value + 1];
+    if (current.type === 'trickshot' && updated.type === 'trickshot' && current.catcher !== updated.catcher
+        && (next?.type === 'throw' || next?.type === 'trickshot') && next.player === current.catcher)
+        actions[actionIndex.value + 1] = { ...next, player: updated.catcher };
     apply(actions);
 };
 

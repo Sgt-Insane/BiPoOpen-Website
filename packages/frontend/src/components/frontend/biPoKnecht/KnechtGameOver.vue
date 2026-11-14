@@ -31,6 +31,12 @@
 
             <!-- Schritt 2: Zusammenfassung, Verlauf bearbeiten, Schiedsrichter -->
             <template v-else>
+                <!-- Schiedsrichter zuerst: wird sonst unter dem langen Spielverlauf leicht uebersehen -->
+                <template v-if="refereeUsed">
+                    <label class="kn-over-section-title" for="kn-referee">Schiedsrichter</label>
+                    <input id="kn-referee" v-model="referee" class="kn-referee" type="text" maxlength="40" placeholder="Name (optional)" autocomplete="off" />
+                </template>
+
                 <div class="kn-over-section-title">Punktestand</div>
                 <KnechtScoreboard :match="match" :state="game.state.value" />
 
@@ -39,11 +45,6 @@
                     <span class="kn-over-section-hint">Antippen zum Korrigieren</span>
                 </div>
                 <KnechtTimeline :match="match" :state="game.state.value" editable @edit="editTurn = $event" />
-
-                <template v-if="refereeUsed">
-                    <label class="kn-over-section-title" for="kn-referee">Schiedsrichter</label>
-                    <input id="kn-referee" v-model="referee" class="kn-referee" type="text" maxlength="40" placeholder="Name (optional)" autocomplete="off" />
-                </template>
 
                 <div v-if="isDemoMode" class="kn-over-dev">Demo-Modus: das Spiel erscheint auf der Webseite, wird aber nur lokal im Browser gespeichert.</div>
             </template>

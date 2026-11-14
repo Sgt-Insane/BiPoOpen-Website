@@ -66,6 +66,8 @@ type Round = {
     landings: Landing[];
     ballsBack: boolean;             // Runde entstand durch Balls Back (kein Re-Rack)
     throwCount: number;
+    ballCount: number;              // Baelle dieser Runde (im Nachwurf nur die noch lebenden)
+    fixedOwners: number[] | null;   // Nachwurf ab Runde 2: wer welchen Ball wirft
 };
 
 export type KnechtState = {
@@ -116,8 +118,9 @@ const rackFromStanding = (standing: number[]): Rack => ({
 
 const enemyOf = (teamIndex: number) => 1 - teamIndex;
 
-const newRound = (ballsBack = false): Round => ({
+const newRound = (ballsBack = false, fixedOwners: number[] | null = null): Round => ({
     ballsDone: 0, owners: [], current: null, ballHits: [], landings: [], ballsBack, throwCount: 0,
+    ballCount: fixedOwners?.length ?? BALLS_PER_ROUND, fixedOwners,
 });
 
 export const createInitialState = (config: KnechtConfig): KnechtState => ({
@@ -154,6 +157,8 @@ export const getAllowedThrowers = (state: KnechtState): number[] => {
         return [round.current.lockedPlayer];
     if (round.current)
         return [round.current.owner];
+    // Nachwurf: jeder noch lebende Ball gehoert fest seinem Werfer
+    if (round.fixedOwners) return [round.fixedOwners[round.ballsDone]];
 
     const playerCount = state.config.playerCounts[state.activeTeamIndex];
     const all = Array.from({ length: playerCount }, (_, i) => i);
@@ -235,7 +240,7 @@ export const canReRack = (state: KnechtState): boolean => {
     return formation.join() !== standing.join();
 };
 
-export const getBallNumber = (state: KnechtState) => Math.min(state.round.ballsDone + 1, BALLS_PER_ROUND);
+export const getBallNumber = (state: KnechtState) => Math.min(state.round.ballsDone + 1, state.round.ballCount);
 
 // ─── Punkte ───
 export const getPlayerPoints = (state: KnechtState): number[][] => {
@@ -300,12 +305,12 @@ const resetStreaks = (state: KnechtState) => {
     state.streaks = state.streaks.map(team => team.map(() => 0));
 };
 
-const startRound = (state: KnechtState, teamIndex: number, ballsBack = false) => {
+const startRound = (state: KnechtState, teamIndex: number, ballsBack = false, fixedOwners: number[] | null = null) => {
     commitPending(state);
-    // Eine Serie endet mit dem Zug des Teams (Balls Back setzt sie fort)
-    if (teamIndex !== state.activeTeamIndex) resetStreaks(state);
+    // Serien laufen je Spieler ueber die Zuege weiter: sie enden erst mit einem eigenen Fehlwurf
+    // (oder mit der Verlaengerung), nicht wenn das andere Team wirft
     state.activeTeamIndex = teamIndex;
-    state.round = newRound(ballsBack);
+    state.round = newRound(ballsBack, fixedOwners);
     state.decider = null;
     moveLastCupToTip(state.racks[enemyOf(teamIndex)]);
 };
@@ -368,7 +373,14 @@ const endNachwurf = (state: KnechtState, time: number) => {
 const endRound = (state: KnechtState, time: number) => {
     const team = state.activeTeamIndex;
 
-    if (state.nachwurfTeamIndex !== null) return endNachwurf(state, time);
+    // Gentleman's Rule: wer getroffen hat, wirft in der naechsten Runde wieder (Becher werden dazwischen
+    // abgeraeumt), wer verfehlt hat, ist raus. Ohne lebenden Ball oder nach dem letzten Becher ist Schluss.
+    if (state.nachwurfTeamIndex !== null) {
+        const alive = state.round.owners.filter((_, ball) => state.round.ballHits[ball]);
+        if (state.cleared[team] || !alive.length) return endNachwurf(state, time);
+        startRound(state, team, false, alive);
+        return;
+    }
 
     // Alle Gegnerbecher getroffen -> Gentleman's Rule fuer den Gegner
     if (state.cleared[team]) return startNachwurf(state, enemyOf(team), time);
@@ -385,7 +397,7 @@ const endRound = (state: KnechtState, time: number) => {
 const endBall = (state: KnechtState, time: number) => {
     state.round.current = null;
     state.round.ballsDone++;
-    if (state.round.ballsDone >= BALLS_PER_ROUND) endRound(state, time);
+    if (state.round.ballsDone >= state.round.ballCount) endRound(state, time);
 };
 
 const openBall = (state: KnechtState, player: number) => {
@@ -465,11 +477,6 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
             },
         }, action.time, [credit(base / 2 + bomberBonus)]);
         state.banner = 'bomb';
-        // Im Nachwurf wirft der Bomber weiter, bis er verfehlt
-        if (state.nachwurfTeamIndex === team) {
-            ball.lockedPlayer = action.player;
-            return;
-        }
         return endBall(state, action.time);
     }
 
@@ -487,10 +494,9 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
         if (streakBefore + 1 >= 3) state.banner = 'on-fire';
     }
 
-    // Weiterwerfen: im Nachwurf bis zum Fehlwurf, sonst nur On Fire.
+    // Weiterwerfen nur bei On Fire (im Nachwurf kommt der Ball stattdessen in der naechsten Runde zurueck).
     // Nach dem letzten Becher endet der Ball immer: den Doppeltreffer darf nur ein anderer Ball werfen.
-    const keepsThrowing = preview.type !== 'lastCup'
-        && (state.nachwurfTeamIndex === team || (onFireEnabled && streakBefore + 1 >= 3));
+    const keepsThrowing = preview.type !== 'lastCup' && state.nachwurfTeamIndex === null && onFireEnabled && streakBefore + 1 >= 3;
     if (keepsThrowing && state.status === 'playing') {
         ball.lockedPlayer = action.player;
         return;

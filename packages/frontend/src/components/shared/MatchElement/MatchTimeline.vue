@@ -2,7 +2,10 @@
     <div class="MatchTimeline">
         <div class="mtl-header">
             <span class="mtl-title">Spielverlauf</span>
-            <span v-if="duration" class="mtl-duration">{{ duration }}</span>
+            <span v-if="duration || match.referee" class="mtl-duration">
+                <template v-if="match.referee"><i class="pi pi-flag" aria-hidden="true"></i> Schiri: {{ match.referee }}</template>
+                <template v-if="match.referee && duration"> · </template>{{ duration }}
+            </span>
         </div>
 
         <!-- Trefferquote je Team -->
@@ -19,9 +22,14 @@
             <polyline v-for="line in chartLines" :key="line.teamIndex" :points="line.points" :stroke="TEAM_COLORS[line.teamIndex]" class="mtl-chart-line" vector-effect="non-scaling-stroke" />
         </svg>
 
-        <!-- Treffer: Team 1 links, Team 2 rechts, in der Mitte Minute und Zwischenstand -->
+        <!-- Treffer: Team 1 links, Team 2 rechts, in der Mitte Zwischenstand. Jede Spielminute als graue Zahl, auch ohne Treffer. -->
         <div class="mtl-list">
-            <div v-for="row in rows" :key="row.key" class="mtl-row" :style="{ '--mtl-team-color': TEAM_COLORS[row.teamIndex] }">
+            <template v-for="item in items" :key="item.key">
+            <div v-if="item.kind === 'minute'" class="mtl-minute-row">
+                <span class="mtl-minute-mark">{{ item.minute }}'</span>
+            </div>
+            <div v-else class="mtl-row" :style="{ '--mtl-team-color': TEAM_COLORS[item.row.teamIndex] }">
+                <template v-for="row in [item.row]" :key="row.key">
                 <div class="mtl-side mtl-side--left">
                     <template v-if="row.teamIndex === 0">
                         <span class="mtl-text">
@@ -36,7 +44,7 @@
                     <span class="mtl-score">
                         <span :class="{ 'mtl-score--changed': row.scoringTeam === 0 }">{{ row.score[0] }}</span>:<span :class="{ 'mtl-score--changed': row.scoringTeam === 1 }">{{ row.score[1] }}</span>
                     </span>
-                    <span v-if="row.minute !== null" class="mtl-minute">{{ row.minute }}'</span>
+                    <span v-if="row.minute !== null && !hasMinuteGrid" class="mtl-minute">{{ row.minute }}'</span>
                 </div>
 
                 <div class="mtl-side mtl-side--right">
@@ -48,10 +56,40 @@
                         </span>
                     </template>
                 </div>
+                </template>
             </div>
+            </template>
 
             <div class="mtl-final">
                 Endstand <strong>{{ finalScore[0] }} : {{ finalScore[1] }}</strong>
+            </div>
+        </div>
+
+        <!-- Elo: wer wie viel gewonnen oder verloren hat -->
+        <div v-if="eloRows.length" class="mtl-elo">
+            <span class="mtl-title">Elo</span>
+            <div class="mtl-elo-teams">
+                <div v-for="team in eloRows" :key="team.teamIndex" class="mtl-elo-team" :style="{ '--mtl-team-color': TEAM_COLORS[team.teamIndex] }">
+                    <div v-for="row in team.players" :key="row.name" class="mtl-elo-row">
+                        <span class="mtl-elo-name">{{ row.name }}</span>
+                        <span class="mtl-elo-delta" :class="row.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.delta) }}</span>
+                        <span class="mtl-elo-rating">{{ row.rating.toLocaleString('de-DE') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auszeichnungen wie am Spielende im Knecht -->
+        <div v-if="awards.length" class="mtl-awards">
+            <span class="mtl-title">Auszeichnungen</span>
+            <div class="mtl-award-list">
+                <div v-for="award in awards" :key="award.key" class="mtl-award" :style="{ '--mtl-team-color': TEAM_COLORS[award.teamIndex] }">
+                    <span class="mtl-award-icon" aria-hidden="true">{{ award.icon }}</span>
+                    <span class="mtl-text">
+                        <span class="mtl-label">{{ award.title }} · {{ award.player }}</span>
+                        <span class="mtl-player">{{ award.detail }}</span>
+                    </span>
+                </div>
             </div>
         </div>
     </div>
@@ -63,7 +101,9 @@ import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
-import { TEAM_COLORS, formatDuration, formatPoints, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
+import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
+import { useEloRatings } from '@/components/shared/useEloRatings';
+import { TEAM_COLORS, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
@@ -136,19 +176,62 @@ const rows = computed<Row[]>(() => {
     return list;
 });
 
+// Zeitachse: vor den Treffern jeder Minute eine Minutenmarke, auch fuer Minuten ohne Treffer
+type TimelineItem = { kind: 'minute'; key: string; minute: number } | { kind: 'row'; key: string; row: Row };
+const hasMinuteGrid = computed(() => rows.value.length > 0 && rows.value.every(row => row.minute !== null));
+const items = computed<TimelineItem[]>(() => {
+    if (!hasMinuteGrid.value) return rows.value.map(row => ({ kind: 'row', key: `r${row.key}`, row }));
+    const start = props.match.time ?? 0;
+    const lastRowMinute = rows.value[rows.value.length - 1].minute!;
+    const endMinute = props.match.endTime && start ? Math.floor((props.match.endTime - start) / 60000) : lastRowMinute;
+    const list: TimelineItem[] = [];
+    for (let minute = 0; minute <= Math.max(lastRowMinute, endMinute); minute++) {
+        list.push({ kind: 'minute', key: `m${minute}`, minute });
+        rows.value.filter(row => row.minute === minute).forEach(row => list.push({ kind: 'row', key: `r${row.key}`, row }));
+    }
+    return list;
+});
+
 // Endstand aus den gespeicherten Punkten (kann z.B. durch den Siegpunkt vom Becherstand abweichen)
 const finalScore = computed(() => [props.match.team1, props.match.team2]
     .map(team => formatPoints(team.players.reduce((sum, player) => sum + (player.score ?? 0), 0))));
 
-const teamSummaries = computed(() => {
+const playerStats = computed(() => {
     const points = [props.match.team1, props.match.team2].map(team => team.players.map(player => player.score ?? 0));
-    const stats = getTurnStats(props.match, turns.value, points);
+    return getTurnStats(props.match, turns.value, points);
+});
+
+const teamSummaries = computed(() => {
+    const stats = playerStats.value;
     return [0, 1].map(teamIndex => {
         const teamStats = stats.filter(entry => entry.teamIndex === teamIndex);
         const hits = teamStats.reduce((sum, entry) => sum + entry.hits, 0);
         const throws = teamStats.reduce((sum, entry) => sum + entry.throws, 0);
         return { teamIndex, name: getTeamName(props.match, teamIndex), hits, throws, accuracy: getAccuracy({ hits, throws }) };
     });
+});
+
+// Elo je Spieler nach diesem Spiel (nicht gewertete Spiele, z.B. Unentschieden, zeigen nichts)
+const { loadEloRatings, getMatchElo } = useEloRatings();
+loadEloRatings();
+const eloRows = computed(() => {
+    const sides = getMatchElo(props.match);
+    if (!sides) return [];
+    return [props.match.team1, props.match.team2].map((team, teamIndex) => ({
+        teamIndex,
+        players: team.players.flatMap(player => {
+            const change = sides[teamIndex].playerChanges.find(entry => entry.key === getEloPlayerKey(player.name));
+            return change ? [{ name: player.name, delta: change.delta, rating: change.rating }] : [];
+        }),
+    }));
+});
+
+// Gleiche Regeln wie auf dem Spielende-Bildschirm, damit die Webseite dieselben Titel zeigt
+const awards = computed(() => {
+    const stats = playerStats.value;
+    return getAwards(stats).map((award, index) => ({
+        ...award, key: index, teamIndex: stats[index].teamIndex, player: stats[index].name,
+    }));
 });
 
 // Treppenlinie je Team: x = Spielzeit (oder Reihenfolge ohne Zeiten), y = abgeraeumte Becher
@@ -233,6 +316,80 @@ const chartLines = computed(() => {
 .mtl-team-stats{
     font-size: 11px;
     color: var(--bp-text-muted);
+}
+
+/* ─── Elo ─── */
+.mtl-elo{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.mtl-elo-teams{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.mtl-elo-team{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--mtl-team-color);
+    border-radius: 8px;
+    background: var(--bp-fill-soft);
+}
+.mtl-elo-row{
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12px;
+}
+.mtl-elo-name{
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+    color: var(--bp-text);
+}
+.mtl-elo-delta{
+    font-weight: 800;
+}
+.mtl-elo-delta--up{ color: #1F8A70; }
+.mtl-elo-delta--down{ color: #E5484D; }
+.mtl-elo-rating{
+    font-size: 11px;
+    color: var(--bp-text-muted);
+}
+
+/* ─── Auszeichnungen ─── */
+.mtl-awards{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.mtl-award-list{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 6px;
+}
+.mtl-award{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--mtl-team-color);
+    border-radius: 8px;
+    background: var(--bp-fill-soft);
+}
+.mtl-award-icon{
+    flex: 0 0 auto;
+    font-size: 18px;
+    line-height: 1;
 }
 
 /* ─── Becherverlauf ─── */
@@ -341,6 +498,22 @@ const chartLines = computed(() => {
 .mtl-minute{
     font-size: 9px;
     line-height: 1.1;
+    color: var(--bp-text-subtle);
+}
+.mtl-minute-row{
+    position: relative;
+    display: flex;
+    justify-content: center;
+    height: 16px;
+}
+.mtl-minute-mark{
+    position: relative;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--bp-surface);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
     color: var(--bp-text-subtle);
 }
 .mtl-final{

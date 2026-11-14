@@ -94,14 +94,21 @@ export const matchToSides = (match: Match): GameEntrySide[] =>
         })),
     }));
 
-const toTeam = (side: GameEntrySide, baseTeam?: Team): Team => ({
-    ...(baseTeam ?? { _id: 'placeholder' }),
-    players: side.players.map((player, index) => ({
-        ...(baseTeam?.players[index] ?? { _id: 'placeholder' }),
-        name: player.name.trim(),
-        score: player.score ?? 0,
-    })),
-});
+const toTeam = (side: GameEntrySide, baseTeam?: Team): Team => {
+    const team: Team = {
+        ...(baseTeam ?? { _id: 'placeholder' }),
+        players: side.players.map((player, index) => ({
+            ...(baseTeam?.players[index] ?? { _id: 'placeholder' }),
+            name: player.name.trim(),
+            score: player.score ?? 0,
+        })),
+    };
+    // Optionaler Teamname (offene Spiele): leer = kein Name, dann zeigt die Seite die Spieler
+    const name = side.name?.trim();
+    if (name) team.name = name;
+    else if (side.name !== undefined) delete team.name;
+    return team;
+};
 
 // Bestehendes Spiel mit den Werten aus dem Drawer (Kopie, das Original bleibt unveraendert).
 export const applySidesToMatch = (match: Match, sides: GameEntrySide[]): Match => ({

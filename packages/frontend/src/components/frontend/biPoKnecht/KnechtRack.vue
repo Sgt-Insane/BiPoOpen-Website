@@ -24,6 +24,7 @@
                 >
                     <KnechtIcon v-if="getCupMark(cup)" :name="getCupMark(cup)!" class="kn-cup-mark" />
                     <span v-else-if="pending.has(cup)" class="kn-cup-ball"></span>
+                    <span v-else class="kn-cup-number">{{ cup + 1 }}</span>
                 </button>
             </div>
         </div>
@@ -214,10 +215,11 @@ const onAirballClick = (event: MouseEvent) => {
     justify-content: center;
     gap: calc(var(--kn-cup) * .14);
 }
-.kn-rack--left .kn-row,
-.kn-rack--right .kn-row{
-    flex-direction: column;
-}
+/* Becher 1 jeder Reihe liegt aus Sicht des Werfers links (siehe knechtFormations.ts).
+   Wartendes Team unten und linker Tisch im Schiedsrichter-Modus sind dafuer gespiegelt. */
+.kn-rack--down .kn-row{ flex-direction: row-reverse; }
+.kn-rack--left .kn-row{ flex-direction: column-reverse; }
+.kn-rack--right .kn-row{ flex-direction: column; }
 
 .kn-cup{
     position: relative;
@@ -237,6 +239,17 @@ const onAirballClick = (event: MouseEvent) => {
 }
 .kn-cup-mark{
     font-size: calc(var(--kn-cup) * .4);
+}
+.kn-cup-number{
+    font-size: calc(var(--kn-cup) * .3);
+    font-weight: 800;
+    line-height: 1;
+    opacity: .55;
+    pointer-events: none;
+}
+.kn-cup--hit .kn-cup-number{
+    color: var(--bp-text-subtle);
+    opacity: .6;
 }
 .kn-cup-ball{
     width: 34%;

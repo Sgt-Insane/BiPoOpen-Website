@@ -1,9 +1,10 @@
 import { computed, ref, shallowRef, toRaw, watch } from 'vue';
 import {
-    applyAction, canReRack, continueReplay, createInitialState, getAllowedThrowers, getHittableCups, getPlayersDone, previewHit, replay,
+    applyAction, canReRack, continueReplay, createInitialState, getAllowedThrowers, getHittableCups, getPlayersDone, getStandingCups, previewHit, replay,
     type BannerEvent, type KnechtAction, type KnechtConfig, type KnechtState, type ReplayResult,
 } from './knechtEngine';
 import { useBiPoSound } from './biPoSound';
+import { findFormation, type KnechtFormation } from './knechtFormations';
 
 // Verbindet das Regelwerk (knechtEngine) mit der Oberflaeche: Auswahl des Werfers, Bouncer,
 // Auswahl der Zusatzbecher, Rueckgaengig, Bearbeiten im Verlauf, Banner und Sound.
@@ -22,6 +23,37 @@ export type CupPick = {
 };
 
 const BANNER_DURATION = 1800;
+const CELEBRATION_DURATION = 2200;
+
+// Grosse Animation wie beim Bowling. Zusaetzlich zu den Bannern der Engine auch fuer Aktionen ohne Regelfolge.
+export type KnechtCelebrationKind =
+    | 'bomb' | 'on-fire' | 'heating-up' | 'ballsback' | 'deathcup' | 'nachwurf' | 'overtime'
+    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'lastcup' | 'formation';
+// teamIndex: wem die Animation zugewandt ist (bei Formationen das Team, das auf diese Becher wirft)
+export type KnechtCelebration = { id: number; kind: KnechtCelebrationKind; player: string; teamIndex: number; formation?: KnechtFormation };
+
+// Neue benannte Formation der stehenden Becher, je Rack (Team, dem die Becher gehoeren)
+export const getNewFormations = (before: KnechtState, next: KnechtState) => [0, 1].flatMap(rackIndex => {
+    if (next.status !== 'playing') return [];
+    const standing = getStandingCups(next.racks[rackIndex]);
+    if (standing.join() === getStandingCups(before.racks[rackIndex]).join()) return [];
+    const formation = findFormation(standing);
+    return formation ? [{ rackIndex, formation }] : [];
+});
+
+const ENGINE_CELEBRATIONS: KnechtCelebrationKind[] = ['bomb', 'on-fire', 'heating-up', 'ballsback', 'deathcup', 'nachwurf', 'overtime'];
+
+// Welche Animation passt zu dieser Aktion? Regel-Ereignisse (Bombe, On Fire ...) gehen vor.
+export const getCelebrationKind = (next: KnechtState, action: KnechtAction, previous?: KnechtAction): KnechtCelebrationKind | null => {
+    if (next.banner && (ENGINE_CELEBRATIONS as string[]).includes(next.banner)) return next.banner as KnechtCelebrationKind;
+    if (action.type === 'reRack') return 'rerack';
+    if (action.type === 'trickshot') return 'trickshot';
+    if (action.type === 'throw' && action.outcome === 'hit') {
+        if (previous?.type === 'trickshot' && previous.catcher === action.player) return 'trickshot-hit';
+        if (action.bouncer) return 'bouncer';
+    }
+    return null;
+};
 const BALL_DURATION = 1500;
 
 export type BallMark = { id: number; kind: 'miss' | 'airball' | 'hit'; x: number; y: number };
@@ -87,8 +119,13 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         return allowed.includes(chosenPlayer.value) ? chosenPlayer.value : allowed[0] ?? 0;
     });
 
-    // Neues Team am Wurf: Auswahl beginnt wieder beim ersten freien Spieler
-    watch(() => state.value.activeTeamIndex, () => { chosenPlayer.value = allowedThrowers.value[0] ?? 0; });
+    // Werfer-Reihenfolge merken: wer im letzten Zug seines Teams den ersten Ball geworfen hat,
+    // ist im naechsten Zug des Teams wieder zuerst ausgewaehlt (sonst der erste freie Spieler)
+    const firstThrower: (number | null)[] = [null, null];
+    watch(() => state.value.activeTeamIndex, (team) => {
+        const remembered = firstThrower[team];
+        chosenPlayer.value = remembered !== null && allowedThrowers.value.includes(remembered) ? remembered : allowedThrowers.value[0] ?? 0;
+    });
 
     const selectPlayer = (player: number) => {
         if (allowedThrowers.value.includes(player) && !pick.value) chosenPlayer.value = player;
@@ -101,6 +138,30 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         if (bannerTimer) clearTimeout(bannerTimer);
         banner.value = event;
         if (event) bannerTimer = setTimeout(() => { banner.value = null; }, BANNER_DURATION);
+    };
+
+    // ─── Animationen ───
+    // Mehrere Animationen nacheinander (z.B. Bombe, danach die neue Formation)
+    const celebration = ref<KnechtCelebration | null>(null);
+    let celebrationQueue: KnechtCelebration[] = [];
+    let celebrationTimer: ReturnType<typeof setTimeout> | null = null;
+    let celebrationId = 0;
+    const showNextCelebration = () => {
+        celebration.value = celebrationQueue.shift() ?? null;
+        celebrationTimer = celebration.value ? setTimeout(showNextCelebration, CELEBRATION_DURATION) : null;
+    };
+    const celebrate = (list: Omit<KnechtCelebration, 'id'>[]) => {
+        if (!list.length) return;
+        // Neue Aktion: Animationen der vorigen Aktion nicht mehr nachholen
+        if (celebrationTimer) clearTimeout(celebrationTimer);
+        celebrationQueue = list.map(entry => ({ ...entry, id: now() * 100 + (++celebrationId % 100) }));
+        showNextCelebration();
+    };
+    const clearCelebrations = () => {
+        if (celebrationTimer) clearTimeout(celebrationTimer);
+        celebrationTimer = null;
+        celebrationQueue = [];
+        celebration.value = null;
     };
 
     const FANFARE_EVENTS: BannerEvent[] = ['on-fire', 'overtime', 'win', 'nachwurf'];
@@ -118,6 +179,11 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     // ─── Aktionen ───
     const dispatch = (action: KnechtAction) => {
         let next: KnechtState;
+        const before = state.value;
+        const throwingTeam = before.activeTeamIndex;
+        // Erster Ball eines normalen Zugs: Werfer fuer den naechsten Zug des Teams merken
+        if ((action.type === 'throw' || action.type === 'trickshot') && before.round.ballsDone === 0 && !before.round.current
+            && !before.round.ballsBack && before.nachwurfTeamIndex === null) firstThrower[throwingTeam] = action.player;
         try {
             next = applyAction(state.value, action);
         } catch {
@@ -131,6 +197,18 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         bouncerArmed.value = false;
         pick.value = null;
         playFeedback(next, action);
+        // Name unter der Animation: der Werfer, beim Trickshot der Faenger
+        const playerIndex = action.type === 'trickshot' ? action.catcher : action.type === 'throw' || action.type === 'deathcup' ? action.player : null;
+        const name = playerIndex === null ? '' : (throwingTeam === 0 ? match.team1 : match.team2).players[playerIndex]?.name ?? '';
+        const kind = getCelebrationKind(next, action, newActions[newActions.length - 2]);
+        // Letzter Becher getroffen: eigene Animation vor allem anderen (z.B. danach der Nachwurf)
+        const newTurn = next.turns.length > before.turns.length ? next.turns[next.turns.length - 1] : null;
+        const lastCup = newTurn?.type === 'lastCup' && next.status === 'playing';
+        celebrate([
+            ...(lastCup ? [{ kind: 'lastcup' as const, player: name, teamIndex: throwingTeam }] : []),
+            ...(kind ? [{ kind, player: name, teamIndex: throwingTeam }] : []),
+            ...getNewFormations(before, next).map(({ rackIndex, formation }) => ({ kind: 'formation' as const, player: '', teamIndex: 1 - rackIndex, formation })),
+        ]);
         return true;
     };
 
@@ -171,6 +249,8 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     };
 
     const trickshot = (catcher: number) => dispatch({ type: 'trickshot', player: selectedPlayer.value, catcher, time: now() });
+    // Gefangen, aber noch nicht geworfen: der Trickshot-Knopf bleibt aktiv und nimmt ihn beim erneuten Tippen zurueck
+    const trickshotPending = computed(() => actions.value.at(-1)?.type === 'trickshot');
     const reRack = () => dispatch({ type: 'reRack', time: now() });
     const deathcup = () => dispatch({ type: 'deathcup', player: selectedPlayer.value, time: now() });
     const ownCup = (team: number, player: number, cups: number[]) => dispatch({ type: 'ownCup', team, player, cups, time: now() });
@@ -193,6 +273,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         actions.value = actions.value.slice(0, -1);
         bouncerArmed.value = false;
         banner.value = null;
+        clearCelebrations();
     };
 
     // Verlauf bearbeiten: neue Aktionsliste nur uebernehmen, wenn sie komplett gueltig ist
@@ -225,6 +306,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         selectedPlayer,
         selectPlayer,
         banner,
+        celebration,
         bouncerArmed,
         toggleBouncer,
         pick,
@@ -233,6 +315,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         cancelPick,
         throwMiss,
         trickshot,
+        trickshotPending,
         reRack,
         canReRack: computed(() => canReRack(state.value)),
         deathcup,
