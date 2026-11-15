@@ -21,7 +21,7 @@ import BellIcon from '@/components/shared/BellIcon.vue';
 import { PUSH_SETTINGS_PATH, usePushNotifications } from '@/components/shared/usePushNotifications';
 
 // Push aktiv: Spieler direkt zur Liste. Sonst erst die Aktivieren-Seite, die folgt danach automatisch.
-// Ausgeblendet, wenn ohnehin alle Spiele kommen (alle aktiven Kategorien auf "Alle Spiele").
+// Immer sichtbar (Nutzertest: wer Push zuerst einschaltet, fand sonst keinen Weg zum Folgen).
 const props = defineProps<{ playerName: string }>();
 
 const router = useRouter();
@@ -30,7 +30,7 @@ const { isActive, settingsLoaded, usesFollowedPlayers, allCategoriesOff, loadSet
 
 const busy = ref(false);
 // Bis die Einstellungen da sind ausgeblendet, sonst blitzt der Button kurz auf
-const visible = computed(() => !isActive.value || (settingsLoaded.value && (usesFollowedPlayers.value || allCategoriesOff.value)));
+const visible = computed(() => !isActive.value || settingsLoaded.value);
 const following = computed(() => isActive.value && isFollowing(props.playerName));
 const firstName = computed(() => props.playerName.split(' ')[0]);
 
@@ -50,15 +50,19 @@ const onClick = async () => {
     } else {
         const wasAllOff = allCategoriesOff.value;
         await followPlayer(props.playerName);
+        // Ueberall "Alle Spiele": Folgen aendert gerade nichts - sagen, wie man auf "Nur meine Spieler" umstellt
+        const getsAllAnyway = !wasAllOff && !usesFollowedPlayers.value;
         toast.add({
             severity: 'success',
             summary: `Du folgst jetzt ${firstName.value}`,
             // Alles war aus: followPlayer hat alle Kategorien fuer die eigenen Spieler eingeschaltet
             detail: wasAllOff
                 ? `Benachrichtigungen sind wieder an. ${followToastDetail(firstName.value)}`
-                : followToastDetail(firstName.value),
-            ...(wasAllOff && { action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH } }),
-            life: wasAllOff ? 6000 : 5000,
+                : getsAllAnyway
+                    ? 'Du bekommst gerade ohnehin alle Spiele. Stell in den Einstellungen auf „Nur meine Spieler“, um nur deinen Spielern zu folgen.'
+                    : followToastDetail(firstName.value),
+            ...((wasAllOff || getsAllAnyway) && { action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH } }),
+            life: wasAllOff || getsAllAnyway ? 6000 : 5000,
         });
     }
     busy.value = false;

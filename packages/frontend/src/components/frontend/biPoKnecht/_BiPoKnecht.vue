@@ -97,13 +97,16 @@ const liveInfo = computed<KnechtLiveInfo>(() => ({
     devices: live.devices.value,
 }));
 
-const startLive = async () => {
+// Nur ein Start gleichzeitig: Beim Oeffnen starten sonst neues Spiel und "Live nachholen" je ein eigenes
+// Live-Spiel, bevor das erste fertig angelegt ist (Startseite zeigte jedes Spiel doppelt, einmal mit 0 : 0)
+let liveStarting: Promise<void> | null = null;
+const startLive = () => liveStarting ??= (async () => {
     if (!game.value || live.binding.value) return;
     await nextTick();
     const progress = knecht.value?.getProgress() ?? { startTeamIndex: game.value.startTeamIndex, startedAt: null, actions: game.value.actions };
     const ok = await live.host(game.value.match, progress);
     if (!ok) toast.add({ severity: 'warn', summary: 'Live-Ticker gerade nicht erreichbar – das Spiel läuft trotzdem', life: 3500 });
-};
+})().finally(() => { liveStarting = null; });
 
 const onLiveAction = (action: 'start' | 'stop' | 'leave') => {
     if (action === 'start') {

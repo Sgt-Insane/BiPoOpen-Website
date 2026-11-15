@@ -51,8 +51,29 @@ export const useTableRotation = (enabled: Ref<boolean>, onTurn: () => void) => {
         }
     };
 
-    onMounted(() => window.addEventListener('deviceorientation', onOrientation));
-    onUnmounted(() => window.removeEventListener('deviceorientation', onOrientation));
+    // Chrome auf Android liefert den Drehwinkel je nach Geraet nur im "absolute"-Ereignis (Kompass).
+    // Beide hoeren, aber nur eine Quelle nutzen, damit die Winkel nicht durcheinanderkommen.
+    let source: 'relative' | 'absolute' | null = null;
+    const fromRelative = (event: DeviceOrientationEvent) => {
+        if (event.alpha === null) return;
+        if (source === 'absolute') return;
+        source = 'relative';
+        onOrientation(event);
+    };
+    const fromAbsolute = (event: DeviceOrientationEvent) => {
+        if (event.alpha === null || source === 'relative') return;
+        source = 'absolute';
+        onOrientation(event);
+    };
+
+    onMounted(() => {
+        window.addEventListener('deviceorientation', fromRelative);
+        window.addEventListener('deviceorientationabsolute' as 'deviceorientation', fromAbsolute);
+    });
+    onUnmounted(() => {
+        window.removeEventListener('deviceorientation', fromRelative);
+        window.removeEventListener('deviceorientationabsolute' as 'deviceorientation', fromAbsolute);
+    });
 
     return { supported };
 };

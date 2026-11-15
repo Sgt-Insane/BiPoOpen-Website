@@ -50,6 +50,19 @@ describe('Reihenfolge der Animationen', () => {
         expect(celebrationsOf([hit(0, 0), hit(1, 0, { extraCups: [1, 2] })]).throwKinds).toEqual(['bomb']);
     });
 
+    it('zeigt einen Airball', () => {
+        expect(celebrationsOf([{ type: 'throw', player: 0, outcome: 'airball', time: 0 }]).throwKinds).toEqual(['airball']);
+    });
+
+    it('zeigt den Ausgleich statt der normalen Treffer-Animation', () => {
+        const miss = (player: number): KnechtAction => ({ type: 'throw', player, outcome: 'miss', time: 0 });
+        // Team 1 fuehrt 1 : 0, Team 2 gleicht aus
+        const result = celebrationsOf([hit(0, 0), miss(1), hit(0, 0)]);
+        expect(result.throwKinds).toEqual(['equalizer']);
+        // Erster Treffer ueberhaupt ist kein Ausgleich
+        expect(celebrationsOf([hit(0, 0)]).throwKinds).toEqual(['hit']);
+    });
+
     it('zeigt den Bouncer vor Heaten Up', () => {
         const result = celebrationsOf([hit(0, 0), hit(1, 1), hit(0, 2, { bouncer: true, extraCups: [3] })]);
         expect(result.throwKinds).toEqual(['bouncer']);

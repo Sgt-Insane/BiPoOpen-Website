@@ -71,7 +71,8 @@
                 <div class="ns-search">
                     <i class="pi pi-search ns-search-icon"></i>
                     <input
-                        v-model="query"
+                        :value="query"
+                        @input="query = ($event.target as HTMLInputElement).value"
                         class="ns-search-input"
                         type="search"
                         placeholder="Spieler hinzufügen …"
@@ -148,7 +149,9 @@ const onTest = async () => {
     testing.value = true;
     const sent = await sendTest();
     testing.value = false;
-    if (!sent) toast.add({ severity: 'error', summary: 'Test nicht gesendet', life: 3000 });
+    toast.add(sent
+        ? { severity: 'success', summary: 'Test-Push gesendet', detail: 'Er sollte gleich oben auf dem Handy erscheinen.', life: 3500 }
+        : { severity: 'error', summary: 'Test nicht gesendet', life: 3000 });
 };
 
 // ─── Spielersuche ───

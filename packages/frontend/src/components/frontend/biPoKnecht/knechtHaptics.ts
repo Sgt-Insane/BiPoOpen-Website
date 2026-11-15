@@ -6,11 +6,12 @@ import { ref } from 'vue';
 
 const STORAGE_KEY = 'bipo_knecht_vibration';
 
+// Unter ca. 30 ms setzen viele Android-Motoren (z.B. Samsung) gar nicht an: alles deutlich darueber
 export const HAPTICS = {
-    hit: 25,
-    edge: [45, 60, 45],
-    table: 90,
-    airball: 6,
+    hit: 45,
+    edge: [50, 60, 50],
+    table: 100,
+    airball: 35,
 } satisfies Record<string, number | number[]>;
 
 export type HapticKind = keyof typeof HAPTICS;

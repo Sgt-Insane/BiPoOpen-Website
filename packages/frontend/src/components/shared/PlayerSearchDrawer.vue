@@ -6,9 +6,11 @@
 
 		<div class="ps-input-wrap">
 			<i class="pi pi-search ps-search-icon"></i>
+			<!-- :value + @input statt v-model: aktualisiert auch waehrend Wortvorschlaegen der Tastatur (Samsung) -->
 			<input
 				ref="inputEl"
-				v-model="query"
+				:value="query"
+				@input="query = ($event.target as HTMLInputElement).value"
 				class="ps-input"
 				type="search"
 				placeholder="Name eingeben …"

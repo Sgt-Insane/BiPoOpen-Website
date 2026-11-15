@@ -1,6 +1,6 @@
 import { computed, ref, shallowRef, toRaw, watch } from 'vue';
 import {
-    applyAction, canReRack, continueReplay, createInitialState, getAllowedThrowers, getHittableCups, getPlayersDone, getStandingCups, previewHit, replay,
+    applyAction, canReRack, continueReplay, createInitialState, getAllowedThrowers, getHittableCups, getPlayersDone, getStandingCups, getTeamPoints, previewHit, replay,
     type BannerEvent, type KnechtAction, type KnechtConfig, type KnechtState, type ReplayResult,
 } from './knechtEngine';
 import { useBiPoSound } from './biPoSound';
@@ -31,7 +31,8 @@ const HIT_DURATION = 1400;
 // Grosse Animation wie beim Bowling. Zusaetzlich zu den Bannern der Engine auch fuer Aktionen ohne Regelfolge.
 export type KnechtCelebrationKind =
     | 'bomb' | 'on-fire' | 'heating-up' | 'ballsback' | 'deathcup' | 'nachwurf' | 'overtime'
-    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'lastcup' | 'formation' | 'yellow-card' | 'red-card' | 'hit';
+    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'lastcup' | 'formation' | 'yellow-card' | 'red-card' | 'hit'
+    | 'airball' | 'equalizer';
 // teamIndex: wem die Animation zugewandt ist (bei Formationen das Team, das auf diese Becher wirft)
 export type KnechtCelebration = { id: number; kind: KnechtCelebrationKind; player: string; teamIndex: number; formation?: KnechtFormation };
 
@@ -66,11 +67,24 @@ export const getCelebrations = (before: KnechtState, next: KnechtState, action: 
     }
     // Normaler Treffer ohne Besonderheit
     if (!throwKinds.length && action.type === 'throw' && action.outcome === 'hit') throwKinds.push('hit');
+    if (action.type === 'throw' && action.outcome === 'airball') throwKinds.push('airball');
+    // Ausgleich: gleicher Stand, nachdem ein Team gefuehrt hat (wie die Highlights im Spielverlauf).
+    // Ersetzt die normale Treffer-Animation, besondere Wuerfe (Bombe ...) kommen zuerst.
+    const [pointsBefore, pointsAfter] = [getTeamPoints(before), getTeamPoints(next)];
+    if (next.status === 'playing' && pointsAfter[0] === pointsAfter[1] && pointsAfter[0] > 0 && pointsBefore[0] !== pointsBefore[1]) {
+        if (throwKinds.at(-1) === 'hit') throwKinds.pop();
+        throwKinds.push('equalizer');
+    }
     const followUps = next.events.filter(event => (FOLLOW_UP_EVENTS as string[]).includes(event)) as KnechtCelebrationKind[];
     // Verlaengerung: neu aufgestellte Becher sind keine geworfene Formation
     const formations = followUps.includes('overtime') ? [] : getNewFormations(before, next);
     return { throwKinds, formations, followUps };
 };
+
+// Kurze Animationen (laufen oft, sollen beim schnellen Eintragen nicht bremsen)
+const QUICK_KINDS: KnechtCelebrationKind[] = ['hit', 'airball', 'equalizer'];
+// Alltaegliche Wuerfe: bei "nur besondere" Animationen ausgeblendet
+const EVERYDAY_KINDS: KnechtCelebrationKind[] = ['hit', 'airball'];
 
 const BALL_DURATION = 1500;
 
@@ -167,12 +181,12 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     let celebrationId = 0;
     const showNextCelebration = () => {
         celebration.value = celebrationQueue.shift() ?? null;
-        const duration = celebration.value?.kind === 'hit' ? HIT_DURATION : CELEBRATION_DURATION;
+        const duration = celebration.value && QUICK_KINDS.includes(celebration.value.kind) ? HIT_DURATION : CELEBRATION_DURATION;
         celebrationTimer = celebration.value ? setTimeout(showNextCelebration, duration) : null;
     };
     const celebrate = (all: Omit<KnechtCelebration, 'id'>[]) => {
-        // Einstellung im Menue: alle, nur besondere (ohne normale Treffer) oder keine Animationen
-        const list = animationLevel.value === 'off' ? [] : animationLevel.value === 'special' ? all.filter(entry => entry.kind !== 'hit') : all;
+        // Einstellung im Menue: alle, nur besondere (ohne normale Treffer und Airballs) oder keine Animationen
+        const list = animationLevel.value === 'off' ? [] : animationLevel.value === 'special' ? all.filter(entry => !EVERYDAY_KINDS.includes(entry.kind)) : all;
         if (!list.length) return;
         // Neue Aktion: Animationen der vorigen Aktion nicht mehr nachholen
         if (celebrationTimer) clearTimeout(celebrationTimer);
@@ -225,8 +239,11 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         const name = playerIndex === null ? '' : (nameTeam === 0 ? match.team1 : match.team2).players[playerIndex]?.name ?? '';
         const { throwKinds, formations, followUps } = getCelebrations(before, next, action, newActions[newActions.length - 2]);
         const facing = action.type === 'elbow' ? 1 - action.team : throwingTeam;
+        // Bombe/Bouncer lief schon vor der Becherwahl: nicht noch einmal zeigen
+        const shownKinds = throwKinds.filter(kind => kind !== shownBeforePick);
+        shownBeforePick = null;
         celebrate([
-            ...throwKinds.map(kind => ({ kind, player: name, teamIndex: facing })),
+            ...shownKinds.map(kind => ({ kind, player: name, teamIndex: facing })),
             ...formations.map(({ rackIndex, formation }) => ({ kind: 'formation' as const, player: '', teamIndex: 1 - rackIndex, formation })),
             ...followUps.map(kind => ({ kind, player: name, teamIndex: facing })),
         ]);
@@ -237,6 +254,8 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
 
     const bouncerArmed = ref(false);
     const pick = ref<CupPick | null>(null);
+    // Animation, die schon beim Start der Becherwahl lief (Bombe, Bouncer)
+    let shownBeforePick: KnechtCelebrationKind | null = null;
     const hittableCups = computed(() => new Set(getHittableCups(state.value)));
 
     const toggleBouncer = () => {
@@ -259,10 +278,17 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         const preview = previewHit(state.value, cup, bouncerArmed.value, selectedPlayer.value);
         if (preview.extrasNeeded === 0) return throwHit(cup, bouncerArmed.value);
         pick.value = { cup, bouncer: bouncerArmed.value, type: preview.type, needed: preview.extrasNeeded, candidates: preview.extraCandidates, chosen: [] };
+        // Wie am Tisch: erst die Bombe bzw. der Bouncer, dann die Zusatzbecher waehlen
+        shownBeforePick = preview.type === 'bomb' ? 'bomb' : 'bouncer';
+        const team = state.value.activeTeamIndex;
+        celebrate([{ kind: shownBeforePick, player: (team === 0 ? match.team1 : match.team2).players[selectedPlayer.value]?.name ?? '', teamIndex: team }]);
         return false;
     };
 
-    const cancelPick = () => { pick.value = null; };
+    const cancelPick = () => {
+        pick.value = null;
+        shownBeforePick = null;
+    };
 
     // detail: Landestelle und Kante eines Nullwurfs (siehe knechtEdges)
     const throwMiss = (outcome: 'miss' | 'airball', detail: { spot?: { x: number; y: number }; edge?: EdgeHit } = {}) => {
@@ -314,6 +340,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         if (check.error) return `Wurf ${check.error.index + 1}: ${check.error.message}`;
         actions.value = newActions;
         pick.value = null;
+        shownBeforePick = null;
         bouncerArmed.value = false;
         return null;
     };

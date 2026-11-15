@@ -30,7 +30,8 @@ const games = ref<LiveGame[]>([]);
 const views = computed(() => games.value.map(game => ({ id: game.id, view: getLiveView(game) })));
 
 let timer: ReturnType<typeof setInterval> | null = null;
-const load = async () => { games.value = await listLiveGames(); };
+// Erst ab dem Anwurf: ein Spiel, das noch bei Becherfarben und "Wer fängt an?" steht (oder dort verlassen wurde), laeuft nicht
+const load = async () => { games.value = (await listLiveGames()).filter(game => game.startTeamIndex !== null); };
 
 // Nur abfragen, solange die Seite sichtbar ist
 const onVisibility = () => { if (document.visibilityState === 'visible') load(); };

@@ -31,6 +31,8 @@ const shapes = computed<KnechtIconShape[]>(() => KNECHT_ICONS[props.name]);
 const MOTIONS: Partial<Record<KnechtIconName, { path: string; dur: string }>> = {
     bouncer: { path: 'M2.5 3.5L7 20.5l4.5-9Q15.5 6 18.2 16.5', dur: '1s' },
     trickshot: { path: 'M2 19c4 0 8-2 9-6s-3-5-4-2 3 5 7 2 5-6 5-8', dur: '1s' },
+    // Airball: ueber den kleinen Becher hinweg und hinten aus dem Bild
+    airball: { path: 'M2 20C4 7 12 3 19 7c3 2 5 6 6 14', dur: '1.1s' },
 };
 const motion = computed(() => MOTIONS[props.name] ?? null);
 
@@ -222,6 +224,31 @@ const classes = (shape: KnechtIconShape) => [
 @keyframes kci-bump{
     50%{ transform: scaleY(.8) scaleX(1.15); }
 }
+
+/* ─── Airball: Ball segelt ueber den Becher hinweg, der Becher bleibt ungeruehrt ─── */
+.kci--airball .kci-dashed{ animation: kci-fade .4s ease-out both; }
+.kci--airball .kci-cup{ transform-origin: 18.2px 21.3px; animation: kci-shrug .5s ease-in-out 1.1s both; }
+@keyframes kci-shrug{
+    50%{ transform: rotate(-8deg); }
+}
+
+/* ─── Gefangen: Ball faellt in die offene Hand, die Hand schliesst sich kurz ─── */
+.kci--trickshot .kci-ball{ animation: kci-fall .55s cubic-bezier(.5, 0, .9, .5) .15s both; }
+.kci--trickshot .kci-hand{ transform-origin: 12px 20px; animation: kci-land .35s cubic-bezier(.3, 1.5, .5, 1) both, kci-bump .3s ease-out .7s both; }
+.kci--trickshot .kci-fingers{ transform-origin: 12px 12.5px; animation: kci-land .35s cubic-bezier(.3, 1.5, .5, 1) both, kci-grab .35s ease-out .7s both; }
+@keyframes kci-fall{
+    0%{ transform: translateY(-10px); opacity: 0; }
+    20%{ opacity: 1; }
+    100%{ transform: translateY(8px); }
+}
+@keyframes kci-grab{
+    50%{ transform: scaleX(.8) scaleY(.85); }
+}
+
+/* ─── Ausgleich: beide Becher springen auf gleiche Hoehe, das Gleichheitszeichen erscheint ─── */
+.kci--equalizer .kci-cupLeft{ transform-origin: 5.5px 20px; animation: kci-land .35s cubic-bezier(.3, 1.5, .5, 1) .1s both; }
+.kci--equalizer .kci-cupRight{ transform-origin: 18.5px 20px; animation: kci-land .35s cubic-bezier(.3, 1.5, .5, 1) .3s both; }
+.kci--equalizer .kci-equals{ transform-origin: 12px 16.3px; animation: kci-burst .35s cubic-bezier(.3, 1.8, .5, 1) .6s both, kci-pop .4s ease-out .95s both; }
 
 /* ─── Re-Rack: Becher ploppen nacheinander auf ─── */
 .kci--rerack .kci-c1,

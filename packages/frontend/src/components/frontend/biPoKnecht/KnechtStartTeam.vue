@@ -6,7 +6,7 @@
             <div class="kn-start-subtitle">Tippe auf „Farben tauschen“, bis es zu euren Bechern passt.</div>
             <div class="kn-colors">
                 <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="kn-color-card" :style="{ '--kn-team-color': getTeamColor(match, teamIndex) }">
-                    <span class="kn-color-cups" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span class="kn-color-cups" aria-hidden="true"><span></span></span>
                     <span class="kn-color-team">{{ getTeamName(match, teamIndex) }}</span>
                     <span class="kn-color-name">{{ colorName(teamIndex) }}</span>
                 </div>
@@ -177,11 +177,11 @@ onBeforeUnmount(stopRps);
     gap: 4px;
 }
 .kn-color-cups span{
-    width: 30px;
-    height: 30px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: color-mix(in srgb, var(--kn-team-color) 22%, var(--bp-surface));
-    box-shadow: inset 0 0 0 4px var(--kn-team-color);
+    box-shadow: inset 0 0 0 5px var(--kn-team-color);
     transition: box-shadow .3s ease, background .3s ease;
 }
 .kn-color-team{

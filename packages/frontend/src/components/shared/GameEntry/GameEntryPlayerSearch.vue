@@ -14,9 +14,12 @@
         <template v-else>
             <div class="gp-input-wrap" :class="{ 'gp-input-wrap--open': showResults }">
                 <i class="pi pi-search gp-search-icon"></i>
+                <!-- :value + @input statt v-model: v-model wartet bei Tastaturen mit Wortvorschlaegen (Samsung, Gboard)
+                     bis das Wort fertig ist, die Vorschlaege aktualisierten sich dann nicht beim Tippen -->
                 <input
                     ref="inputEl"
-                    v-model="query"
+                    :value="query"
+                    @input="query = ($event.target as HTMLInputElement).value"
                     class="gp-input"
                     type="text"
                     :placeholder="placeholder"
@@ -55,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import EloChip from '@/components/shared/EloChip.vue';
 import { useEloRatings } from '@/components/shared/useEloRatings';
@@ -120,6 +123,19 @@ watch(showResults, async (visible) => {
     await nextTick();
     resultsEl.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 });
+
+// Handy-Tastatur geht auf (sichtbarer Bereich wird kleiner): Feld nach oben holen, damit die
+// Vorschlaege darunter nicht hinter der Tastatur liegen
+const keepAboveKeyboard = () => {
+    if (isFocused.value) inputEl.value?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+};
+watch(isFocused, focused => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    if (focused) viewport.addEventListener('resize', keepAboveKeyboard);
+    else viewport.removeEventListener('resize', keepAboveKeyboard);
+});
+onBeforeUnmount(() => window.visualViewport?.removeEventListener('resize', keepAboveKeyboard));
 
 const select = (name: string) => {
     query.value = '';

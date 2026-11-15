@@ -155,7 +155,7 @@
                             <span class="mtl-label"><GlossaryText :text="row.label" /></span>
                             <span v-if="row.player" class="mtl-player">{{ row.player }}</span>
                         </span>
-                        <span class="mtl-icon"><KnechtIcon :name="row.icon" /></span>
+                        <span class="mtl-icon"><KnechtIcon :name="getRowIcon(row)" /></span>
                     </template>
                 </div>
 
@@ -169,7 +169,7 @@
 
                 <div class="mtl-side mtl-side--right">
                     <template v-if="row.teamIndex === 1">
-                        <span class="mtl-icon"><KnechtIcon :name="row.icon" /></span>
+                        <span class="mtl-icon"><KnechtIcon :name="getRowIcon(row)" /></span>
                         <span class="mtl-text">
                             <span class="mtl-label"><GlossaryText :text="row.label" /></span>
                             <span v-if="row.player" class="mtl-player">{{ row.player }}</span>
@@ -354,8 +354,8 @@ const highlights = computed<Highlight[]>(() => {
         if (!row.quiet) {
             const lead = Math.sign(row.score[0] - row.score[1]);
             const scoreText = `${row.score[0]} : ${row.score[1]}`;
-            if (lead === 0 && leader !== 0 && row.score[0] > 0) add('hit', 'Ausgleich', scoreText, row.scoringTeam >= 0 ? row.scoringTeam : row.teamIndex);
-            else if (lead !== 0 && leader !== 0 && lead !== leader) add('ballsback', 'Führungswechsel', scoreText, lead > 0 ? 0 : 1);
+            if (lead === 0 && leader !== 0 && row.score[0] > 0) add('equalizer', 'Ausgleich', scoreText, row.scoringTeam >= 0 ? row.scoringTeam : row.teamIndex);
+            else if (lead !== 0 && leader !== 0 && lead !== leader) add('leadChange', 'Führungswechsel', scoreText, lead > 0 ? 0 : 1);
             if (lead !== 0) leader = lead;
             else if (row.score[0] > 0) leader = 0;
         }
@@ -363,6 +363,12 @@ const highlights = computed<Highlight[]>(() => {
     return list;
 });
 const highlightKeys = computed(() => new Set(highlights.value.map(highlight => highlight.rowKey)));
+// Ausgleich und Fuehrungswechsel: in der Wurfliste mit eigenem Symbol statt des normalen Treffers
+// (vorher nur ein farbiger Ring ums Treffer-Symbol, der nicht erklaert war)
+const rowIcons = computed(() => new Map(highlights.value
+    .filter(highlight => highlight.icon === 'equalizer' || highlight.icon === 'leadChange')
+    .map(highlight => [highlight.rowKey, highlight.icon])));
+const getRowIcon = (row: Row) => row.icon === 'hit' ? rowIcons.value.get(row.key) ?? row.icon : row.icon;
 
 // Antippen eines Highlights: zur Zeile scrollen und sie kurz aufleuchten lassen
 const rowElements = new Map<number, Element>();
@@ -412,7 +418,8 @@ const entries = computed(() => {
 
 // Filter "Nur Treffer": Fehlwuerfe, Airballs und gefangene Trickshots ausblenden (Re-Rack bleibt). Wahl wird gemerkt.
 const ONLY_HITS_KEY = 'bp-timeline-only-hits';
-const onlyHits = ref((() => { try { return localStorage.getItem(ONLY_HITS_KEY) === '1'; } catch { return false; } })());
+// Standard: nur Treffer (die lange Liste der Fehlwuerfe nur auf Wunsch). Die Wahl bleibt auf dem Geraet gespeichert.
+const onlyHits = ref((() => { try { return localStorage.getItem(ONLY_HITS_KEY) !== '0'; } catch { return true; } })());
 const setOnlyHits = (value: boolean) => {
     onlyHits.value = value;
     try { localStorage.setItem(ONLY_HITS_KEY, value ? '1' : '0'); } catch { /* egal */ }

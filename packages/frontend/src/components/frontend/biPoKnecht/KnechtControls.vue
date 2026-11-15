@@ -1,5 +1,10 @@
 <template>
     <div class="KnechtControls" @click.stop>
+        <!-- Re-Rack oben, gleich gross wie die anderen Knoepfe, in Gruen -->
+        <button v-if="game.canReRack.value" type="button" class="kn-control kn-control-rerack" :disabled="!!game.pick.value" @click="game.reRack()">
+            <KnechtIcon name="reRack" /> <span>Re-Rack <small>({{ reRacksLeft }} übrig)</small></span>
+        </button>
+
         <button
             type="button"
             class="kn-control kn-control-bouncer"
@@ -21,10 +26,6 @@
         >
             <KnechtIcon name="trickshot" />
             <span>{{ trickshotLabel }}</span>
-        </button>
-
-        <button v-if="game.canReRack.value" type="button" class="kn-chip" :disabled="!!game.pick.value" @click="game.reRack()">
-            <KnechtIcon name="reRack" /> Re-Rack <small>({{ reRacksLeft }} übrig)</small>
         </button>
     </div>
 </template>
@@ -83,26 +84,12 @@ const reRacksLeft = computed(() => props.game.state.value.reRacksLeft[props.game
     background: #F5A524;
     color: white;
 }
-.kn-control-trickshot{
-    height: 34px;
-    font-size: 13px;
-}
-.kn-chip{
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    align-self: center;
-    padding: 6px 12px;
-    border: none;
-    border-radius: 999px;
+.kn-control-rerack{
+    border-color: #1F8A70;
     background: #1F8A70;
     color: white;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
 }
-.kn-chip small{
+.kn-control-rerack small{
     font-weight: 600;
     opacity: .85;
 }

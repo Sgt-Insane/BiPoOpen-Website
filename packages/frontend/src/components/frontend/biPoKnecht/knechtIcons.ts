@@ -37,6 +37,24 @@ export const KNECHT_ICONS = {
     airball: [...SMALL_CUP, { d: 'M2 20C4 7 12 3 19 7', dashed: true }, ball(20.5, 8.5, 2.2)],
     bouncer: [{ d: TABLE }, { d: 'M2.5 3.5L7 20.5l4.5-9', dashed: true, part: 'trail' }, ball(12.5, 8.8, 2.3), ...SMALL_CUP],
     trickshot: [{ d: 'M2 19c4 0 8-2 9-6s-3-5-4-2 3 5 7 2 5-6 5-8', dashed: true, part: 'trail' }, ball(19.5, 3.8, 2.1), { d: 'M18 15v5M15.5 17.5h5', part: 'plus' }],
+    // Gefangen (Trickshot-Fang): offene Hand von unten, der Ball faellt hinein
+    catch: [
+        { d: 'M4.5 12.5c0 4.7 3.3 8 7.5 8s7.5-3.3 7.5-8', soft: true, part: 'hand' },
+        { d: 'M4.5 12.5V9.5M8.2 12.5V8M12 12.5V7.4M15.8 12.5V8M19.5 12.5V9.5', part: 'fingers' },
+        ball(12, 3.6, 2.4),
+    ],
+    // Ausgleich: zwei gleich hohe Becher, dazwischen ein Gleichheitszeichen
+    equalizer: [
+        { d: cupPath(5.5, 12.5, 8.5), soft: true, part: 'cupLeft' },
+        { d: cupPath(18.5, 12.5, 8.5), soft: true, part: 'cupRight' },
+        { d: 'M9.8 14.8h4.4M9.8 17.8h4.4', part: 'equals' },
+        { d: TABLE },
+    ],
+    // Fuehrungswechsel: ein Pfeil steigt, einer faellt
+    leadChange: [
+        { d: 'M7.5 20V5M4 8.5L7.5 5 11 8.5', part: 'up' },
+        { d: 'M16.5 4v15M13 15.5l3.5 3.5 3.5-3.5', part: 'down' },
+    ],
     // Bombe: Explosion platzt aus dem Becher, mit ausgefuelltem Kern
     bomb: [
         { d: 'M7 13.8L3.8 11.1 8 10.9 5.7 5.1 10.5 9 12 3.5 13.5 9 18.7 4.6 16 10.9 20.4 11.1 17 13.8z', soft: true, part: 'burst' },
