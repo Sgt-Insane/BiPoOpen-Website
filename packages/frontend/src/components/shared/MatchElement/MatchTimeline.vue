@@ -90,6 +90,33 @@
             <span class="mtl-chart-caption">getroffene Becher im Spielverlauf</span>
         </div>
 
+        <!-- Siegchance: aus Elo vor dem Spiel und Trefferquote im Spiel -->
+        <div v-if="winLine" class="mtl-win">
+            <div class="mtl-win-head">
+                <span class="mtl-win-title">Siegchance</span>
+                <span class="mtl-win-now">
+                    <b :style="{ color: getTeamColor(match, 0) }">{{ Math.round(winLine.current * 100) }} %</b>
+                    <span> : </span>
+                    <b :style="{ color: getTeamColor(match, 1) }">{{ 100 - Math.round(winLine.current * 100) }} %</b>
+                </span>
+            </div>
+            <svg class="mtl-win-chart" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                    <clipPath :id="`mtl-win-top-${uid}`"><rect x="0" y="0" width="100" height="20" /></clipPath>
+                    <clipPath :id="`mtl-win-bottom-${uid}`"><rect x="0" y="20" width="100" height="20" /></clipPath>
+                </defs>
+                <polygon :points="winLine.area" :fill="getTeamColor(match, 0)" fill-opacity=".22" :clip-path="`url(#mtl-win-top-${uid})`" />
+                <polygon :points="winLine.area" :fill="getTeamColor(match, 1)" fill-opacity=".22" :clip-path="`url(#mtl-win-bottom-${uid})`" />
+                <line x1="0" x2="100" y1="20" y2="20" class="mtl-chart-grid" vector-effect="non-scaling-stroke" />
+                <polyline :points="winLine.points" class="mtl-win-line" vector-effect="non-scaling-stroke" />
+            </svg>
+            <div class="mtl-chart-legend">
+                <span class="mtl-chart-key" :style="{ '--mtl-team-color': getTeamColor(match, 0) }">{{ getSideName(0) }} oben</span>
+                <span class="mtl-chart-key" :style="{ '--mtl-team-color': getTeamColor(match, 1) }">{{ getSideName(1) }} unten</span>
+                <span class="mtl-chart-caption">aus Elo vor dem Spiel und Trefferquote im Spiel</span>
+            </div>
+        </div>
+
         <!-- Becher-Dreieck: welcher Becher wann und von wem (aufklappbar) -->
         <button v-if="hasCupFalls" type="button" class="mtl-expand" :aria-expanded="showTriangle" @click="showTriangle = !showTriangle">
             <span>Becher-Dreieck · was fiel wann</span>
@@ -175,6 +202,7 @@ import { useEloRatings } from '@/components/shared/useEloRatings';
 import BottomSheet from '@/components/shared/BottomSheet.vue';
 import MatchCupTriangle from './MatchCupTriangle.vue';
 import { buildCupHistory, getTurnCupPositions } from './cupHistory';
+import { getEloExpectation, getWinProbabilities } from './winProbability';
 import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
 import { isFeatureOn } from '@/util/featureFlags';
 import { getTeamColor, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
@@ -405,7 +433,7 @@ const playerStats = computed(() => {
 });
 
 // Elo je Spieler nach diesem Spiel (nicht gewertete Spiele, z.B. Unentschieden, zeigen nichts)
-const { loadEloRatings, getMatchElo } = useEloRatings();
+const { loadEloRatings, getMatchElo, getElo } = useEloRatings();
 loadEloRatings();
 // Je Spieler: Trefferquote aus dem Verlauf, dazu Elo (sobald geladen und das Spiel gewertet ist)
 const playerRows = computed(() => {
@@ -425,6 +453,35 @@ const playerRows = computed(() => {
             };
         }),
     }));
+});
+
+// ─── Siegchance ───
+// Elo vor dem Spiel: aus der Wertung des Spiels (Wert danach minus Aenderung), live aus der aktuellen Elo
+const uid = Math.random().toString(36).slice(2, 8);
+const teamElo = (teamIndex: number) => {
+    const team = teamIndex === 0 ? props.match.team1 : props.match.team2;
+    const side = getMatchElo(props.match)?.[teamIndex];
+    const ratings = team.players.map(player => {
+        const change = side?.playerChanges.find(item => item.key === getEloPlayerKey(player.name));
+        return change ? change.rating - change.delta : getElo(player.name);
+    }).filter((rating): rating is number => typeof rating === 'number');
+    return ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null;
+};
+const winLine = computed(() => {
+    if (turns.value.length < 2) return null;
+    const ratings = [teamElo(0), teamElo(1)];
+    const expected = ratings[0] !== null && ratings[1] !== null ? getEloExpectation(ratings[0], ratings[1]) : .5;
+    const points = getWinProbabilities(props.match, expected, !props.live);
+    const start = points[0].time ?? props.match.time;
+    const end = points[points.length - 1].time;
+    const useTime = !!start && !!end && end > start && points.every(point => !!point.time);
+    const toX = (index: number) => useTime ? ((points[index].time! - start!) / (end! - start!)) * 100 : index / (points.length - 1) * 100;
+    const coords = points.map((point, index) => `${toX(index).toFixed(2)},${(40 - point.chance * 40).toFixed(2)}`);
+    return {
+        points: coords.join(' '),
+        area: ['0,20', ...coords, `${toX(points.length - 1).toFixed(2)},20`].join(' '),
+        current: points[points.length - 1].chance,
+    };
 });
 
 // Becher-Dreieck nur, wenn der Verlauf zusammenpasst (alte Knecht-Spiele zaehlten Becher anders und kennen kein Re-Rack)
@@ -662,6 +719,36 @@ const chartLines = computed(() => {
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+.mtl-win{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.mtl-win-head{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+.mtl-win-title{
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--bp-text-strong);
+}
+.mtl-win-now{
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    color: var(--bp-text-muted);
+}
+.mtl-win-chart{
+    width: 100%;
+    height: 90px;
+}
+.mtl-win-line{
+    fill: none;
+    stroke: var(--bp-text-strong);
+    stroke-width: 2;
+    stroke-linejoin: round;
 }
 .mtl-expand{
     display: flex;

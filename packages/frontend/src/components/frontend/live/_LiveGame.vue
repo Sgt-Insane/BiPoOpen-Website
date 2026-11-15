@@ -20,6 +20,9 @@
                         </div>
                     </div>
                     <div class="lg-phase">{{ view.phase }}</div>
+                    <div v-if="chance !== null && !finished" class="lg-chance">
+                        Siegchance {{ view.teamNames[chance >= .5 ? 0 : 1] }} {{ Math.round(Math.max(chance, 1 - chance) * 100) }} %
+                    </div>
                     <div v-if="view.lastAction" class="lg-last">Zuletzt: {{ view.lastAction }}</div>
                 </template>
                 <div v-else-if="notFound" class="lg-phase">Dieses Live-Spiel gibt es nicht (mehr).</div>
@@ -41,6 +44,8 @@ import MatchTimeline from '@/components/shared/MatchElement/MatchTimeline.vue';
 import { getLiveGame, type LiveGame } from '@/components/frontend/biPoKnecht/knechtLive';
 import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import { getLiveView } from './liveView';
+import { useEloRatings } from '@/components/shared/useEloRatings';
+import { getEloExpectation, getWinProbabilities } from '@/components/shared/MatchElement/winProbability';
 
 const POLL_MS = 2000;
 
@@ -53,6 +58,20 @@ const notFound = ref(false);
 const now = ref(Date.now());
 const view = computed(() => game.value ? getLiveView(game.value, now.value) : null);
 const finished = computed(() => game.value?.status !== 'live' || view.value?.isOver);
+
+// Aktuelle Siegchance (Elo vor dem Spiel + Trefferquote im Spiel), sobald der erste Wurf da ist
+const { loadEloRatings, getElo } = useEloRatings();
+loadEloRatings();
+const chance = computed(() => {
+    const match = view.value?.match;
+    if (!match?.turns?.length) return null;
+    const ratings = [match.team1, match.team2].map(team => {
+        const values = team.players.map(player => getElo(player.name)).filter((value): value is number => typeof value === 'number');
+        return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+    });
+    const expected = ratings[0] !== null && ratings[1] !== null ? getEloExpectation(ratings[0], ratings[1]) : .5;
+    return getWinProbabilities(match, expected, false).at(-1)?.chance ?? null;
+});
 
 let timer: ReturnType<typeof setInterval> | null = null;
 const load = async () => {
@@ -183,6 +202,11 @@ const goBack = () => {
     font-size: 14px;
     font-weight: 700;
     color: #C9D2E6;
+}
+.lg-chance{
+    font-size: 13px;
+    font-weight: 700;
+    color: #FFD27A;
 }
 .lg-last{
     font-size: 13px;
