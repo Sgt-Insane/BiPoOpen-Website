@@ -7,7 +7,7 @@
                 <template v-if="match.referee && duration"> · </template>{{ duration }}
             </span>
             <button v-if="showShare" type="button" class="mtl-share" @click="shareOpen = true">
-                <i class="pi pi-instagram"></i> Story-Overlay
+                <i class="pi pi-share-alt"></i> Story-Overlay
             </button>
         </div>
         <BottomSheet v-if="showShare" v-model:visible="shareOpen">

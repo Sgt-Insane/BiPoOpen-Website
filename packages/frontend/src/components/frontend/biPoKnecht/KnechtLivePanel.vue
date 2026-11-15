@@ -17,10 +17,19 @@
                 <span>{{ statusLabel }}</span>
             </div>
 
-            <template v-if="live.code">
+            <!-- Zweites Handy schon verbunden: erstes Handy kann es trennen -->
+            <template v-if="live.role === 'host' && live.devices > 1">
+                <div class="kl-hint">Jedes Handy liegt an einem Tischende und zeigt die Becher des Gegners. Ist das andere Team dran, wartet dieses Handy.</div>
+                <button type="button" class="kl-button" @click="$emit('kick')">
+                    <i class="pi pi-times-circle"></i> Zweites Handy trennen
+                </button>
+            </template>
+            <!-- Zweites Handy nur im Spieler-Modus (jedes Handy an einem Tischende) -->
+            <div v-else-if="live.code && referee" class="kl-hint">Ein zweites Handy geht nur im Spieler-Modus. Der Live-Ticker für Zuschauer läuft trotzdem.</div>
+            <template v-else-if="live.code && live.role === 'host'">
                 <div class="kl-label">Code fürs zweite Handy</div>
                 <div class="kl-code">{{ live.code }}</div>
-                <div class="kl-hint">Auf dem zweiten Handy: „Spiel eintragen“ → „Mit Code beitreten“, oder den Link öffnen.</div>
+                <div class="kl-hint">Auf dem zweiten Handy: „Spiel eintragen“ → „Mit Code beitreten“, oder den Link öffnen. Dort wählt man, an welchem Tischende das Handy liegt.</div>
                 <button type="button" class="kl-button kl-button--primary" @click="share(getJoinLink(live.code), 'Beim BiPo Knecht mitzählen')">
                     <i class="pi pi-share-alt"></i> {{ copied === 'join' ? 'Link kopiert ✓' : 'Link fürs zweite Handy teilen' }}
                 </button>
@@ -46,8 +55,8 @@ import type { LiveStatus } from './useKnechtLiveSync';
 
 export type KnechtLiveInfo = { status: LiveStatus; code: string | null; id: string | null; role: 'host' | 'guest' | null; devices: number };
 
-const props = defineProps<{ live: KnechtLiveInfo | null }>();
-defineEmits<{ start: []; stop: []; leave: [] }>();
+const props = defineProps<{ live: KnechtLiveInfo | null; referee?: boolean }>();
+defineEmits<{ start: []; stop: []; leave: []; kick: [] }>();
 
 const statusLabel = computed(() => {
     const live = props.live;

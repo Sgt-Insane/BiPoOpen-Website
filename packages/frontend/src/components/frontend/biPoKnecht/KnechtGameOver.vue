@@ -28,7 +28,7 @@
                     </div>
                 </div>
                 <button v-if="isFeatureOn('shareOverlay')" type="button" class="kn-over-share" @click="shareOpen = true">
-                    <i class="pi pi-instagram"></i> Story-Overlay teilen
+                    <i class="pi pi-share-alt"></i> Story-Overlay teilen
                 </button>
             </template>
 

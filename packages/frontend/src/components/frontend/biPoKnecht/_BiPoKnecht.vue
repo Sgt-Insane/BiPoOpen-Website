@@ -9,13 +9,26 @@
             :actions="game.actions"
             :refereeUsed="game.refereeUsed"
             :live="isFeatureOn('live') || live.binding.value ? liveInfo : null"
-            :initialSwapped="game.guest"
+            :phoneSide="live.binding.value?.side ?? null"
             @change="onChange"
             @exit="abort"
             @leave="leave"
             @saved="onSaved"
             @live="onLiveAction"
         />
+        <!-- Zweites Handy: an welchem Tischende steht dieses Handy? -->
+        <div v-else-if="sideChoice" class="KnechtJoining">
+            <div class="kj-card">
+                <div class="kj-title">Wo liegt dieses Handy?</div>
+                <div class="kj-text">Jedes Handy liegt an einem Tischende und zeigt die Becher, auf die dieses Team wirft.</div>
+                <button v-for="teamIndex in [0, 1]" :key="teamIndex" type="button" class="kj-option"
+                    :style="{ '--kj-color': getTeamColor(sideChoice.game.match, teamIndex) }" @click="chooseSide(teamIndex)">
+                    <span class="kj-dot"></span>
+                    <span>Bei <b>{{ getTeamName(sideChoice.game.match, teamIndex) }}</b></span>
+                </button>
+                <button type="button" class="kj-cancel" @click="cancelJoin">Abbrechen</button>
+            </div>
+        </div>
         <div v-else-if="joining" class="KnechtJoining"><i class="pi pi-spin pi-spinner"></i> Verbinde mit dem Spiel …</div>
     </div>
 </template>
@@ -29,11 +42,11 @@ import { useToast } from 'primevue/usetoast';
 import router from '@/router.js';
 import BiPoKnecht from './BiPoKnecht.vue';
 import type { KnechtAction } from './knechtEngine';
-import { formatPoints, getResultPath, getTeamName, normalizeTeams } from './KnechtUtilFunctions';
+import { formatPoints, getResultPath, getTeamColor, getTeamName, normalizeTeams } from './KnechtUtilFunctions';
 import { clearStoredGame, loadStoredGame, storeGame } from './knechtStorage';
 import { useKnechtLaunch } from './useKnechtLaunch';
 import { isDemoMode } from '@/util/demoGames';
-import { isLiveEnabled, setLiveEnabled, type LiveBinding, type LiveProgress } from './knechtLive';
+import { isLiveEnabled, LiveJoinError, peekLiveGame, setLiveEnabled, type LiveBinding, type LiveGame, type LiveProgress } from './knechtLive';
 import { useKnechtLiveSync } from './useKnechtLiveSync';
 import type { KnechtLiveInfo } from './KnechtLivePanel.vue';
 import { isFeatureOn } from '@/util/featureFlags';
@@ -76,6 +89,12 @@ const live = useKnechtLiveSync({
     applyRemote: (progress) => knecht.value?.applyRemote(progress) ?? false,
     onBindingChange: () => persist(),
     onNotice: (message) => toast.add({ severity: 'info', summary: message, life: 3500 }),
+    onKicked: () => {
+        clearStoredGame();
+        game.value = null;
+        toast.add({ severity: 'warn', summary: 'Vom anderen Handy getrennt', detail: 'Das Spiel wird dort allein weitergezählt. Hier wird nichts gespeichert.', life: 6000 });
+        router.push('/');
+    },
     onEnded: (status, liveGame) => {
         clearStoredGame();
         game.value = null;
@@ -108,8 +127,14 @@ const startLive = () => liveStarting ??= (async () => {
     if (!ok) toast.add({ severity: 'warn', summary: 'Live-Ticker gerade nicht erreichbar – das Spiel läuft trotzdem', life: 3500 });
 })().finally(() => { liveStarting = null; });
 
-const onLiveAction = (action: 'start' | 'stop' | 'leave') => {
-    if (action === 'start') {
+const onLiveAction = async (action: 'start' | 'stop' | 'leave' | 'kick') => {
+    if (action === 'kick') {
+        if (!confirm('Zweites Handy trennen? Es wird dort beendet, du zählst hier allein weiter. Der Code ändert sich.')) return;
+        const ok = await live.kick();
+        toast.add(ok
+            ? { severity: 'success', summary: 'Zweites Handy getrennt', detail: `Neuer Code: ${live.binding.value?.code ?? ''}`, life: 4000 }
+            : { severity: 'error', summary: 'Trennen gerade nicht möglich – keine Verbindung', life: 3500 });
+    } else if (action === 'start') {
         setLiveEnabled(true);
         startLive();
     } else if (action === 'stop') {
@@ -124,24 +149,54 @@ const onLiveAction = (action: 'start' | 'stop' | 'leave') => {
     }
 };
 
-// Zweites Handy: /Knecht?join=CODE
+// Zweites Handy: /Knecht?join=CODE -> Spiel ansehen, Tischseite waehlen, beitreten
+const sideChoice = ref<{ code: string; game: LiveGame } | null>(null);
+
+const showJoinError = (error: unknown, code: string) => {
+    const busy = error instanceof LiveJoinError && error.reason === 'busy';
+    toast.add(busy
+        ? { severity: 'error', summary: 'Dieses Spiel zählen schon zwei Handys', detail: 'Ein drittes Handy geht nicht. Das erste Handy kann das andere unter „Live & zweites Handy“ trennen.', life: 6000 }
+        : { severity: 'error', summary: `Kein laufendes Spiel mit dem Code ${code.toUpperCase()}`, life: 4000 });
+};
+
 const joinGame = async (code: string) => {
     if ((game.value || loadStoredGame()) && !confirm('Das laufende Spiel auf diesem Handy wird verworfen. Dem anderen Spiel beitreten?')) return false;
     joining.value = true;
     try {
-        const remote = await live.join(code);
-        const match = remote.match;
-        if (remote.startedAt) match.time = remote.startedAt;
-        game.value = { key: ++gameKey, match, startTeamIndex: remote.startTeamIndex, actions: remote.actions, refereeUsed: false, guest: true };
-        persist();
-        toast.add({ severity: 'success', summary: 'Verbunden – beide Handys zählen jetzt dasselbe Spiel', life: 3500 });
+        sideChoice.value = { code, game: await peekLiveGame(code) };
         return true;
-    } catch {
-        toast.add({ severity: 'error', summary: `Kein laufendes Spiel mit dem Code ${code.toUpperCase()}`, life: 4000 });
+    } catch (error) {
+        showJoinError(error, code);
         return false;
     } finally {
         joining.value = false;
     }
+};
+
+const chooseSide = async (side: number) => {
+    const choice = sideChoice.value;
+    if (!choice) return;
+    sideChoice.value = null;
+    joining.value = true;
+    try {
+        const remote = await live.join(choice.code, side);
+        const match = remote.match;
+        if (remote.startedAt) match.time = remote.startedAt;
+        game.value = { key: ++gameKey, match, startTeamIndex: remote.startTeamIndex, actions: remote.actions, refereeUsed: false, guest: true };
+        persist();
+        toast.add({ severity: 'success', summary: `Verbunden – dieses Handy zählt für ${getTeamName(match, side)}`, life: 3500 });
+        router.replace('/Knecht');
+    } catch (error) {
+        showJoinError(error, choice.code);
+        router.replace(resume() ? '/Knecht' : '/');
+    } finally {
+        joining.value = false;
+    }
+};
+
+const cancelJoin = () => {
+    sideChoice.value = null;
+    router.replace(resume() ? '/Knecht' : '/');
 };
 
 const newGame = (match: Match) => {
@@ -223,10 +278,10 @@ onUnmounted(stopListening);
 onMounted(async () => {
     const code = typeof route.query.join === 'string' ? route.query.join : null;
     if (code) {
-        const joined = await joinGame(code);
-        router.replace('/Knecht');
-        if (joined || resume()) return;
-        router.replace('/');
+        // Erfolgreich angesehen: weiter geht es mit der Seitenwahl (chooseSide / cancelJoin). Die Adresse
+        // bleibt bis dahin stehen - ein Wechsel auf /Knecht laedt die Seite neu und die Wahl waere weg.
+        if (await joinGame(code)) return;
+        router.replace(resume() ? '/Knecht' : '/');
         return;
     }
     // Neues Spiel abgelehnt: das laufende geht weiter
@@ -247,6 +302,62 @@ onMounted(async () => {
     font-size: 15px;
     font-weight: 600;
     color: var(--bp-text-muted);
+}
+.kj-card{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(420px, 100%);
+    padding: 20px 16px 12px;
+    border-radius: 20px;
+    background: var(--bp-surface);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .14);
+    text-align: left;
+}
+.kj-title{
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--bp-text-strong);
+}
+.kj-text{
+    margin-top: -4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--bp-text-muted);
+}
+.kj-option{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 0 14px;
+    border: 2px solid var(--kj-color);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--kj-color) 8%, var(--bp-surface));
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+.kj-dot{
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--kj-color) 22%, var(--bp-surface));
+    box-shadow: inset 0 0 0 4px var(--kj-color);
+}
+.kj-cancel{
+    height: 44px;
+    border: none;
+    background: none;
+    color: var(--bp-text-muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
 }
 .KnechtPage{
     display: flex;

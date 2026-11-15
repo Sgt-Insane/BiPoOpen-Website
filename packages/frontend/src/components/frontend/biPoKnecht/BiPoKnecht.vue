@@ -11,8 +11,26 @@
                 @menu="sheet = 'menu'"
             />
 
+            <!-- Zwei Handys: jedes liegt an einem Tischende und zeigt nur die Becher des Gegners.
+                 Ist das andere Team dran, ist dieses Handy ausgegraut (Menue und Knoepfe am Rand bleiben nutzbar). -->
+            <div v-if="twoPhone" class="kn-field kn-field--player kn-field--two">
+                <KnechtPlayers :game="game" :teamIndex="opponentSide" compact />
+                <div class="kn-end kn-end--target">
+                    <KnechtRack :game="game" :teamIndex="opponentSide" direction="up" :isTarget="isTarget(opponentSide)">
+                        <template #front><KnechtControls v-if="isTarget(opponentSide)" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
+                    </KnechtRack>
+                </div>
+                <KnechtPlayers :game="game" :teamIndex="phoneSide!" />
+                <div v-if="waitingForOther" class="kn-wait">
+                    <div class="kn-wait-card">
+                        <div class="kn-wait-title">{{ getTeamName(game.match, opponentSide) }} ist dran</div>
+                        <div class="kn-wait-text">Dieses Handy geht weiter, sobald das andere Handy die Würfe eingetragen hat.</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Spielermodus: Handy liegt auf dem Tisch, jedes Team tippt an seinem Tischende -->
-            <div v-if="mode === 'player'" class="kn-field kn-field--player">
+            <div v-else-if="mode === 'player'" class="kn-field kn-field--player">
                 <KnechtPlayers :game="game" :teamIndex="topTeam" rotated :compact="!isThrowing(topTeam)" />
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(topTeam) }">
                     <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam)">
@@ -63,7 +81,7 @@
             <!-- Airball-Shots: je 3 Airballs eines Teams trinkt jede Person dieses Teams einen Shot -->
             <transition name="kn-confirm">
                 <div v-if="shotTeam !== null && !game.isOver.value" class="kn-overlay kn-confirm kn-shot">
-                    <div class="kn-confirm-card" :style="{ transform: mode === 'player' && shotTeam === topTeam ? 'rotate(180deg)' : undefined }">
+                    <div class="kn-confirm-card" :style="{ transform: !twoPhone && mode === 'player' && shotTeam === topTeam ? 'rotate(180deg)' : undefined }">
                         <div class="kn-confirm-icon kn-shot-icon">🥃</div>
                         <div class="kn-confirm-title">Shot-Zeit!</div>
                         <div class="kn-confirm-text">
@@ -149,15 +167,16 @@
             </KnechtSheet>
 
             <KnechtSheet :visible="sheet === 'live'" title="Live & zweites Handy" :flipped="sheetFlipped" @update:visible="sheet = null">
-                <KnechtLivePanel :live="live ?? null" @start="emit('live', 'start')" @stop="emit('live', 'stop'); sheet = null" @leave="emit('live', 'leave')" />
+                <KnechtLivePanel :live="live ?? null" :referee="mode === 'referee'" @start="emit('live', 'start')" @stop="emit('live', 'stop'); sheet = null" @leave="emit('live', 'leave')" @kick="emit('live', 'kick')" />
             </KnechtSheet>
 
             <KnechtSheet :visible="sheet === 'menu'" title="Einstellungen & Sonderfälle" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <div class="kn-menu-list">
                     <!-- Einheitlich: Auswahl als Segmente, An/Aus als Schalter (Zustand immer sichtbar), Aktionen als Knoepfe -->
                     <div class="kn-menu-label">Modus</div>
-                    <SelectButton :modelValue="modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setMode" />
-                    <div v-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
+                    <SelectButton :modelValue="twoPhone ? 'player' : modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" :disabled="twoPhone" fluid @update:modelValue="setMode" />
+                    <div v-if="twoPhone" class="kn-menu-hint">Mit zwei Handys immer Spieler-Modus</div>
+                    <div v-else-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
                     <button v-if="mode === 'referee'" type="button" role="switch" class="kn-menu-toggle" :aria-checked="proEnabled" @click="toggleProMode">
                         <KnechtIcon name="miss" />
                         <span class="kn-menu-toggle-text">Knecht Pro <small>Becherkanten und Wurfzeiten erfassen</small></span>
@@ -188,10 +207,10 @@
                     <button type="button" class="kn-menu-button" @click="swapColors">
                         <i class="pi pi-palette"></i> Becherfarben tauschen
                     </button>
-                    <button type="button" class="kn-menu-button" @click="swapSides">
+                    <button v-if="!twoPhone" type="button" class="kn-menu-button" @click="swapSides">
                         <i class="pi pi-sync"></i> Seiten tauschen
                     </button>
-                    <div class="kn-menu-hint">{{ mode === 'player' ? 'Oder einfach das Handy auf dem Tisch umdrehen' : 'Oder das Handy umdrehen, wenn du auf die andere Tischseite gehst' }}</div>
+                    <div v-if="!twoPhone" class="kn-menu-hint">{{ mode === 'player' ? 'Oder einfach das Handy auf dem Tisch umdrehen' : 'Oder das Handy umdrehen, wenn du auf die andere Tischseite gehst' }}</div>
 
                     <div class="kn-menu-label">Sonderfälle</div>
                     <button type="button" class="kn-menu-button" @click="sheet = 'ownCup'"><KnechtIcon name="owncup" /> Eigene Becher runtergeworfen</button>
@@ -266,7 +285,7 @@ const props = defineProps<{
     actions: KnechtAction[];
     refereeUsed: boolean;
     live?: KnechtLiveInfo | null;       // Live-Ticker / zweites Handy (null = ausgeschaltet)
-    initialSwapped?: boolean;           // zweites Handy steht an der anderen Tischseite
+    phoneSide?: number | null;          // zwei Handys: Tischende dieses Handys (Teamindex), sonst null
 }>();
 
 const emit = defineEmits<{
@@ -274,7 +293,7 @@ const emit = defineEmits<{
     leave: [];                                      // zur Webseite, Spiel bleibt gespeichert
     saved: [match: Match, rematch: boolean];
     change: [progress: { startTeamIndex: number | null; actions: KnechtAction[]; refereeUsed: boolean }];
-    live: [action: 'start' | 'stop' | 'leave'];
+    live: [action: 'start' | 'stop' | 'leave' | 'kick'];
 }>();
 
 const game = useBiPoKnecht(props.match, props.startTeamIndex, props.actions);
@@ -288,7 +307,10 @@ const MODE_OPTIONS = [{ label: 'Auto', value: 'auto' }, { label: 'Spieler', valu
 type ModeSetting = KnechtMode | 'auto';
 const storedMode = localStorage.getItem(MODE_KEY);
 const modeSetting = ref<ModeSetting>(storedMode === 'referee' || storedMode === 'player' ? storedMode : 'auto');
-const swapped = ref(!!props.initialSwapped);
+const swapped = ref(false);
+// Zwei Handys (nur Spielermodus): dieses Handy liegt bei phoneSide und zeigt die Becher des Gegners
+const twoPhone = computed(() => props.phoneSide === 0 || props.phoneSide === 1);
+const opponentSide = computed(() => 1 - (props.phoneSide ?? 0));
 const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
 const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
@@ -325,6 +347,8 @@ const swapSides = () => {
 const swapColors = () => {
     swapCupColors(game.match);
     sheet.value = null;
+    // Speichern und ans andere Handy/den Ticker schicken (Farben gehoeren zum Spiel)
+    emit('change', { startTeamIndex: game.startTeamIndex.value, actions: game.actions.value, refereeUsed: refereeUsed.value });
 };
 
 // Seiten durch Drehen:
@@ -355,7 +379,8 @@ const pause = () => {
 const orientationQuery = window.matchMedia('(orientation: portrait)');
 const isPortrait = ref(orientationQuery.matches);
 const onOrientationChange = (event: MediaQueryListEvent) => { isPortrait.value = event.matches; };
-const mode = computed<KnechtMode>(() => modeSetting.value === 'auto' ? (isPortrait.value ? 'player' : 'referee') : modeSetting.value);
+// Zwei Handys gehen nur im Spielermodus (jedes Handy liegt an einem Tischende)
+const mode = computed<KnechtMode>(() => twoPhone.value ? 'player' : modeSetting.value === 'auto' ? (isPortrait.value ? 'player' : 'referee') : modeSetting.value);
 // Animationen sind je Modus eingestellt (Spieler: alle, Schiri: nur besondere)
 watch(mode, value => { animationMode.value = value; }, { immediate: true });
 const rotateBoard = computed(() => mode.value === 'referee' && isPortrait.value);
@@ -380,9 +405,11 @@ const activeTeam = computed(() => getTeam(game.match, state.value.activeTeamInde
 const throwerName = computed(() => getPlayerName(game.match, state.value.activeTeamIndex, game.selectedPlayer.value));
 
 // Sheets und Banner zeigen zum werfenden Team (Spielermodus, Team am oberen Tischende)
-const sheetFlipped = computed(() => mode.value === 'player' && state.value.activeTeamIndex === topTeam.value);
+const sheetFlipped = computed(() => !twoPhone.value && mode.value === 'player' && state.value.activeTeamIndex === topTeam.value);
 // Animation zum Team, das geworfen hat (nicht zum Team, das danach dran ist)
-const celebrationFlipped = computed(() => mode.value === 'player' && game.celebration.value?.teamIndex === topTeam.value);
+const celebrationFlipped = computed(() => !twoPhone.value && mode.value === 'player' && game.celebration.value?.teamIndex === topTeam.value);
+// Zwei Handys: das andere Team wirft gerade, dieses Handy wartet
+const waitingForOther = computed(() => twoPhone.value && game.isStarted.value && state.value.status === 'playing' && state.value.activeTeamIndex !== props.phoneSide);
 
 
 // ─── Knecht Pro (nur Schiedsrichter): Doppelkante und Abprallrichtung nach einem Kanten-Nullwurf ───
@@ -518,9 +545,13 @@ const getProgress = (): LiveProgress => ({
     startTeamIndex: game.startTeamIndex.value,
     startedAt: game.startTeamIndex.value !== null ? game.match.time ?? null : null,
     actions: game.actions.value,
+    // Becherfarben koennen sich nach dem Anlegen noch aendern (Startdialog, Menue)
+    match: game.match,
 });
 
 const applyRemote = (remote: LiveProgress): boolean => {
+    const colors = remote.match?.cupColors;
+    if (colors && JSON.stringify(colors) !== JSON.stringify(game.match.cupColors)) game.match.cupColors = [...colors];
     if (remote.startTeamIndex !== null && game.startTeamIndex.value === null) {
         if (remote.startedAt) game.match.time = remote.startedAt;
         game.startTeamIndex.value = remote.startTeamIndex;
@@ -607,6 +638,38 @@ onUnmounted(() => {
 }
 .kn-field--player{ flex-direction: column; }
 .kn-field--referee{ flex-direction: row; }
+/* Zwei Handys: nur die Becher des Gegners, ueber die ganze Hoehe */
+.kn-field--two{ position: relative; }
+.kn-field--two .kn-end{ flex: 1 1 0; }
+.kn-wait{
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: color-mix(in srgb, var(--bp-surface) 55%, rgba(31, 35, 40, .55));
+    backdrop-filter: grayscale(1);
+}
+.kn-wait-card{
+    max-width: 300px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: var(--bp-surface);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
+    text-align: center;
+}
+.kn-wait-title{
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--bp-text-strong);
+}
+.kn-wait-text{
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--bp-text-muted);
+}
 
 .kn-end{
     display: flex;

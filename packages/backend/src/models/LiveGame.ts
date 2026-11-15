@@ -14,6 +14,10 @@ const LiveGameSchema = new Schema(
         version: { type: Number, default: 0 },
         status: { type: String, enum: ['live', 'done', 'aborted'], default: 'live' },
         devices: { type: Number, default: 1 },
+        // Zweites Handy: eigenes Schreibrecht (beim Trennen widerrufbar), oeffentliche Kennung und Tischseite (Teamindex)
+        guestToken: { type: String, default: null },
+        guestId: { type: String, default: null },
+        guestSide: { type: Number, default: null },
         createdAt: { type: Number, required: true },
         updatedAt: { type: Number, required: true, index: true },
     },

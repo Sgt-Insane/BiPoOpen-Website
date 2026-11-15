@@ -15,6 +15,8 @@ export type LiveGame = {
     version: number;
     status: 'live' | 'done' | 'aborted';
     devices: number;
+    guestId: string | null;     // zweites Handy (wechselt beim Trennen, daran merkt es das zweite Handy)
+    guestSide: number | null;   // Tischseite des zweiten Handys (Teamindex), das erste steht gegenueber
     updatedAt: number;
 };
 
@@ -25,9 +27,17 @@ export type LiveBinding = {
     token: string;
     role: 'host' | 'guest';     // host = hat das Spiel gestartet und traegt es am Ende ein
     version: number;            // zuletzt bekannter Serverstand
+    guestId?: string | null;    // nur zweites Handy: eigene Kennung
+    side?: number | null;       // Tischseite dieses Handys bei zwei Handys (Teamindex), sonst null
 };
 
-export type LiveProgress = { startTeamIndex: number | null; startedAt: number | null; actions: KnechtAction[] };
+// match: z.B. getauschte Becherfarben, damit das andere Handy und der Ticker sie auch sehen
+export type LiveProgress = { startTeamIndex: number | null; startedAt: number | null; actions: KnechtAction[]; match?: Match };
+
+// Beitreten nicht moeglich: Spiel unbekannt/vorbei oder schon zwei Handys
+export class LiveJoinError extends Error {
+    constructor(public reason: 'not-found' | 'busy') { super(reason); }
+}
 
 const url = (path: string) => isDemoMode ? `${window.location.origin}/__live/${path}` : `live/${path}`;
 
@@ -36,9 +46,39 @@ export const createLiveGame = async (match: Match, progress: LiveProgress) => {
     return { game: data.game as LiveGame, binding: { id: data.game.id, code: data.code, token: data.token, role: 'host', version: data.game.version } as LiveBinding };
 };
 
-export const joinLiveGame = async (code: string) => {
-    const { data } = await axios.post(url('join'), { code });
-    return { game: data.game as LiveGame, binding: { id: data.game.id, code: data.code, token: data.token, role: 'guest', version: data.game.version } as LiveBinding };
+const toJoinError = (error: any) => new LiveJoinError(error?.response?.status === 409 ? 'busy' : 'not-found');
+
+// Zweites Handy, Schritt 1: Teams zum Code ansehen (fuer die Seitenwahl)
+export const peekLiveGame = async (code: string) => {
+    try {
+        const { data } = await axios.post(url('peek'), { code });
+        if (data.busy) throw new LiveJoinError('busy');
+        return data.game as LiveGame;
+    } catch (error) {
+        throw error instanceof LiveJoinError ? error : toJoinError(error);
+    }
+};
+
+// Schritt 2: mit gewaehlter Tischseite beitreten
+export const joinLiveGame = async (code: string, side: number) => {
+    try {
+        const { data } = await axios.post(url('join'), { code, side });
+        const game = data.game as LiveGame;
+        return { game, binding: { id: game.id, code: data.code, token: data.token, role: 'guest', version: game.version, guestId: game.guestId, side } as LiveBinding };
+    } catch (error) {
+        throw toJoinError(error);
+    }
+};
+
+// Erstes Handy trennt das zweite (neuer Code, das zweite verliert sein Schreibrecht)
+export const kickLiveGuest = async (binding: LiveBinding) => {
+    const { data } = await axios.post(url(`${binding.id}/kick`), { token: binding.token });
+    return { game: data.game as LiveGame, code: data.code as string };
+};
+
+// Zweites Handy steigt aus und gibt den Platz frei
+export const leaveLiveGame = async (binding: LiveBinding) => {
+    try { await axios.post(url(`${binding.id}/leave`), { token: binding.token }); } catch { /* egal: Platz verfaellt mit dem Spiel */ }
 };
 
 export const getLiveGame = async (id: string): Promise<LiveGame | null> => {

@@ -5,9 +5,12 @@ const router = express.Router();
 
 router.get("/list", controller.list);
 router.post("/create", controller.create);
+router.post("/peek", controller.peek);
 router.post("/join", controller.join);
 router.get("/:id", controller.read);
 router.post("/:id/sync", controller.sync);
 router.post("/:id/finish", controller.finish);
+router.post("/:id/kick", controller.kick);
+router.post("/:id/leave", controller.leave);
 
 export = router;
