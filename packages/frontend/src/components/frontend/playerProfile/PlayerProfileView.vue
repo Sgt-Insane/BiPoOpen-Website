@@ -15,6 +15,9 @@
             </div>
             <PlayerProfileFollowButton :playerName="profileData.name"/>
         </div>
+        <router-link :to="{ path: '/Vergleich', query: { a: profileData.name } }" class="pp-compare-link">
+            <i class="pi pi-arrow-right-arrow-left"></i> Mit anderem Spieler vergleichen
+        </router-link>
 
         <!-- Highlight: Rang, Elo und Verlauf in einer Karte -->
         <PlayerProfileEloCard v-if="profileData.elo" :elo="profileData.elo" :playerName="profileData.name"/>
@@ -124,6 +127,20 @@ const heroMeta = computed(() => {
 </script>
 
 <style scoped>
+.pp-compare-link{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 12px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+}
 .pp-avatar-button {
     position: relative;
     flex-shrink: 0;

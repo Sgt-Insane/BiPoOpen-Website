@@ -134,6 +134,18 @@ const routes = [
 		}
 	},
 
+	// Spieler-Vergleich: /Vergleich?a=Name&b=Name
+	{
+		path: '/Vergleich',
+		name: 'Vergleich',
+		component: () => import('@/components/frontend/playerProfile/_PlayerCompare.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Spieler-Vergleich',
+			description: 'Zwei Spieler direkt vergleichen',
+			detailPage: true
+		}
+	},
+
 	// Entwicklermodus: Features in Arbeit auf diesem Geraet einschalten (versteckt: 7x auf "Neuigkeiten" tippen)
 	{
 		path: '/Entwickler',
