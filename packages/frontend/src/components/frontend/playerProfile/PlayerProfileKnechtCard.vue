@@ -17,7 +17,7 @@
                 </div>
                 <div class="pp-knecht-tile">
                     <b>{{ stats.bestStreak }}</b>
-                    <span>längste Serie</span>
+                    <span>Treffer in Folge</span>
                 </div>
             </div>
 

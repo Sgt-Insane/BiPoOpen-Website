@@ -113,7 +113,7 @@ describe('BiPo Knecht Regeln', () => {
         expect(previewHit(state, 8, false)).toMatchObject({ extrasNeeded: 0 });
     });
 
-    it('kennt im 1 gegen 1 kein Heating Up / On Fire, der Spieler wirft beide Baelle', () => {
+    it('kennt im 1 gegen 1 kein Heaten Up / On Fire, der Spieler wirft beide Baelle', () => {
         const state = play(SOLO, [hit(0, 0), miss(0), miss(0), miss(0), hit(0, 1), miss(0), miss(0), miss(0), hit(0, 2)]);
         expect(state.turns.every(turn => turn.type !== 'onfire')).toBe(true);
         expect(getAllowedThrowers(state)).toEqual([0]);
@@ -133,7 +133,7 @@ describe('BiPo Knecht Regeln', () => {
     it('zaehlt die Serie je Spieler ueber die Zuege weiter, auch wenn das andere Team dazwischen wirft', () => {
         const state = play(DUO, [
             hit(0, 0), miss(1), miss(0), miss(1),
-            hit(0, 1), miss(1), miss(0), miss(1),   // Spieler 0: 2 Treffer in Folge -> Heating Up
+            hit(0, 1), miss(1), miss(0), miss(1),   // Spieler 0: 2 Treffer in Folge -> Heaten Up
             hit(0, 2),                               // 3. Treffer in Folge -> On Fire
         ]);
         expect(state.turns.at(-1)!.type).toBe('onfire');

@@ -11,7 +11,7 @@
             <!-- Airballs bis zum naechsten Shot -->
             <span v-if="airballsTowardsShot > 0" class="kn-shot-pill" :title="`${airballsTowardsShot} von 3 Airballs bis zum Shot`">🥃 {{ airballsTowardsShot }}/3</span>
             <!-- Serie auch sichtbar, wenn das Team gerade nicht wirft (Liste eingeklappt) -->
-            <span v-for="hot in hotPlayers" :key="hot.playerIndex" class="kn-fire-pill" :class="`kn-fire-pill--${hot.fire}`" :title="`${hot.name}: ${hot.fire === 'on-fire' ? 'On Fire' : 'Heating Up'}`">
+            <span v-for="hot in hotPlayers" :key="hot.playerIndex" class="kn-fire-pill" :class="`kn-fire-pill--${hot.fire}`" :title="`${hot.name}: ${hot.fire === 'on-fire' ? 'On Fire' : 'Heaten Up'}`">
                 <KnechtIcon :name="hot.fire === 'on-fire' ? 'onfire' : 'heating'" />
                 <span>{{ hot.name }}</span>
             </span>
@@ -33,7 +33,7 @@
                     <span class="kn-player-name">
                         {{ player.name }}
                         <span v-if="getFire(playerIndex) === 'on-fire'" class="kn-fire" title="On Fire"><KnechtIcon name="onfire" /><KnechtIcon name="onfire" /></span>
-                        <span v-else-if="getFire(playerIndex) === 'heating-up'" class="kn-fire" title="Heating Up"><KnechtIcon name="heating" /></span>
+                        <span v-else-if="getFire(playerIndex) === 'heating-up'" class="kn-fire" title="Heaten Up"><KnechtIcon name="heating" /></span>
                     </span>
                     <span class="kn-player-stats">{{ getPlayerLine(playerIndex) }}</span>
                 </span>
@@ -120,7 +120,7 @@ const getPlayerLine = (playerIndex: number) => {
     filter: grayscale(.8);
 }
 
-/* Heating Up / On Fire: auch beim wartenden Team gut sichtbar */
+/* Heaten Up / On Fire: auch beim wartenden Team gut sichtbar */
 .kn-shot-pill{
     padding: 2px 7px;
     border-radius: 999px;

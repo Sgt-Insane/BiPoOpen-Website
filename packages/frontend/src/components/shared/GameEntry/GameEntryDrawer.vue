@@ -103,7 +103,7 @@
                 <span class="ge-launch-icon">🎯</span>
                 <span class="ge-launch-text">
                     <span class="ge-launch-title">Mit BiPo Knecht spielen</span>
-                    <span class="ge-launch-subtitle">{{ canLaunch ? 'Jeden Wurf live zählen, Ergebnis wird automatisch eingetragen' : incompleteLabel }}</span>
+                    <span class="ge-launch-subtitle">{{ canLaunch ? 'Jeden Wurf live zählen, Ergebnis wird automatisch eingetragen' : missingLabel }}</span>
                 </span>
                 <i class="pi pi-angle-right"></i>
             </button>
@@ -167,7 +167,7 @@ const props = withDefaults(defineProps<{
     launch?: (sides: GameEntrySide[]) => void;
 }>(), {
     title: 'Spiel eintragen',
-    sideLabels: () => ['Seite 1', 'Seite 2'],
+    sideLabels: () => ['Team 1', 'Team 2'],
     allowDraw: true,
     maxScore: 21,
     incompleteLabel: 'Spieler wählen',
@@ -325,6 +325,14 @@ const onDelete = () => {
 
 // ─── BiPo Knecht ───
 const canLaunch = computed(() => hasAllNames.value && !hasDuplicateNames.value);
+
+// Was fehlt noch fuer den Knecht? z.B. "Noch 1 Spieler für Team 2"
+const missingLabel = computed(() => {
+    if (hasDuplicateNames.value) return 'Ein Spieler ist doppelt gewählt';
+    const missing = sides.value.map(side => side.players.filter(player => !player.name.trim()).length);
+    const parts = missing.flatMap((count, index) => count ? [`${count} Spieler für ${props.sideLabels[index]}`] : []);
+    return parts.length ? `Noch ${parts.join(' und ')} wählen` : props.incompleteLabel;
+});
 
 const onLaunch = () => {
     if (!canLaunch.value || !props.launch) return;

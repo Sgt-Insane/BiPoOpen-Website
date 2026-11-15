@@ -18,12 +18,12 @@
                             <span class="mtl-elo-name">{{ row.name }}</span>
                             <template v-if="row.elo">
                                 <span class="mtl-elo-delta" :class="row.elo.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.elo.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.elo.delta) }}</span>
-                                <span class="mtl-elo-rating">{{ row.elo.rating.toLocaleString('de-DE') }}</span>
+                                <span class="mtl-elo-rating" title="Elo nach dem Spiel">→ {{ row.elo.rating.toLocaleString('de-DE') }} Elo</span>
                             </template>
                         </div>
                         <div class="mtl-accuracy">
                             <span class="mtl-accuracy-bar"><span :style="{ width: `${row.accuracy}%` }"></span></span>
-                            <span class="mtl-accuracy-label">{{ row.hits }}/{{ row.throws }} · {{ row.accuracy }} %</span>
+                            <span class="mtl-accuracy-label">{{ row.hits }}/{{ row.throws }} Treffer · {{ row.accuracy }} %</span>
                         </div>
                     </div>
                 </div>
@@ -82,6 +82,10 @@
         <!-- Alle Wuerfe: Team 1 links, Team 2 rechts, in der Mitte Zwischenstand. Fehlwuerfe kleiner und grau,
              Re-Rack/Nachwurf/Verlaengerung in der Mitte. Jede Spielminute als graue Zahl, auch ohne Wurf. -->
         <div class="mtl-list">
+            <!-- Wer steht auf welcher Seite: bleibt beim Scrollen oben sichtbar -->
+            <div class="mtl-list-head">
+                <span v-for="teamIndex in [0, 1]" :key="teamIndex" class="mtl-list-team" :class="`mtl-list-team--${teamIndex}`" :style="{ '--mtl-team-color': getTeamColor(match, teamIndex) }">{{ getSideName(teamIndex) }}</span>
+            </div>
             <template v-for="item in items" :key="item.key">
             <div v-if="item.kind === 'minute'" class="mtl-minute-row">
                 <span class="mtl-minute-mark">{{ item.minute }}'</span>
@@ -143,6 +147,9 @@ import { formatEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
 import { formatSeconds, getThrowTimes } from '@/components/frontend/biPoKnecht/knechtThrowTimes';
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import { getTeamColor, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
+
+// Spaltenkopf der Wurfliste: im 1 gegen 1 der Spieler, sonst die Spieler des Teams
+const getSideName = (teamIndex: number) => getTeam(props.match, teamIndex).players.map(player => player.name).join(' & ');
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
@@ -570,6 +577,32 @@ const chartLines = computed(() => {
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+.mtl-list-head{
+    position: sticky;
+    top: 54px;              /* unter der festen App-Leiste */
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 58px 1fr;
+    margin-bottom: 4px;
+    padding: 6px 0;
+    background: var(--bp-surface);
+}
+.mtl-list-team{
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--mtl-team-color);
+}
+.mtl-list-team--0{
+    grid-column: 1;
+    text-align: right;
+}
+.mtl-list-team--1{
+    grid-column: 3;
 }
 .mtl-list::before{
     content: '';

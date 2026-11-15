@@ -241,6 +241,8 @@ const buildPlayerHistory = (data: GameData, playerName: string) => {
     const openMatches = index.open.get(playerNameLower) ?? [];
     addMatches(openMatches.filter(match => isSize(match, 1)), "Offene Spiele 1v1", playerName);
     addMatches(openMatches.filter(match => isSize(match, 2)), "Offene Spiele 2v2", playerName);
+    // Ungleiche Teams (z.B. 2 gegen 1, 3 gegen 3): zaehlen wie in der Weltrangliste mit, aber in keinem 1v1/2v2-Reiter
+    addMatches(openMatches.filter(match => !isSize(match, 1) && !isSize(match, 2)), "Offene Spiele sonstige", playerName);
 
     // 2. Liga (ueber das Team des Spielers) - Pokalspiele laufen als eigene Kategorie
     const leagueTeam = getLeagueTeamForPlayer(playerName);

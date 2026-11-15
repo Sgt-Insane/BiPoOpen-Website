@@ -105,7 +105,7 @@ export const CUP_ROWS = [1, 2, 3, 4].map(row => Array.from({ length: row }, (_, 
 export const isHitTurnType = (type: Turn['type']) =>
     type === 'hit' || type === 'bouncer' || type === 'bomb' || type === 'ballsback' || type === 'lastCup' || type === 'onfire';
 
-// On Fire / Heating Up nur, wenn ein Team mehr als einen Spieler hat (nicht im 1 gegen 1 / Liga)
+// On Fire / Heaten Up nur, wenn ein Team mehr als einen Spieler hat (nicht im 1 gegen 1 / Liga)
 export const isOnFireEnabled = (state: KnechtState, teamIndex: number) => state.config.playerCounts[teamIndex] > 1;
 
 export const getStandingCups = (rack: Rack) => {

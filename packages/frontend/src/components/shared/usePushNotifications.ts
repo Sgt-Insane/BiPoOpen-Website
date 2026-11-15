@@ -65,7 +65,8 @@ const isSupported = () => 'serviceWorker' in navigator && 'PushManager' in windo
 // navigator.serviceWorker.ready loest nie auf, wenn kein Service Worker registriert ist
 const getRegistration = () => Promise.race([
 	navigator.serviceWorker.ready,
-	new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Kein Service Worker')), 10000)),
+	// 4 s reichen fuer eine frische Registrierung; laenger soll die Seite nicht im Ladezustand haengen
+	new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Kein Service Worker')), 4000)),
 ]);
 
 const urlBase64ToUint8Array = (base64: string) => {

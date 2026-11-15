@@ -53,7 +53,7 @@
                     @select="setTeams"
                 />
                 <div v-else class="ag-hint">
-                    {{ leagueCup === undefined ? 'Paarungen werden geladen â€¦' : 'Im League Cup ist gerade keine Paarung offen.' }}
+                    {{ leagueCup === undefined ? 'Paarungen werden geladen …' : 'Im League Cup ist gerade keine Paarung offen.' }}
                 </div>
             </template>
         </template>
@@ -89,8 +89,8 @@ import router from '@/router.js';
 const TEAM_LABELS: [string, string] = ['Team 1', 'Team 2'];
 const MODE_PROPS = {
     open: { allowExtraPlayers: true, allowTeamName: true },
-    league: { sideLabels: TEAM_LABELS, incompleteLabel: 'Teams wÃ¤hlen' },
-    cup: { sideLabels: TEAM_LABELS, lockedNames: true, allowDraw: false, avatarShape: 'square' as const, incompleteLabel: 'Paarung wÃ¤hlen' },
+    league: { sideLabels: TEAM_LABELS, incompleteLabel: 'Teams wählen' },
+    cup: { sideLabels: TEAM_LABELS, lockedNames: true, allowDraw: false, avatarShape: 'square' as const, incompleteLabel: 'Paarung wählen' },
 };
 
 const { addGameVisible, pageContext, presetNames, notifyGameSaved } = useAddGame();

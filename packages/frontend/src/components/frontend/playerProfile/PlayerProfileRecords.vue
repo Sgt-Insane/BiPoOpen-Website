@@ -49,11 +49,12 @@ const heldCount = computed(() => records.value.filter(badge => getStatus(badge) 
 const getSubline = (badge: PlayerBadge) => {
     const { best, holder, unit, until } = badge.record!;
     const isStreak = unit.endsWith('in Folge');
-    switch (getStatus(badge)) {
-        case 'current': return isStreak ? `Rekordhalter · ${unit}` : 'Rekordhalter';
-        case 'former': return `Rekord bis ${until ? formatMonth(until) : '–'} · jetzt ${holder} mit ${formatNumber(best)}`;
-        default: return `Rekord: ${holder} mit ${formatNumber(best)}`;
-    }
+    const status = getStatus(badge);
+    if (status === 'current') return isStreak ? `Rekordhalter · ${unit}` : 'Rekordhalter';
+    // Gleich viel wie der Rekordhalter, der Rekord gehoert aber dem, der ihn zuerst erreicht hat
+    if (badge.record!.own === best) return `Gleichauf mit Rekordhalter ${holder}`;
+    if (status === 'former') return `Rekordhalter bis ${until ? formatMonth(until) : '–'} · Rekord jetzt ${holder} (${formatNumber(best)})`;
+    return `Rekord: ${holder} (${formatNumber(best)})`;
 };
 
 const getPercent = (badge: PlayerBadge) => Math.min(100, Math.round(badge.record!.own / Math.max(1, badge.record!.best) * 100));
