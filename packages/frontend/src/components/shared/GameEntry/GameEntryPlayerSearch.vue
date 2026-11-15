@@ -60,6 +60,7 @@ import Avatar from '@/components/shared/Avatar.vue';
 import EloChip from '@/components/shared/EloChip.vue';
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import { getAllPlayerNames, getPlayerMatchCounts } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
+import { rankPlayerNames } from '@/components/shared/playerNameSearch';
 
 const MAX_RESULTS = 6;
 
@@ -95,15 +96,11 @@ const onFocus = async () => {
     [names.value, matchCounts.value] = await Promise.all([getAllPlayerNames(), getPlayerMatchCounts()]);
 }
 
-// Leere Suche: die aktivsten Spieler zur schnellen Auswahl.
+// Leere Suche: die aktivsten Spieler zur schnellen Auswahl. Sonst: Namensanfang zuerst (playerNameSearch).
 const suggestions = computed(() => {
     const search = normalize(query.value);
     const excluded = props.excludedNames.map(normalize);
-    return names.value
-        .filter(name => !excluded.includes(normalize(name)) && normalize(name).includes(search))
-        .sort((name1, name2) =>
-            (matchCounts.value[name2] ?? 0) - (matchCounts.value[name1] ?? 0) || name1.localeCompare(name2, 'de', { sensitivity: 'base' })
-        )
+    return rankPlayerNames(names.value.filter(name => !excluded.includes(normalize(name))), search, matchCounts.value)
         .slice(0, MAX_RESULTS);
 });
 

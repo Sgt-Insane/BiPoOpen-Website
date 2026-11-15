@@ -47,6 +47,7 @@ import EloChip from './EloChip.vue';
 import { usePlayerSearch } from './usePlayerSearch';
 import { useEloRatings } from './useEloRatings';
 import { getAllPlayerNames, getPlayerMatchCounts } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
+import { rankPlayerNames } from './playerNameSearch';
 import { getPlayerProfilePath } from '@/util/util';
 
 const MAX_RESULTS = 30;
@@ -79,13 +80,7 @@ watch(playerSearchVisible, async (visible) => {
 const results = computed(() => {
 	const search = normalize(query.value);
 	const counts = matchCounts.value;
-	return names.value
-		.filter(name => normalize(name).includes(search))
-		.sort((name1, name2) =>
-			Number(normalize(name2).startsWith(search)) - Number(normalize(name1).startsWith(search)) ||
-			(counts[name2] ?? 0) - (counts[name1] ?? 0) ||
-			name1.localeCompare(name2, 'de', { sensitivity: 'base' })
-		)
+	return rankPlayerNames(names.value, search, counts)
 		.slice(0, search ? MAX_RESULTS : MAX_SUGGESTIONS);
 });
 
