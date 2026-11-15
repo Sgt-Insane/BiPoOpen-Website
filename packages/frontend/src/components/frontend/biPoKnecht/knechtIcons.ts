@@ -19,8 +19,12 @@ export const KNECHT_ICONS = {
     airball: [...SMALL_CUP, { d: 'M2 20C4 7 12 3 19 7', dashed: true }, ball(20.5, 8.5, 2.2)],
     bouncer: [{ d: TABLE }, { d: 'M2.5 3.5L7 20.5l4.5-9', dashed: true }, ball(12.5, 8.8, 2.3), ...SMALL_CUP],
     trickshot: [{ d: 'M2 19c4 0 8-2 9-6s-3-5-4-2 3 5 7 2 5-6 5-8', dashed: true }, ball(19.5, 3.8, 2.1), { d: 'M18 15v5M15.5 17.5h5' }],
-    // Bombe: zwei Baelle im selben Becher, mit Explosionsstrahlen gut zu erkennen
-    bomb: [...CUP, ball(9.4, 6.3, 2.4), ball(14.6, 6.3, 2.4), { d: 'M12 1v1.8M5.2 2.6l1.4 1.4M18.8 2.6l-1.4 1.4M3.2 6.3h1.6M19.2 6.3h1.6' }],
+    // Bombe: Atompilz ueber einem (kleineren) Becher
+    bomb: [
+        { d: 'M10.7 8.6c0 2.3-.7 4-2.2 5.6h7c-1.5-1.6-2.2-3.3-2.2-5.6z', soft: true },
+        { d: 'M4.6 8.6C2.8 8.6 2.4 6.2 4 5.4 4 3.4 6.2 2.6 7.6 3.6 8.4 1.8 10.3 1.2 12 1.6c1.7-.4 3.6.2 4.4 2 1.4-1 3.6-.2 3.6 1.8 1.6.8 1.2 3.2-.6 3.2-1.5 0-2.4-.8-3.2-.8-1 0-1.6.8-2.6.8h-3.2c-1 0-1.6-.8-2.6-.8-.8 0-1.7.8-3.2.8z', soft: true },
+        { d: 'M6 14.2h12l-1.3 7a1.1 1.1 0 0 1-1.1.9H8.4a1.1 1.1 0 0 1-1.1-.9z', soft: true },
+    ],
     ballsback: [
         { d: 'M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5' },
         { d: 'M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 20v-4.5h4.5' },
