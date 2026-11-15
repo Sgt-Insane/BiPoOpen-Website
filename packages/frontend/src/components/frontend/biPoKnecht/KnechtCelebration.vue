@@ -36,7 +36,8 @@
                             :style="cup.style"
                         >{{ cup.number }}</span>
                     </div>
-                    <div v-else class="kc-icon"><KnechtIcon :name="look.icon" /></div>
+                    <!-- Das Piktogramm der Aktion in gross, animiert -->
+                    <div v-else class="kc-icon"><KnechtCelebrationIcon :name="look.icon" :kind="celebration.kind" /></div>
                     <div class="kc-title" :style="{ fontSize: titleSize }">{{ title }}</div>
                     <div v-if="subtitle" class="kc-subtitle">{{ subtitle }}</div>
                 </div>
@@ -47,7 +48,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import KnechtIcon from './KnechtIcon.vue';
+import KnechtCelebrationIcon from './KnechtCelebrationIcon.vue';
 import type { KnechtIconName } from './knechtIcons';
 import type { FormationEffect } from './knechtFormations';
 import type { KnechtCelebration, KnechtCelebrationKind } from './useBiPoKnecht';
@@ -272,19 +273,19 @@ const rerackCups = computed(() => {
 .kc-icon{
     display: grid;
     place-items: center;
-    width: 64px;
-    height: 64px;
-    border: 4px solid white;
+    width: 112px;
+    height: 112px;
+    padding: 10px;
+    border: 5px solid white;
     border-radius: 50%;
     background: var(--kc-color);
     color: white;
-    font-size: 34px;
     box-shadow: 0 8px 0 var(--kc-dark), 0 14px 30px rgba(0, 0, 0, .35);
-    animation: kc-icon .7s cubic-bezier(.3, 1.6, .5, 1) .1s both;
+    animation: kc-icon .45s cubic-bezier(.3, 1.6, .5, 1) both;
 }
 @keyframes kc-icon{
-    0%{ transform: scale(0) rotate(-180deg); }
-    100%{ transform: scale(1) rotate(0); }
+    0%{ transform: scale(0); }
+    100%{ transform: scale(1); }
 }
 .kc-title{
     font-weight: 900;
