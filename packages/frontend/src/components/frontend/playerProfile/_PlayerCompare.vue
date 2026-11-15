@@ -6,7 +6,7 @@
                     <button type="button" class="pc-back" aria-label="Zurück" @click="goBack()">
                         <i class="pi pi-chevron-left"></i>
                     </button>
-                    <h1 class="pc-hero-title">Spieler-Vergleich</h1>
+                    <h1 class="pc-hero-title">Spieler-Vergleich <InfoButton term="vergleich" /></h1>
                 </div>
 
                 <!-- Zwei Spieler: antippen zum Wechseln -->
@@ -71,6 +71,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Avatar from '@/components/shared/Avatar.vue';
+import InfoButton from '@/components/shared/InfoButton.vue';
 import PlayerSearchAutoComplete from '@/components/shared/PlayerSearchAutoComplete.vue';
 import { getGameData } from '@/util/gameDataCache';
 import { buildPlayerProfileData } from './PlayerProfileUtilFunctions';

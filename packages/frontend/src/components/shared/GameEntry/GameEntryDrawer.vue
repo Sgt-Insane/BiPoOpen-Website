@@ -88,8 +88,14 @@
                 Teams auslosen
             </button>
 
+            <!-- Unmoeglicher Spielstand (z.B. 2 gegen 2 mit je 10 Treffern): Warnung, Speichern gesperrt -->
+            <div v-if="isImpossible" class="ge-warning" role="alert">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span><b>Unmöglicher Spielstand.</b> Bis 10 gespielt, mehr nur in der Verlängerung (je 3 Becher). Bei mehreren Spielern zählen die Treffer zusammen.</span>
+            </div>
+
             <!-- Elo-Vorschau, sobald das Ergebnis feststeht -->
-            <div v-if="eloChanges.length" class="ge-elo">
+            <div v-if="eloChanges.length && !isImpossible" class="ge-elo">
                 <div class="ge-elo-header">
                     <span class="ge-elo-title">Elo nach diesem Spiel</span>
                     <button type="button" class="ge-elo-info" aria-label="Elo erklärt" @click="eloExplainedVisible = true">
@@ -153,7 +159,7 @@ import { ELO_START, getEloDeltas } from '@/components/frontend/worldRanking/eloR
 import { getPlayerForLeagueTeam } from '@/components/frontend/league/LeaguePlayersData';
 import GameEntryPlayerSearch from './GameEntryPlayerSearch.vue';
 import GameEntryScorePicker from './GameEntryScorePicker.vue';
-import { createEmptySides, getScoreChances, getSideName, getSideScore, type GameEntrySide } from './gameEntry';
+import { createEmptySides, getScoreChances, getSideName, getSideScore, isImpossibleScore, type GameEntrySide } from './gameEntry';
 import { PUSH_SETTINGS_PATH, usePushNotifications } from '@/components/shared/usePushNotifications';
 import { isFeatureOn } from '@/util/featureFlags';
 
@@ -268,8 +274,10 @@ const hasDuplicateNames = computed(() =>
 const hasAllScores = computed(() => totals.value.every(total => total !== null));
 const isDraw = computed(() => hasAllScores.value && totals.value[0] === totals.value[1]);
 
+const isImpossible = computed(() => hasAllScores.value && isImpossibleScore(totals.value[0]!, totals.value[1]!));
+
 const canSave = computed(() =>
-    hasAllNames.value && !hasDuplicateNames.value && hasAllScores.value && (props.allowDraw || !isDraw.value)
+    hasAllNames.value && !hasDuplicateNames.value && hasAllScores.value && !isImpossible.value && (props.allowDraw || !isDraw.value)
 );
 
 const saveLabel = computed(() => {
@@ -280,6 +288,7 @@ const saveLabel = computed(() => {
         const missing = sides.value.flatMap(side => side.players).find(player => player.score === null);
         return missing?.name.trim() ? `Treffer für ${missing.name.trim()} wählen` : 'Treffer wählen';
     }
+    if (isImpossible.value) return `Unmöglicher Spielstand · ${totals.value[0]} : ${totals.value[1]}`;
     if (isDraw.value && !props.allowDraw) return 'Kein Unentschieden möglich';
     return `Ergebnis speichern · ${totals.value[0]} : ${totals.value[1]}`;
 });
@@ -555,6 +564,21 @@ const onLaunch = () => {
 }
 
 /* ─── Elo-Vorschau ─── */
+.ge-warning{
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: color-mix(in srgb, #E5484D 12%, transparent);
+    color: var(--bp-text, inherit);
+    font-size: 14px;
+    line-height: 1.4;
+}
+.ge-warning .pi{
+    margin-top: 2px;
+    color: #E5484D;
+}
 .ge-elo{
     display: flex;
     flex-direction: column;

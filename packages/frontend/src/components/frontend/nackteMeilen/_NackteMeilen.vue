@@ -8,7 +8,7 @@
                     <button type="button" class="nm-back" aria-label="Zurück" @click="goBack()">
                         <i class="pi pi-chevron-left"></i>
                     </button>
-                    <h1 class="nm-hero-title">Nackte Meilen</h1>
+                    <h1 class="nm-hero-title">Nackte Meilen <InfoButton term="nackteMeilenSeite" /></h1>
                 </div>
 
                 <div class="nm-stats">
@@ -106,6 +106,7 @@
 import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 import Avatar from '@/components/shared/Avatar.vue';
+import InfoButton from '@/components/shared/InfoButton.vue';
 import SkeletonList from '@/components/shared/SkeletonList.vue';
 import { onGameSaved } from '@/components/shared/GameEntry/useAddGame';
 import { getAllOpenGames } from '@/components/frontend/openGames/OpenGamesUtilFunctions';

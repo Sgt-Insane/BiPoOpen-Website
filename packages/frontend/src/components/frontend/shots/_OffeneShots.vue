@@ -8,7 +8,7 @@
                     <button type="button" class="nm-back" aria-label="Zurück" @click="goBack()">
                         <i class="pi pi-chevron-left"></i>
                     </button>
-                    <h1 class="nm-hero-title">Offene Shots</h1>
+                    <h1 class="nm-hero-title">Offene Shots <InfoButton term="shotsSeite" /></h1>
                 </div>
 
                 <div class="nm-stats">
@@ -107,6 +107,7 @@ import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Avatar from '@/components/shared/Avatar.vue';
+import InfoButton from '@/components/shared/InfoButton.vue';
 import SkeletonList from '@/components/shared/SkeletonList.vue';
 import { getShots, setShotDrunk, type Shot } from './shots';
 

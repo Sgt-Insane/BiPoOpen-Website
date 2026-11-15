@@ -26,6 +26,20 @@ export const getSideScore = (side: GameEntrySide) =>
         ? side.players.reduce((sum, player) => sum + (player.score ?? 0), 0)
         : null;
 
+// ─── Unmoegliche Spielstaende ───
+// Gespielt wird bis 10. Mehr als 10 gibt es nur in der Verlaengerung (je 3 Becher): Dann hat auch der
+// Verlierer alle 10 getroffen und liegt hoechstens 3 Becher hinter dem Sieger. Bewusst grosszuegig, damit
+// Sonderfaelle (Deathcup, Strafbecher, Zeitende im Turnier) mit weniger als 10 Treffern durchgehen.
+// Beispiel aus dem Nutzertest: 2 gegen 2, je 10 Treffer pro Spieler -> 20 : 16.
+export const OVERTIME_CUPS = 3;
+
+export const isImpossibleScore = (score1: number, score2: number): boolean => {
+    const winner = Math.max(score1, score2);
+    const loser = Math.min(score1, score2);
+    if (winner <= WIN_SCORE) return false;
+    return loser < WIN_SCORE || winner === loser || winner - loser > OVERTIME_CUPS;
+};
+
 // ─── Wahrscheinliche Treffer ───
 // Damit der ScorePicker naheliegende Werte groesser zeigt. Gespielt wird bis 10, die Verteilung
 // der Verlierer-Summen stammt aus ~1000 offenen und Liga-Spielen (Stand 11/2026).

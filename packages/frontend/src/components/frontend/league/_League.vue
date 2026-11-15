@@ -3,7 +3,7 @@
 
         <!-- Kopf: Titel links, Saison-Auswahl rechts -->
         <div class="lg-head bp-white-band bp-white-band--top">
-            <h1 class="bp-title">BiPo League</h1>
+            <h1 class="bp-title">BiPo League <InfoButton term="liga" /></h1>
             <Select v-if="seasonOptions.length > 1"
                 class="lg-season-select"
                 size="small"
@@ -107,6 +107,7 @@
 import { computed, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import SkeletonList from '@/components/shared/SkeletonList.vue';
+import InfoButton from '@/components/shared/InfoButton.vue';
 import FloatingActionButton from '@/components/shared/FloatingActionButton.vue';
 import wheelIcon from '@/assets/icons/wheel.png';
 import LeagueTable from './LeagueTable.vue';

@@ -90,8 +90,9 @@
             <span class="mtl-chart-caption">getroffene Becher im Spielverlauf</span>
         </div>
 
-        <!-- Siegchance: aus Elo vor dem Spiel und Trefferquote im Spiel -->
-        <div v-if="winLine" class="mtl-win">
+        <!-- Siegchance: aus Elo vor dem Spiel und Trefferquote im Spiel. Nur waehrend des Spiels,
+             im fertigen Verlauf steht am Ende ohnehin 100 % : 0 % -->
+        <div v-if="live && winLine" class="mtl-win">
             <div class="mtl-win-head">
                 <span class="mtl-win-title">Siegchance</span>
                 <span class="mtl-win-now">
@@ -468,7 +469,7 @@ const teamElo = (teamIndex: number) => {
     return ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null;
 };
 const winLine = computed(() => {
-    if (turns.value.length < 2) return null;
+    if (!props.live || turns.value.length < 2) return null;
     const ratings = [teamElo(0), teamElo(1)];
     const expected = ratings[0] !== null && ratings[1] !== null ? getEloExpectation(ratings[0], ratings[1]) : .5;
     const points = getWinProbabilities(props.match, expected, !props.live);

@@ -27,6 +27,10 @@ export const GLOSSARY = {
     gentleman: { term: 'Gentleman’s Rule / Nachwurf', text: 'Ist der letzte Becher gefallen, wirft das andere Team abwechselnd weiter, bis es verfehlt. Trifft es alle, geht es in die Verlängerung.' },
     tableColumns: { term: 'Tabellenspalten', text: 'SP = Spiele · S = Siege · N = Niederlagen · DIFF = Trefferdifferenz · Trend = letzte 5 Spiele (S/N), neuestes rechts.' },
     knecht: { term: 'BiPo Knecht', text: 'Der digitale Schiri: Jeder Wurf wird live am Handy gezählt, das Ergebnis wird danach automatisch eingetragen.' },
+    vergleich: { term: 'Spieler-Vergleich', text: 'Links der erste, rechts der zweite Spieler. Der bessere Wert ist farbig, der Balken zeigt das Verhältnis der beiden Werte.' },
+    getroffen: { term: 'Getroffen', text: 'So viele Becher hat das Team (oder der Spieler) beim Gegner schon getroffen. Bei 10 ist das Spiel gewonnen.' },
+    nackteMeilenSeite: { term: 'Nackte Meilen', text: 'Wer ein Spiel mit 0 Treffern beendet, schuldet eine nackte Meile. Hier steht, wer noch laufen muss und wer schon gelaufen ist.' },
+    shotsSeite: { term: 'Offene Shots', text: 'Je 3 Airballs eines Teams trinkt jede Person dieses Teams einen Shot. Auf „Später“ gelegte Shots stehen hier, bis sie getrunken sind.' },
 } satisfies Record<string, GlossaryTerm>;
 
 export type GlossaryKey = keyof typeof GLOSSARY;
@@ -50,6 +54,7 @@ const ALIASES: Record<string, GlossaryKey> = {
     'letzter becher': 'letzterBecher', 'letzte becher': 'letzterBecher',
     'nachwurf': 'gentleman', "gentleman's rule": 'gentleman', 'verlängerung': 'gentleman',
     'sp': 'tableColumns', 'diff': 'tableColumns', 'trend': 'tableColumns',
+    'getroffen': 'getroffen',
 };
 
 export const findGlossaryKey = (text: string): GlossaryKey | null => {

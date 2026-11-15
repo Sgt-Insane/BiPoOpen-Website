@@ -15,8 +15,9 @@
 
             <!-- Entwicklermodus an/aus -->
             <section class="dv-card">
+                <!-- Tipp auf die Beschriftung schaltet wie der Schalter selbst -->
                 <div class="dv-row">
-                    <div class="dv-row-text">
+                    <div class="dv-row-text dv-row-text--toggle" @click="setDevMode(!devState.enabled)">
                         <div class="dv-row-title">Entwicklermodus</div>
                         <div class="dv-row-sub">{{ devState.enabled ? 'An – Features in Arbeit sind sichtbar' : 'Aus – du siehst die Seite wie alle anderen' }}</div>
                     </div>
@@ -28,7 +29,8 @@
             <section class="dv-card">
                 <h2 class="dv-card-title">Features</h2>
                 <div v-for="feature in features" :key="feature.key" class="dv-row dv-row--feature">
-                    <div class="dv-row-text">
+                    <div class="dv-row-text" :class="{ 'dv-row-text--toggle': !feature.released && devState.enabled }"
+                        @click="!feature.released && devState.enabled && setFeature(feature.key, !feature.on)">
                         <div class="dv-row-title">{{ feature.title }}</div>
                         <div class="dv-row-sub">{{ feature.description }}</div>
                         <span class="dv-chip" :class="{ 'dv-chip--released': feature.released }">
@@ -214,6 +216,10 @@ const goBack = () => {
     align-items: flex-start;
     padding-top: 12px;
     border-top: 1px solid var(--bp-border);
+}
+.dv-row-text--toggle{
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 .dv-row-text{
     display: flex;

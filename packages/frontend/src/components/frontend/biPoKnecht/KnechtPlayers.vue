@@ -15,7 +15,7 @@
                 <KnechtIcon :name="hot.fire === 'on-fire' ? 'onfire' : 'heating'" />
                 <span>{{ hot.name }}</span>
             </span>
-            <span class="kn-team-score">{{ formatPoints(teamPoints) }} <small>Becher</small></span>
+            <span class="kn-team-score">{{ formatPoints(teamPoints) }} <small><GlossaryWord term="getroffen">getroffen</GlossaryWord></small></span>
         </div>
 
         <div class="kn-player-list" :class="{ 'kn-player-list--single': team.players.length === 1 }">
@@ -26,7 +26,7 @@
                 class="kn-player"
                 :class="getPlayerClass(playerIndex)"
                 :disabled="!isActive || !game.allowedThrowers.value.includes(playerIndex)"
-                @click="game.selectPlayer(playerIndex)"
+                @click="choosePlayer(playerIndex)"
             >
                 <Avatar :name="player.name" :avatarImage="team.players.length === 1 ? team.logo : undefined" class="kn-player-avatar" />
                 <span class="kn-player-text">
@@ -39,12 +39,15 @@
                 </span>
             </button>
         </div>
+        <!-- Nutzertest: Neulinge merken nicht, dass man den Werfer umschalten kann. Hinweis, bis einmal umgeschaltet wurde. -->
+        <div v-if="showThrowerHint" class="kn-thrower-hint">Wirft jemand anderes? Namen antippen.</div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import KnechtIcon from './KnechtIcon.vue';
 import { getBallNumber, getFinalPlayerPoints, getTeamPoints, isOnFireEnabled } from './knechtEngine';
 import { getTeamColor, formatPoints, getTeam, getTeamName } from './KnechtUtilFunctions';
@@ -67,8 +70,25 @@ const playerPoints = computed(() => getFinalPlayerPoints(state.value)[props.team
 const turnBadge = computed(() => {
     if (state.value.nachwurfTeamIndex === props.teamIndex) return 'Nachwurf';
     if (state.value.round.ballsBack) return `Balls Back · Ball ${getBallNumber(state.value)}/2`;
-    return `Ball ${getBallNumber(state.value)}/2`;
+    return `Am Zug · Ball ${getBallNumber(state.value)}/2`;
 });
+
+// ─── Hinweis zum Werfer-Wechsel ───
+// Bleibt auf diesem Geraet, bis jemand einmal einen anderen Werfer gewaehlt hat oder ein Spiel zu Ende ist.
+const HINT_KEY = 'knechtThrowerHintSeen';
+const readHintSeen = () => { try { return localStorage.getItem(HINT_KEY) === '1'; } catch { return false; } };
+const hintSeen = ref(readHintSeen());
+const markHintSeen = () => {
+    hintSeen.value = true;
+    try { localStorage.setItem(HINT_KEY, '1'); } catch { /* privater Modus: Hinweis kommt beim naechsten Mal wieder */ }
+};
+const showThrowerHint = computed(() => !hintSeen.value && isActive.value && props.game.allowedThrowers.value.length > 1);
+watch(() => props.game.isOver.value, over => { if (over) markHintSeen(); });
+
+const choosePlayer = (playerIndex: number) => {
+    if (playerIndex !== props.game.selectedPlayer.value && props.game.allowedThrowers.value.includes(playerIndex)) markHintSeen();
+    props.game.selectPlayer(playerIndex);
+};
 
 const getFire = (playerIndex: number) => {
     if (!isOnFireEnabled(state.value, props.teamIndex)) return 'normal';
@@ -96,7 +116,7 @@ const getPlayerClass = (playerIndex: number) => {
 const getPlayerLine = (playerIndex: number) => {
     const points = formatPoints(playerPoints.value[playerIndex] ?? 0);
     const streak = state.value.streaks[props.teamIndex][playerIndex] ?? 0;
-    const parts = [`${points} Becher`];
+    const parts = [`${points} getroffen`];
     if (streak > 0) parts.push(`Serie ${streak}`);
     if (isActive.value && props.game.playersDone.value.includes(playerIndex)) parts.push('hat geworfen');
     else if (isActive.value && props.game.selectedPlayer.value === playerIndex) parts.push('wirft');
@@ -247,10 +267,20 @@ const getPlayerLine = (playerIndex: number) => {
 .kn-player:disabled{
     cursor: default;
 }
+/* Wer gerade wirft: kraeftig in Teamfarbe, damit man es auch aus der Entfernung am Tisch sieht */
 .kn-player--selected{
     border-color: var(--kn-team-color);
-    background: color-mix(in srgb, var(--kn-team-color) 9%, var(--bp-surface));
-    box-shadow: 0 0 0 1px var(--kn-team-color);
+    background: color-mix(in srgb, var(--kn-team-color) 16%, var(--bp-surface));
+    box-shadow: 0 0 0 2px var(--kn-team-color);
+}
+.kn-player--selected .kn-player-stats{
+    color: var(--kn-team-color);
+    font-weight: 700;
+}
+.kn-thrower-hint{
+    font-size: 11px;
+    text-align: center;
+    color: var(--bp-text-muted);
 }
 .kn-player--done,
 .kn-player--locked{

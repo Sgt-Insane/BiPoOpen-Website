@@ -1,5 +1,6 @@
 <template>
-    <!-- Erklaerungswuerdiges Wort: gepunktet unterstrichen, Antippen zeigt die Erklaerung direkt daran -->
+    <!-- Erklaerungswuerdiges Wort: sieht aus wie normaler Text (bewusst kein Highlight, die App soll ruhig wirken),
+         Antippen zeigt die Erklaerung direkt daran -->
     <span v-if="key" ref="word" class="GlossaryWord" role="button" tabindex="0" :aria-label="`${GLOSSARY[key].term}: Erklärung anzeigen`"
         @click.stop.prevent="show" @keydown.enter.prevent="show"><slot>{{ text }}</slot></span>
     <span v-else><slot>{{ text }}</slot></span>
@@ -24,14 +25,7 @@ const show = () => {
 
 <style scoped>
 .GlossaryWord{
-    text-decoration: underline dotted;
-    text-decoration-thickness: 1.5px;
-    text-underline-offset: 3px;
-    text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
     cursor: help;
     -webkit-tap-highlight-color: transparent;
-}
-.GlossaryWord:hover{
-    text-decoration-color: currentColor;
 }
 </style>

@@ -204,7 +204,10 @@ const rerackCups = computed(() => {
     inset: 0;
     z-index: 25;
     overflow: hidden;
-    pointer-events: none;
+    /* Faengt Tipps ab, solange die Animation laeuft: erst ablaufen lassen, dann weiter
+       (Nutzertest: zu schnelles Weitertippen landete im falschen Zug) */
+    pointer-events: auto;
+    touch-action: none;
     container-type: size;
 }
 .kc-stage{
