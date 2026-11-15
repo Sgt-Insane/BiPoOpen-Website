@@ -70,13 +70,16 @@
                 </button>
             </template>
             <template v-else>
-                <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving" title="Speichern und Revanche" @click="save(true)">
-                    <i class="pi pi-replay"></i>
-                </button>
-                <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving" @click="save(false)">
-                    <i v-if="saving" class="pi pi-spin pi-spinner"></i>
-                    <span v-else>{{ saveLabel }}</span>
-                </button>
+                <template v-if="canSave">
+                    <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving" title="Speichern und Revanche" @click="save(true)">
+                        <i class="pi pi-replay"></i>
+                    </button>
+                    <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving" @click="save(false)">
+                        <i v-if="saving" class="pi pi-spin pi-spinner"></i>
+                        <span v-else>{{ saveLabel }}</span>
+                    </button>
+                </template>
+                <div v-else class="kn-over-guest">Das andere Handy (hat das Spiel gestartet) trägt es ein.</div>
             </template>
         </div>
 
@@ -101,7 +104,7 @@ import {
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
-const props = defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean }>();
+const props = withDefaults(defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean; canSave?: boolean }>(), { canSave: true });
 const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
 
 const toast = useToast();
@@ -325,6 +328,14 @@ const save = async (rematch: boolean) => {
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--bp-border);
     background: var(--bp-surface);
+}
+.kn-over-guest{
+    flex: 1;
+    align-self: center;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--bp-text-muted);
 }
 .kn-over-button{
     display: flex;

@@ -107,6 +107,10 @@
                 </span>
                 <i class="pi pi-angle-right"></i>
             </button>
+            <!-- Zweites Handy: einem laufenden Knecht-Spiel mit Code beitreten -->
+            <button v-if="launch" type="button" class="ge-join" @click="onJoin()">
+                <i class="pi pi-mobile"></i> Spiel läuft schon auf einem anderen Handy? <b>Mit Code beitreten</b>
+            </button>
 
             <div class="ge-footer">
                 <button v-if="remove" type="button" class="ge-button ge-button-delete" :disabled="loading" aria-label="Spiel löschen" @click="onDelete()">
@@ -133,6 +137,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import router from '@/router.js';
 import BottomSheet from '@/components/shared/BottomSheet.vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import EloChip from '@/components/shared/EloChip.vue';
@@ -333,6 +338,13 @@ const missingLabel = computed(() => {
     const parts = missing.flatMap((count, index) => count ? [`${count} Spieler für ${props.sideLabels[index]}`] : []);
     return parts.length ? `Noch ${parts.join(' und ')} wählen` : props.incompleteLabel;
 });
+
+const onJoin = () => {
+    const code = window.prompt('Code vom anderen Handy (steht im Knecht unter „Live & zweites Handy“):')?.trim();
+    if (!code) return;
+    visible.value = false;
+    router.push({ path: '/Knecht', query: { join: code.toUpperCase() } });
+};
 
 const onLaunch = () => {
     if (!canLaunch.value || !props.launch) return;
@@ -585,6 +597,23 @@ const onLaunch = () => {
 .ge-elo-down{ color: var(--bp-danger); }
 
 /* ─── BiPo Knecht ─── */
+.ge-join{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: -4px;
+    padding: 6px 8px;
+    border: none;
+    background: none;
+    color: var(--bp-text-muted);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+
+    b { color: var(--main-color); }
+}
 .ge-launch{
     display: flex;
     align-items: center;

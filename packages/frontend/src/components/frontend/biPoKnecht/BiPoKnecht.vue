@@ -85,6 +85,12 @@
 
             <!-- Wer faengt an? -->
             <div v-if="!game.isStarted.value" class="kn-overlay">
+                <button v-if="live" type="button" class="kn-live-chip" @click="sheet = 'live'">
+                    <span class="kn-live-dot" :class="{ 'kn-live-dot--off': live.status !== 'live' }"></span>
+                    <template v-if="live.status === 'off'">Live &amp; zweites Handy</template>
+                    <template v-else-if="live.code">Live · Code {{ live.code }} fürs zweite Handy</template>
+                    <template v-else>Live</template>
+                </button>
                 <KnechtStartTeam :match="game.match" @start="startGame" @cancel="$emit('exit')" />
             </div>
 
@@ -142,6 +148,10 @@
                 <KnechtOwnCup :game="game" @done="sheet = null" />
             </KnechtSheet>
 
+            <KnechtSheet :visible="sheet === 'live'" title="Live & zweites Handy" :flipped="sheetFlipped" @update:visible="sheet = null">
+                <KnechtLivePanel :live="live ?? null" @start="emit('live', 'start')" @stop="emit('live', 'stop'); sheet = null" @leave="emit('live', 'leave')" />
+            </KnechtSheet>
+
             <KnechtSheet :visible="sheet === 'menu'" title="Menü" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <div class="kn-menu-list">
                     <div class="kn-menu-label">Modus</div>
@@ -175,6 +185,10 @@
                     <button type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmDeathcup"><KnechtIcon name="deathcup" /> Deathcup von {{ throwerName }}</button>
 
                     <div class="kn-menu-label">Spiel</div>
+                    <button v-if="live" type="button" class="kn-menu-button" @click="sheet = 'live'">
+                        <span class="kn-live-dot" :class="{ 'kn-live-dot--off': live.status !== 'live' }"></span>
+                        {{ live.status === 'off' ? 'Live & zweites Handy' : live.code ? `Live · Code ${live.code}` : 'Live' }}
+                    </button>
                     <button type="button" class="kn-menu-button" @click="pause">
                         <i class="pi pi-pause"></i> Pause
                     </button>
@@ -198,7 +212,7 @@
         ></span>
 
         <!-- Spielende -->
-        <KnechtGameOver v-if="game.isOver.value" :game="game" :refereeUsed="refereeUsed" @saved="(result, rematch) => $emit('saved', result, rematch)" />
+        <KnechtGameOver v-if="game.isOver.value" :game="game" :refereeUsed="refereeUsed" :canSave="live?.role !== 'guest'" @saved="(result, rematch) => $emit('saved', result, rematch)" />
     </div>
 </template>
 
@@ -214,6 +228,8 @@ import KnechtSheet from './KnechtSheet.vue';
 import KnechtScoreboard from './KnechtScoreboard.vue';
 import KnechtTimeline from './KnechtTimeline.vue';
 import KnechtTurnEditor from './KnechtTurnEditor.vue';
+import KnechtLivePanel, { type KnechtLiveInfo } from './KnechtLivePanel.vue';
+import type { LiveProgress } from './knechtLive';
 import KnechtCelebration from './KnechtCelebration.vue';
 import KnechtOwnCup from './KnechtOwnCup.vue';
 import KnechtElbow from './KnechtElbow.vue';
@@ -235,6 +251,8 @@ const props = defineProps<{
     startTeamIndex: number | null;
     actions: KnechtAction[];
     refereeUsed: boolean;
+    live?: KnechtLiveInfo | null;       // Live-Ticker / zweites Handy (null = ausgeschaltet)
+    initialSwapped?: boolean;           // zweites Handy steht an der anderen Tischseite
 }>();
 
 const emit = defineEmits<{
@@ -242,6 +260,7 @@ const emit = defineEmits<{
     leave: [];                                      // zur Webseite, Spiel bleibt gespeichert
     saved: [match: Match, rematch: boolean];
     change: [progress: { startTeamIndex: number | null; actions: KnechtAction[]; refereeUsed: boolean }];
+    live: [action: 'start' | 'stop' | 'leave'];
 }>();
 
 const game = useBiPoKnecht(props.match, props.startTeamIndex, props.actions);
@@ -255,10 +274,10 @@ const MODE_OPTIONS = [{ label: 'Auto', value: 'auto' }, { label: 'Spieler', valu
 type ModeSetting = KnechtMode | 'auto';
 const storedMode = localStorage.getItem(MODE_KEY);
 const modeSetting = ref<ModeSetting>(storedMode === 'referee' || storedMode === 'player' ? storedMode : 'auto');
-const swapped = ref(false);
+const swapped = ref(!!props.initialSwapped);
 const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
-const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
+const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
 const editTurn = ref<number | null>(null);
 const openTurnEditor = (turnIndex: number) => {
     editTurn.value = turnIndex;
@@ -465,6 +484,25 @@ const startGame = (teamIndex: number) => {
     requestWakeLock();
     if (modeSetting.value === 'referee') lockLandscape();
 };
+
+// ─── Zweites Handy / Live: aktueller Stand und Stand vom anderen Handy uebernehmen ───
+const getProgress = (): LiveProgress => ({
+    startTeamIndex: game.startTeamIndex.value,
+    startedAt: game.startTeamIndex.value !== null ? game.match.time ?? null : null,
+    actions: game.actions.value,
+});
+
+const applyRemote = (remote: LiveProgress): boolean => {
+    if (remote.startTeamIndex !== null && game.startTeamIndex.value === null) {
+        if (remote.startedAt) game.match.time = remote.startedAt;
+        game.startTeamIndex.value = remote.startTeamIndex;
+        requestWakeLock();
+    }
+    if (JSON.stringify(remote.actions) === JSON.stringify(game.actions.value)) return true;
+    return !game.replaceActions(remote.actions.map(action => ({ ...action })));
+};
+
+defineExpose({ getProgress, applyRemote });
 
 // ─── Fortschritt melden (wird im localStorage gesichert) ───
 watch([game.actions, game.startTeamIndex, refereeUsed], () => {
@@ -749,6 +787,45 @@ onUnmounted(() => {
 .kn-edge-enter-from,
 .kn-edge-leave-to{
     opacity: 0;
+}
+/* Live-Hinweis auf dem Startbildschirm und im Menue */
+.kn-live-chip{
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid var(--bp-border);
+    border-radius: 999px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+    transform: translateX(-50%);
+    cursor: pointer;
+}
+.kn-live-dot{
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #E5484D;
+    animation: kn-live-pulse 1.6s infinite;
+}
+.kn-live-dot--off{
+    background: var(--bp-text-faint);
+    animation: none;
+}
+@keyframes kn-live-pulse{
+    0%{ box-shadow: 0 0 0 0 rgba(229, 72, 77, .6); }
+    70%{ box-shadow: 0 0 0 7px rgba(229, 72, 77, 0); }
+    100%{ box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
 }
 .kn-menu-button--on{
     border-color: var(--main-color);

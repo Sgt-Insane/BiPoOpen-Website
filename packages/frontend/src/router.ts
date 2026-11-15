@@ -134,6 +134,18 @@ const routes = [
 		}
 	},
 
+	// Live-Ticker eines laufenden Knecht-Spiels
+	{
+		path: '/Live/:LiveId',
+		name: 'Live',
+		component: () => import('@/components/frontend/live/_LiveGame.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Live',
+			description: 'BiPo Knecht live: Spielstand und Spielverlauf',
+			detailPage: true
+		}
+	},
+
 	// Frontend - Tournament
 	{
 		path: '/:TournamentName',

@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import type { KnechtAction } from './knechtEngine';
+import type { LiveBinding } from './knechtLive';
 
 // Laufendes Spiel des BiPo Knecht (ueberlebt Neuladen und gesperrten Bildschirm).
 // runningGame ist reaktiv, damit z.B. die Navigation ein laufendes Spiel anzeigen kann.
@@ -12,6 +13,7 @@ export type StoredKnechtGame = {
     actions: KnechtAction[];
     refereeUsed: boolean;
     savedAt: number;
+    live?: LiveBinding | null;      // Live-Ticker / zweites Handy: Schreibrecht fuer das Live-Spiel
 };
 
 export const loadStoredGame = (): StoredKnechtGame | null => {

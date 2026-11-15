@@ -60,7 +60,7 @@
         </div>
 
         <!-- Auszeichnungen wie am Spielende im Knecht -->
-        <div v-if="awards.length" class="mtl-awards">
+        <div v-if="awards.length && !live" class="mtl-awards">
             <span class="mtl-title">Auszeichnungen</span>
             <div class="mtl-award-list">
                 <div v-for="award in awards" :key="award.key" class="mtl-award" :style="{ '--mtl-team-color': getTeamColor(match, award.teamIndex) }">
@@ -139,7 +139,7 @@
             </template>
 
             <div class="mtl-final">
-                Endstand <strong>{{ finalScore[0] }} : {{ finalScore[1] }}</strong>
+                {{ live ? 'Stand' : 'Endstand' }} <strong>{{ finalScore[0] }} : {{ finalScore[1] }}</strong>
             </div>
         </div>
 
@@ -165,6 +165,8 @@ const getSideName = (teamIndex: number) => getTeam(props.match, teamIndex).playe
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
+    // Laufendes Spiel (Live-Ticker): noch keine Auszeichnungen, "Stand" statt "Endstand"
+    live: { type: Boolean, default: false },
 });
 
 const SHORT_LABELS: Partial<Record<Turn['type'], string>> = {
