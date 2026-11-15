@@ -174,7 +174,7 @@
                     <button v-if="vibrationSupported" type="button" class="kn-menu-button" @click="toggleVibration">
                         <i class="pi pi-mobile"></i> Vibration {{ vibrationEnabled ? 'ausschalten' : 'einschalten' }}
                     </button>
-                    <div class="kn-menu-label">Animationen</div>
+                    <div class="kn-menu-label">Animationen im {{ mode === 'player' ? 'Spieler' : 'Schiri' }}-Modus</div>
                     <SelectButton :modelValue="animationLevel" :options="ANIMATION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setAnimationLevel" />
                     <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Auch bei jedem Treffer' : animationLevel === 'special' ? 'Nur Bombe, On Fire, Formationen & Co.' : 'Keine großen Animationen' }}</div>
                     <button type="button" class="kn-menu-button" @click="game.sound.toggleMute()">
@@ -247,7 +247,7 @@ import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
 import { addShots } from '@/components/frontend/shots/shots';
 import { requestRotationPermission, useTableRotation } from './useTableRotation';
 import { isVibrationSupported, toggleVibration, vibrationEnabled } from './knechtHaptics';
-import { ANIMATION_OPTIONS, animationLevel, setAnimationLevel } from './knechtAnimations';
+import { ANIMATION_OPTIONS, animationLevel, animationMode, setAnimationLevel } from './knechtAnimations';
 import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
 
 const props = defineProps<{
@@ -334,6 +334,8 @@ const orientationQuery = window.matchMedia('(orientation: portrait)');
 const isPortrait = ref(orientationQuery.matches);
 const onOrientationChange = (event: MediaQueryListEvent) => { isPortrait.value = event.matches; };
 const mode = computed<KnechtMode>(() => modeSetting.value === 'auto' ? (isPortrait.value ? 'player' : 'referee') : modeSetting.value);
+// Animationen sind je Modus eingestellt (Spieler: alle, Schiri: nur besondere)
+watch(mode, value => { animationMode.value = value; }, { immediate: true });
 const rotateBoard = computed(() => mode.value === 'referee' && isPortrait.value);
 // Schiedsrichter-Modus genutzt: am Ende nach dem Namen fragen
 watch(mode, value => { if (value === 'referee') refereeUsed.value = true; }, { immediate: true });

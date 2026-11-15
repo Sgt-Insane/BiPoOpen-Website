@@ -1,26 +1,35 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import type { KnechtMode } from './useBiPoKnecht';
 
-// Wie viele grosse Animationen der Knecht zeigt (pro Geraet gespeichert):
+// Wie viele grosse Animationen der Knecht zeigt, getrennt je Modus und pro Geraet gespeichert:
 // 'all' = auch bei jedem normalen Treffer, 'special' = nur besondere Momente (Bombe, On Fire ...), 'off' = keine.
+// Standard: Spieler-Modus alle, Schiri-Modus nur besondere (der Schiri traegt schnell hintereinander ein).
 
 export type AnimationLevel = 'all' | 'special' | 'off';
 
-const STORAGE_KEY = 'bipo_knecht_animations';
+const DEFAULTS: Record<KnechtMode, AnimationLevel> = { player: 'all', referee: 'special' };
+const storageKey = (mode: KnechtMode) => `bipo_knecht_animations_${mode}`;
 
-const read = (): AnimationLevel => {
+const read = (mode: KnechtMode): AnimationLevel => {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        return stored === 'special' || stored === 'off' ? stored : 'all';
+        const stored = localStorage.getItem(storageKey(mode));
+        return stored === 'all' || stored === 'special' || stored === 'off' ? stored : DEFAULTS[mode];
     } catch {
-        return 'all';
+        return DEFAULTS[mode];
     }
 };
 
-export const animationLevel = ref<AnimationLevel>(read());
+const levels = ref<Record<KnechtMode, AnimationLevel>>({ player: read('player'), referee: read('referee') });
 
+// Aktueller Modus des Knechts (setzt BiPoKnecht.vue)
+export const animationMode = ref<KnechtMode>('player');
+
+export const animationLevel = computed(() => levels.value[animationMode.value]);
+
+// Aendert die Einstellung fuer den aktuellen Modus
 export const setAnimationLevel = (level: AnimationLevel) => {
-    animationLevel.value = level;
-    try { localStorage.setItem(STORAGE_KEY, level); } catch { /* privater Modus */ }
+    levels.value = { ...levels.value, [animationMode.value]: level };
+    try { localStorage.setItem(storageKey(animationMode.value), level); } catch { /* privater Modus */ }
 };
 
 export const ANIMATION_OPTIONS: { label: string; value: AnimationLevel }[] = [
