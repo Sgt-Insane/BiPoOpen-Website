@@ -554,7 +554,8 @@ const applyRemote = (remote: LiveProgress): boolean => {
         requestWakeLock();
     }
     if (JSON.stringify(remote.actions) === JSON.stringify(game.actions.value)) return true;
-    return !game.replaceActions(remote.actions.map(action => ({ ...action })));
+    // syncActions: neue Wuerfe des anderen Handys zeigen ihre Animation auch hier
+    return !game.syncActions(remote.actions.map(action => ({ ...action })));
 };
 
 defineExpose({ getProgress, applyRemote });

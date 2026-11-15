@@ -233,21 +233,44 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         bouncerArmed.value = false;
         pick.value = null;
         playFeedback(next, action);
+        // Bombe/Bouncer lief schon vor der Becherwahl: nicht noch einmal zeigen
+        const list = celebrationsFor(before, next, action, newActions[newActions.length - 2]).filter(entry => entry.kind !== shownBeforePick);
+        shownBeforePick = null;
+        celebrate(list);
+        return true;
+    };
+
+    // Animationen einer Aktion (Wurf, Formation, Folgen), mit Namen und Blickrichtung
+    const celebrationsFor = (before: KnechtState, next: KnechtState, action: KnechtAction, previous?: KnechtAction): Omit<KnechtCelebration, 'id'>[] => {
+        const throwingTeam = before.activeTeamIndex;
         // Name unter der Animation: der Werfer, beim Trickshot der Faenger
         const playerIndex = action.type === 'trickshot' ? action.catcher : action.type === 'throw' || action.type === 'deathcup' || action.type === 'elbow' ? action.player : null;
         const nameTeam = action.type === 'elbow' ? action.team : throwingTeam;
         const name = playerIndex === null ? '' : (nameTeam === 0 ? match.team1 : match.team2).players[playerIndex]?.name ?? '';
-        const { throwKinds, formations, followUps } = getCelebrations(before, next, action, newActions[newActions.length - 2]);
+        const { throwKinds, formations, followUps } = getCelebrations(before, next, action, previous);
         const facing = action.type === 'elbow' ? 1 - action.team : throwingTeam;
-        // Bombe/Bouncer lief schon vor der Becherwahl: nicht noch einmal zeigen
-        const shownKinds = throwKinds.filter(kind => kind !== shownBeforePick);
-        shownBeforePick = null;
-        celebrate([
-            ...shownKinds.map(kind => ({ kind, player: name, teamIndex: facing })),
+        return [
+            ...throwKinds.map(kind => ({ kind, player: name, teamIndex: facing })),
             ...formations.map(({ rackIndex, formation }) => ({ kind: 'formation' as const, player: '', teamIndex: 1 - rackIndex, formation })),
             ...followUps.map(kind => ({ kind, player: name, teamIndex: facing })),
-        ]);
-        return true;
+        ];
+    };
+
+    // Stand vom anderen Handy uebernehmen. Kamen nur neue Wuerfe dazu, laufen deren Animationen und Toene
+    // auch hier (zwei Handys: beide sehen Bombe, On Fire & Co.). Korrekturen im Verlauf bleiben still.
+    const syncActions = (remote: KnechtAction[]): string | null => {
+        const current = actions.value;
+        const appended = remote.length > current.length && current.every((action, index) => JSON.stringify(action) === JSON.stringify(remote[index]));
+        const error = replaceActions(remote);
+        // Nach laengerer Pause (z.B. Handy neu geladen) nicht alle verpassten Wuerfe nachspielen
+        if (error || !appended || remote.length - current.length > 3) return error;
+        const list = remote.slice(current.length).flatMap((action, offset) => {
+            const index = current.length + offset;
+            return celebrationsFor(getStateAfter(index), getStateAfter(index + 1), action, remote[index - 1]);
+        });
+        playFeedback(state.value, remote[remote.length - 1]);
+        celebrate(list);
+        return null;
     };
 
     const now = () => new Date().getTime();
@@ -387,6 +410,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         ballMark,
         markBall,
         replaceActions,
+        syncActions,
         start,
         sound,
     };
