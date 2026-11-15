@@ -53,7 +53,7 @@
                     <div v-for="row in group.rows" :key="row.label" class="pc-row">
                         <span class="pc-value" :class="{ 'pc-better': row.better === 0 }">{{ row.text[0] }}</span>
                         <div class="pc-row-middle">
-                            <span class="pc-label">{{ row.label }}</span>
+                            <span class="pc-label"><GlossaryWord :text="row.label" /></span>
                             <div class="pc-bar" aria-hidden="true">
                                 <span class="pc-bar-left" :style="{ width: `${row.share[0]}%` }"></span>
                                 <span class="pc-bar-right" :style="{ width: `${row.share[1]}%` }"></span>
@@ -72,6 +72,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Avatar from '@/components/shared/Avatar.vue';
 import InfoButton from '@/components/shared/InfoButton.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import PlayerSearchAutoComplete from '@/components/shared/PlayerSearchAutoComplete.vue';
 import { getGameData } from '@/util/gameDataCache';
 import { buildPlayerProfileData } from './PlayerProfileUtilFunctions';

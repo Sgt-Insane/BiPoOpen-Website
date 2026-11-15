@@ -11,7 +11,7 @@ export const GLOSSARY = {
     elo: { term: 'Elo', text: 'Spielstärke-Wert: Jeder startet mit 1.000. Sieg gegen Stärkere bringt viele Punkte, Niederlage gegen Schwächere kostet viele. Die Trefferdifferenz zählt mit.' },
     eloAverage: { term: 'Ø Elo', text: 'Durchschnittliches Elo der Spieler eines Teams vor dem Spiel.' },
     offenesSpiel: { term: 'Offenes Spiel', text: 'Ein freies Spiel außerhalb von Liga und Turnier, z. B. auf einer Party. Das Spiel ist trotzdem beendet – „offen“ heißt nur: kein Wettbewerb.' },
-    liga: { term: 'Liga & Cup', text: 'Die BiPo League: Teams spielen eine Saison mit Hin- und Rückrunde, dazu den League Cup im K.-o.-Modus.' },
+    liga: { term: 'Liga & Cup', text: 'Die BiPo League: Teams spielen eine Saison mit Hin- und Rückrunde, dazu den League Cup im K.-o.-Modus. Tabelle: SP = Spiele · S = Siege · N = Niederlagen · DIFF = Trefferdifferenz · Trend = letzte 5 Spiele.' },
     becher: { term: 'Becher / Treffer', text: 'Jedes Team hat 10 Becher. Wer alle Becher des Gegners trifft, gewinnt. Das Ergebnis zählt getroffene Becher.' },
     nullwurf: { term: 'Nullwurf', text: 'Ein Wurf, der keinen Becher trifft.' },
     airball: { term: 'Airball', text: 'Ein Wurf, der weder Becher noch Tisch berührt. Je 3 Airballs eines Teams gibt es Shots.' },
@@ -28,7 +28,7 @@ export const GLOSSARY = {
     tableColumns: { term: 'Tabellenspalten', text: 'SP = Spiele · S = Siege · N = Niederlagen · DIFF = Trefferdifferenz · Trend = letzte 5 Spiele (S/N), neuestes rechts.' },
     knecht: { term: 'BiPo Knecht', text: 'Der digitale Schiri: Jeder Wurf wird live am Handy gezählt, das Ergebnis wird danach automatisch eingetragen.' },
     vergleich: { term: 'Spieler-Vergleich', text: 'Links der erste, rechts der zweite Spieler. Der bessere Wert ist farbig, der Balken zeigt das Verhältnis der beiden Werte.' },
-    getroffen: { term: 'Getroffen', text: 'So viele Becher hat das Team (oder der Spieler) beim Gegner schon getroffen. Bei 10 ist das Spiel gewonnen.' },
+    getroffen: { term: 'Getroffen', text: 'So viele Becher hat das Team (oder der Spieler) beim Gegner schon gezählt bekommen, Bouncer und Bomben zählen mehrfach. Gewonnen ist erst, wenn beim Gegner kein Becher mehr steht.' },
     nackteMeilenSeite: { term: 'Nackte Meilen', text: 'Wer ein Spiel mit 0 Treffern beendet, schuldet eine nackte Meile. Hier steht, wer noch laufen muss und wer schon gelaufen ist.' },
     shotsSeite: { term: 'Offene Shots', text: 'Je 3 Airballs eines Teams trinkt jede Person dieses Teams einen Shot. Auf „Später“ gelegte Shots stehen hier, bis sie getrunken sind.' },
 } satisfies Record<string, GlossaryTerm>;
