@@ -83,6 +83,17 @@ const classes = (shape: KnechtIconShape) => [
     50%{ opacity: .45; }
 }
 
+/* ─── Treffer: Ball faellt entlang der Streifen in den Becher, der Becher federt ─── */
+.kci--hit .kci-ball{ animation: kci-drop .55s cubic-bezier(.5, 0, .7, 1) .05s both; }
+.kci--hit .kci-streaks{ animation: kci-fade .3s ease-out both; }
+.kci--hit .kci-cup{ transform-origin: 12px 21.2px; animation: kci-bump .3s ease-out .55s both; }
+@keyframes kci-drop{
+    0%{ transform: translate(4px, -9px); opacity: 0; }
+    20%{ opacity: 1; }
+    60%{ transform: translate(0, 0); }
+    100%{ transform: translate(-.6px, 4.5px) scale(.75); opacity: 0; }
+}
+
 /* ─── Balls Back: die Pfeile drehen sich um den Ball, der Ball springt zurueck ─── */
 .kci--ballsback .kci-arrows{ transform-origin: 12px 12px; animation: kci-spin 1.3s cubic-bezier(.5, 0, .2, 1) .15s both; }
 .kci--ballsback .kci-ball{ transform-origin: 12px 12px; animation: kci-pop .45s cubic-bezier(.3, 1.8, .5, 1) 1.2s both; }

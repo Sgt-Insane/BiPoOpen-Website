@@ -84,6 +84,7 @@ const LOOKS: Record<KnechtCelebrationKind, Look> = {
     formation: { title: 'Formation', icon: 'reRack', color: '#E5484D', dark: '#7A1418', particle: 'spark', count: 12, rings: [] },
     'yellow-card': { title: 'Gelbe Karte', subtitle: player => `${player} · Ellenbogen über der Kante`, icon: 'penalty', color: '#F5C518', dark: '#5C4700', particle: null, count: 0, rings: [1] },
     'red-card': { title: 'Rote Karte!', subtitle: player => `${player} · Strafbecher`, icon: 'penalty', color: '#E5484D', dark: '#5E0E12', particle: 'debris', count: 14, rings: [1, 2] },
+    hit: { title: 'Treffer!', subtitle: player => player, icon: 'hit', color: '#2F9E44', dark: '#14532D', particle: 'spark', count: 8, rings: [1] },
     'trickshot-hit': { title: 'Trickshot!', subtitle: player => `${player} verwandelt`, icon: 'trickshot', color: '#F5A524', dark: '#6B4300', particle: 'star', count: 22, rings: [1] },
 };
 
@@ -552,6 +553,18 @@ const rerackCups = computed(() => {
     background: #000;
     color: #FF4D4D;
     animation: kc-icon .7s cubic-bezier(.3, 1.6, .5, 1) .1s both, kc-shake .4s linear .8s 2;
+}
+
+/* Treffer: kurze Variante (1,1 s statt 2,2 s), ohne Streifen */
+.kc--hit .kc-flash,
+.kc--hit .kc-content{
+    animation-duration: 1.1s;
+}
+.kc--hit .kc-stripes{
+    display: none;
+}
+.kc--hit .kc-title{
+    font-size: min(11cqw, 64px) !important;
 }
 
 /* Karten: dunkler Kreis, damit die gelbe bzw. rote Karte heraussticht */

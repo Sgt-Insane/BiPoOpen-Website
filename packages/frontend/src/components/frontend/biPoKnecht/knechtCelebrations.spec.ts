@@ -30,7 +30,7 @@ describe('Reihenfolge der Animationen', () => {
         }
         expect(actions).not.toBeNull();
         const result = celebrationsOf(actions!);
-        expect(result.throwKinds).toEqual([]);
+        expect(result.throwKinds).toEqual(['hit']);
         expect(result.formations).toHaveLength(1);
         // Zweiter Treffer des Werfers in Folge: Heaten Up, danach kommen die Baelle zurueck
         expect(result.followUps).toEqual(['heating-up', 'ballsback']);
@@ -43,6 +43,11 @@ describe('Reihenfolge der Animationen', () => {
         expect(result.followUps).toEqual(['ballsback']);
         // Die Bombe war bisher nur ein Banner: Balls Back ging dabei verloren
         expect(replay(DUO, actions).state.events).toEqual(['bomb', 'ballsback']);
+    });
+
+    it('zeigt einen normalen Treffer nur ohne besondere Wurf-Animation', () => {
+        expect(celebrationsOf([hit(0, 0)]).throwKinds).toEqual(['hit']);
+        expect(celebrationsOf([hit(0, 0), hit(1, 0, { extraCups: [1, 2] })]).throwKinds).toEqual(['bomb']);
     });
 
     it('zeigt den Bouncer vor Heaten Up', () => {

@@ -5,6 +5,7 @@ import {
 } from './knechtEngine';
 import { useBiPoSound } from './biPoSound';
 import { findFormation, type KnechtFormation } from './knechtFormations';
+import { animationLevel } from './knechtAnimations';
 
 // Verbindet das Regelwerk (knechtEngine) mit der Oberflaeche: Auswahl des Werfers, Bouncer,
 // Auswahl der Zusatzbecher, Rueckgaengig, Bearbeiten im Verlauf, Banner und Sound.
@@ -24,11 +25,13 @@ export type CupPick = {
 
 const BANNER_DURATION = 1800;
 const CELEBRATION_DURATION = 2200;
+// Normaler Treffer: kurze Animation, damit sie beim schnellen Eintragen nicht stoert
+const HIT_DURATION = 1100;
 
 // Grosse Animation wie beim Bowling. Zusaetzlich zu den Bannern der Engine auch fuer Aktionen ohne Regelfolge.
 export type KnechtCelebrationKind =
     | 'bomb' | 'on-fire' | 'heating-up' | 'ballsback' | 'deathcup' | 'nachwurf' | 'overtime'
-    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'lastcup' | 'formation' | 'yellow-card' | 'red-card';
+    | 'bouncer' | 'rerack' | 'trickshot' | 'trickshot-hit' | 'lastcup' | 'formation' | 'yellow-card' | 'red-card' | 'hit';
 // teamIndex: wem die Animation zugewandt ist (bei Formationen das Team, das auf diese Becher wirft)
 export type KnechtCelebration = { id: number; kind: KnechtCelebrationKind; player: string; teamIndex: number; formation?: KnechtFormation };
 
@@ -61,6 +64,8 @@ export const getCelebrations = (before: KnechtState, next: KnechtState, action: 
         if (previous?.type === 'trickshot' && previous.catcher === action.player) throwKinds.push('trickshot-hit');
         else if (action.bouncer) throwKinds.push('bouncer');
     }
+    // Normaler Treffer ohne Besonderheit
+    if (!throwKinds.length && action.type === 'throw' && action.outcome === 'hit') throwKinds.push('hit');
     const followUps = next.events.filter(event => (FOLLOW_UP_EVENTS as string[]).includes(event)) as KnechtCelebrationKind[];
     // Verlaengerung: neu aufgestellte Becher sind keine geworfene Formation
     const formations = followUps.includes('overtime') ? [] : getNewFormations(before, next);
@@ -162,9 +167,12 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     let celebrationId = 0;
     const showNextCelebration = () => {
         celebration.value = celebrationQueue.shift() ?? null;
-        celebrationTimer = celebration.value ? setTimeout(showNextCelebration, CELEBRATION_DURATION) : null;
+        const duration = celebration.value?.kind === 'hit' ? HIT_DURATION : CELEBRATION_DURATION;
+        celebrationTimer = celebration.value ? setTimeout(showNextCelebration, duration) : null;
     };
-    const celebrate = (list: Omit<KnechtCelebration, 'id'>[]) => {
+    const celebrate = (all: Omit<KnechtCelebration, 'id'>[]) => {
+        // Einstellung im Menue: alle, nur besondere (ohne normale Treffer) oder keine Animationen
+        const list = animationLevel.value === 'off' ? [] : animationLevel.value === 'special' ? all.filter(entry => entry.kind !== 'hit') : all;
         if (!list.length) return;
         // Neue Aktion: Animationen der vorigen Aktion nicht mehr nachholen
         if (celebrationTimer) clearTimeout(celebrationTimer);

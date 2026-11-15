@@ -174,6 +174,9 @@
                     <button v-if="vibrationSupported" type="button" class="kn-menu-button" @click="toggleVibration">
                         <i class="pi pi-mobile"></i> Vibration {{ vibrationEnabled ? 'ausschalten' : 'einschalten' }}
                     </button>
+                    <div class="kn-menu-label">Animationen</div>
+                    <SelectButton :modelValue="animationLevel" :options="ANIMATION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setAnimationLevel" />
+                    <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Auch bei jedem Treffer' : animationLevel === 'special' ? 'Nur Bombe, On Fire, Formationen & Co.' : 'Keine großen Animationen' }}</div>
                     <button type="button" class="kn-menu-button" @click="game.sound.toggleMute()">
                         <i :class="game.sound.isMuted.value ? 'pi pi-volume-off' : 'pi pi-volume-up'"></i>
                         Ton {{ game.sound.isMuted.value ? 'einschalten' : 'ausschalten' }}
@@ -244,6 +247,7 @@ import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
 import { addShots } from '@/components/frontend/shots/shots';
 import { requestRotationPermission, useTableRotation } from './useTableRotation';
 import { isVibrationSupported, toggleVibration, vibrationEnabled } from './knechtHaptics';
+import { ANIMATION_OPTIONS, animationLevel, setAnimationLevel } from './knechtAnimations';
 import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
 
 const props = defineProps<{

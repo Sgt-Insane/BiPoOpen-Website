@@ -24,7 +24,7 @@ const cupPath = (cx: number, top: number, width: number, angle = 0) => {
     return `M${p0}L${p1} ${p2}A${r} ${r} 0 0 1 ${p3}L${p4}A${r} ${r} 0 0 1 ${p5}z`;
 };
 const CUP_BODY = cupPath(12, 9.5, 13);
-const CUP: KnechtIconShape[] = [{ d: CUP_BODY, soft: true }];
+const CUP: KnechtIconShape[] = [{ d: CUP_BODY, soft: true, part: 'cup' }];
 // Kleiner Becher rechts unten auf dem Tisch (Bouncer, Airball)
 const SMALL_CUP: KnechtIconShape[] = [{ d: cupPath(18.2, 21.3 - 6.6 * CUP_RATIO, 6.6), soft: true, part: 'cup' }];
 const TABLE = 'M2 21.5h20';
@@ -32,7 +32,7 @@ const ball = (cx: number, cy: number, r = 2.5): KnechtIconShape => ({ cx, cy, r,
 
 export const KNECHT_ICONS = {
     // Treffer: Ball faellt von schraeg rechts oben in die Becheroeffnung, drei Flugstreifen dahinter
-    hit: [...CUP, ball(12.6, 6.8), { d: 'M17.4 3l-.8 1.8M15.1 1.3L14 3.7M12.3.7l-.8 1.8' }],
+    hit: [...CUP, ball(12.6, 6.8), { d: 'M17.4 3l-.8 1.8M15.1 1.3L14 3.7M12.3.7l-.8 1.8', part: 'streaks' }],
     miss: [{ d: TABLE }, ball(7.5, 18.4), { d: 'M14.5 4.5l5.5 5.5M20 4.5l-5.5 5.5' }],
     airball: [...SMALL_CUP, { d: 'M2 20C4 7 12 3 19 7', dashed: true }, ball(20.5, 8.5, 2.2)],
     bouncer: [{ d: TABLE }, { d: 'M2.5 3.5L7 20.5l4.5-9', dashed: true, part: 'trail' }, ball(12.5, 8.8, 2.3), ...SMALL_CUP],
