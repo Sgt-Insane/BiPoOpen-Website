@@ -4,7 +4,7 @@ import { getScoringTeam } from '@/components/frontend/biPoKnecht/knechtStats';
 // Becher-Dreieck "was fiel wann": fuer jedes Team-Rack, welcher Becher wann und von wem abgeraeumt wurde.
 // Re-Rack und Verlaengerung stellen die Becher neu auf: dann beginnt fuer das Rack ein neuer Abschnitt.
 
-export type CupFall = { order: number; minute: number | null; teamIndex: number; playerIndex: number; kind: Turn['type'] };
+export type CupFall = { order: number; turnIndex: number; minute: number | null; teamIndex: number; playerIndex: number; kind: Turn['type'] };
 
 export type RackPhase = {
     label: string;                      // "Start", "Re-Rack 12'", "Verlängerung"
@@ -67,7 +67,7 @@ export const buildCupHistory = (match: Match): RackHistory[] | null => {
             const position = cup === 0 && lastCupFrom[owner] !== null ? lastCupFrom[owner]! : cup;
             if (!standing[owner].has(position)) { valid = false; return; }
             standing[owner].delete(position);
-            phase.falls[position] = { order: ++order, minute: minuteOf(turn.time), teamIndex: turn.teamIndex, playerIndex: turn.playerIndex, kind: turn.type };
+            phase.falls[position] = { order: ++order, turnIndex: index, minute: minuteOf(turn.time), teamIndex: turn.teamIndex, playerIndex: turn.playerIndex, kind: turn.type };
         });
         const [last] = [...standing[owner]];
         if (standing[owner].size === 1 && last !== 0 && lastCupFrom[owner] === null) lastCupFrom[owner] = last;

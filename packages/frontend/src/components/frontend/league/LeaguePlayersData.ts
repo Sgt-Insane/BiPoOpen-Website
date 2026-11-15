@@ -36,7 +36,12 @@ export const getLeagueTeamForPlayer = (playerName: string): string | null => {
     return null;
 };
 
-export const getPlayerForLeagueTeam = (teamName: string): string | null => {
+// Alle Teams eines Spielers ueber alle Saisons (z.B. "Sgt. Insane", spaeter "Cupfire Squad").
+// Alte Liga-Spiele stehen unter dem damaligen Teamnamen und muessen im Profil mitzaehlen.
+export const getLeagueTeamsForPlayer = (playerName: string): string[] =>
+    LEAGUE_PLAYER_DATA.filter(entry => normalizeName(entry.playerName) === normalizeName(playerName)).map(entry => entry.teamName);
+
+export const getPlayerForLeagueTeam =(teamName: string): string | null => {
     const exact = LEAGUE_PLAYER_DATA.find(entry => entry.teamName === teamName);
     if (exact) return exact.playerName;
 

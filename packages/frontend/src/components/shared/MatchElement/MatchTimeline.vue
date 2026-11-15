@@ -289,7 +289,7 @@ const rows = computed<Row[]>(() => {
             scoringTeam: cups ? scoringTeam : -1,
             icon: turn.type === 'hit' && isTrickshotHit(turn, turns.value[index - 1]) ? 'trickshot' : TURN_ICONS[turn.type],
             label: getLabel(turn, turns.value[index - 1], cups),
-            player: getRowPlayer(turn, team),
+            player: getRowPlayer(turn, team, index),
             minute: start && turn.time ? Math.max(0, Math.floor((turn.time - start) / 60000)) : null,
             time: turn.time,
             score: [score[0], score[1]],
@@ -299,13 +299,25 @@ const rows = computed<Row[]>(() => {
     return list;
 });
 
-// Beim Trickshot-Fang: wer verfehlt hat und wer gefangen hat
-const getRowPlayer = (turn: Turn, team: Team) => {
-    if (team.players.length <= 1) return '';
-    const name = getPlayerName(props.match, turn.teamIndex, turn.playerIndex);
+// Getroffene Becher je Wurf, nummeriert wie beim Bowling (1 = Spitze, 7-10 = hinten, aus Sicht des Werfers).
+// Aus dem Becher-Dreieck, damit der letzte Becher (vom Knecht an die Spitze gestellt) seine echte Nummer hat.
+const cupNumbersByTurn = computed(() => {
+    const map = new Map<number, number[]>();
+    buildCupHistory(props.match)?.forEach(rack => rack.phases.forEach(phase =>
+        Object.entries(phase.falls).forEach(([position, fall]) => map.set(fall.turnIndex, [...(map.get(fall.turnIndex) ?? []), Number(position) + 1]))));
+    map.forEach(numbers => numbers.sort((first, second) => first - second));
+    return map;
+});
+
+// Beim Trickshot-Fang: wer verfehlt hat und wer gefangen hat. Dahinter die getroffenen Becher.
+const getRowPlayer = (turn: Turn, team: Team, turnIndex: number) => {
+    const cups = cupNumbersByTurn.value.get(turnIndex);
+    const cupText = cups?.length ? `Becher ${cups.join(', ')}` : '';
+    if (team.players.length <= 1) return cupText;
+    let name = getPlayerName(props.match, turn.teamIndex, turn.playerIndex);
     const catcher = getData(turn).catcherIndex;
-    if (turn.type === 'trickshot' && typeof catcher === 'number') return `${name} → ${getPlayerName(props.match, turn.teamIndex, catcher)}`;
-    return name;
+    if (turn.type === 'trickshot' && typeof catcher === 'number') name = `${name} → ${getPlayerName(props.match, turn.teamIndex, catcher)}`;
+    return [name, cupText].filter(Boolean).join(' · ');
 };
 
 // Re-Rack, Nachwurf, Verlaengerung (gespeichert seit dem neuen Knecht, aeltere Spiele haben keine)
