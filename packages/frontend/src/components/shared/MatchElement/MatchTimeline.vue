@@ -90,6 +90,13 @@
             <span class="mtl-chart-caption">getroffene Becher im Spielverlauf</span>
         </div>
 
+        <!-- Becher-Dreieck: welcher Becher wann und von wem (aufklappbar) -->
+        <button v-if="hasCupFalls" type="button" class="mtl-expand" :aria-expanded="showTriangle" @click="showTriangle = !showTriangle">
+            <span>Becher-Dreieck · was fiel wann</span>
+            <i class="pi" :class="showTriangle ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+        </button>
+        <MatchCupTriangle v-if="hasCupFalls && showTriangle" :match="match" />
+
         <!-- Alle Wuerfe: Team 1 links, Team 2 rechts, in der Mitte Zwischenstand. Fehlwuerfe kleiner und grau,
              Re-Rack/Nachwurf/Verlaengerung in der Mitte. Jede Spielminute als graue Zahl, auch ohne Wurf. -->
         <!-- Lange Spiele: Fehlwuerfe ausblendbar -->
@@ -166,6 +173,8 @@ import { formatEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
 import { formatSeconds, getThrowTimes } from '@/components/frontend/biPoKnecht/knechtThrowTimes';
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import BottomSheet from '@/components/shared/BottomSheet.vue';
+import MatchCupTriangle from './MatchCupTriangle.vue';
+import { buildCupHistory, getTurnCupPositions } from './cupHistory';
 import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
 import { isFeatureOn } from '@/util/featureFlags';
 import { getTeamColor, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
@@ -418,6 +427,10 @@ const playerRows = computed(() => {
     }));
 });
 
+// Becher-Dreieck nur, wenn der Verlauf zusammenpasst (alte Knecht-Spiele zaehlten Becher anders und kennen kein Re-Rack)
+const showTriangle = ref(false);
+const hasCupFalls = computed(() => turns.value.some(turn => getTurnCupPositions(turn).length) && buildCupHistory(props.match) !== null);
+
 // Story-Overlay (noch im Entwicklermodus): Elo-Aenderung je Spieler fuer die Spieler-Vorlage
 const showShare = computed(() => !props.live && isFeatureOn('shareOverlay'));
 const shareOpen = ref(false);
@@ -649,6 +662,20 @@ const chartLines = computed(() => {
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+.mtl-expand{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 12px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
 }
 .mtl-chart-legend{
     display: flex;
