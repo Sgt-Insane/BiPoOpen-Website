@@ -61,6 +61,15 @@ describe('Auszeichnungen', () => {
         expect(solo[0].title).not.toBe('10/10');
     });
 
+    it('gibt bei einem Deathcup-Sieg kein 10/10, auch wenn die Punkte reichen', () => {
+        const awards = getAwards([
+            player('A', { teamIndex: 0, throws: 6, hits: 0, points: 10, deathcups: 1 }),
+            player('B', { teamIndex: 0, playerIndex: 1, throws: 6, hits: 0, points: 0 }),
+            player('C', { teamIndex: 1, throws: 6, hits: 3, points: 3 }),
+        ]);
+        expect(awards.map(award => award.title)).not.toContain('10/10');
+    });
+
     it('lobt immer die laengste Serie des Spiels', () => {
         const awards = getAwards([
             player('A', { throws: 10, hits: 6, points: 6, bestStreak: 3, bombs: 1 }),

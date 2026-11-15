@@ -164,7 +164,8 @@ const when = (condition: boolean, strength: number) => condition ? strength : nu
 // Nach Seltenheit sortiert: seltene Titel werden zuerst verteilt
 const AWARD_RULES: AwardRule[] = [
     // Alle 10 Becher allein abgeraeumt (im 1 gegen 1 normal, daher nur mit Mitspielern)
-    { icon: '🔟', title: '10/10', strength: (s, ctx) => when(ctx.teamSize(s.teamIndex) > 1 && s.points >= 10, s.points), detail: () => 'Alle 10 Becher allein abgeräumt' },
+    // Nur mit echten Treffern: ein Deathcup bringt die restlichen Becher als Punkte, ist aber kein Abraeumen
+    { icon: '🔟', title: '10/10', strength: (s, ctx) => when(ctx.teamSize(s.teamIndex) > 1 && s.points >= 10 && s.deathcups === 0, s.points), detail: () => 'Alle 10 Becher allein abgeräumt' },
     { icon: '💯', title: 'Makellos', strength: s => when(s.throws >= 5 && s.hits === s.throws, s.throws), detail: s => `${s.hits}/${s.throws} – jeder Wurf ein Treffer` },
     // Die laengste Serie des Spiels wird immer gelobt (ab 3 Treffern in Folge)
     { icon: '🎯', title: 'Scharfschütze', strength: (s, ctx) => when(s.bestStreak >= 3 && s.bestStreak === ctx.maxStreak, s.bestStreak), detail: s => `Längste Serie im Spiel: ${s.bestStreak} Treffer in Folge` },
