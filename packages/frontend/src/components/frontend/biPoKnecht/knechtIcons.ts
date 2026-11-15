@@ -6,26 +6,42 @@ export type KnechtIconShape =
     | { d: string; fill?: boolean; soft?: boolean; dashed?: boolean; part?: string }
     | { cx: number; cy: number; r: number; fill?: boolean; soft?: boolean; ball?: boolean; part?: string };
 
-// Becher: schlichte Form wie bisher, nur mit dezenter Fuellung
-const CUP_BODY = 'M5.5 9.5h13l-1.6 10.6a1.3 1.3 0 0 1-1.3 1.1H8.4a1.3 1.3 0 0 1-1.3-1.1z';
+// Becher: ueberall dieselbe Form, nur skaliert (und beim umgestossenen Becher gedreht).
+// Grundform 13 breit, 11,7 hoch, unten 9,8 breit, mit abgerundeten unteren Ecken.
+const CUP_POINTS: [number, number][] = [[0, 0], [13, 0], [11.4, 10.6], [10.1, 11.7], [2.9, 11.7], [1.6, 10.6]];
+const CUP_RATIO = 11.7 / 13;
+const round = (value: number) => Math.round(value * 100) / 100;
+// cx: Mitte, top: Oberkante, width: Breite oben, angle: Drehung in Grad um die Bechermitte
+const cupPath = (cx: number, top: number, width: number, angle = 0) => {
+    const scale = width / 13;
+    const centerY = top + width * CUP_RATIO / 2;
+    const rad = angle * Math.PI / 180;
+    const [p0, p1, p2, p3, p4, p5] = CUP_POINTS.map(([x, y]) => {
+        const dx = cx - width / 2 + x * scale - cx, dy = top + y * scale - centerY;
+        return `${round(cx + dx * Math.cos(rad) - dy * Math.sin(rad))} ${round(centerY + dx * Math.sin(rad) + dy * Math.cos(rad))}`;
+    });
+    const r = round(1.3 * scale);
+    return `M${p0}L${p1} ${p2}A${r} ${r} 0 0 1 ${p3}L${p4}A${r} ${r} 0 0 1 ${p5}z`;
+};
+const CUP_BODY = cupPath(12, 9.5, 13);
 const CUP: KnechtIconShape[] = [{ d: CUP_BODY, soft: true }];
-// Kleiner Becher rechts unten (Bouncer, Airball)
-const SMALL_CUP: KnechtIconShape[] = [{ d: 'M15 13.5h6.5l-.9 7a.9.9 0 0 1-.9.8h-2.9a.9.9 0 0 1-.9-.8z', soft: true, part: 'cup' }];
+// Kleiner Becher rechts unten auf dem Tisch (Bouncer, Airball)
+const SMALL_CUP: KnechtIconShape[] = [{ d: cupPath(18.2, 21.3 - 6.6 * CUP_RATIO, 6.6), soft: true, part: 'cup' }];
 const TABLE = 'M2 21.5h20';
 const ball = (cx: number, cy: number, r = 2.5): KnechtIconShape => ({ cx, cy, r, ball: true, part: 'ball' });
 
 export const KNECHT_ICONS = {
-    // Treffer: Ball faellt von schraeg oben in die Becheroeffnung, drei Flugstreifen dahinter
-    hit: [...CUP, ball(11.2, 6.8), { d: 'M11 .8l1 1.7M8.1 1.7l1.3 2.2M6 3.8l1 1.7' }],
+    // Treffer: Ball faellt von schraeg rechts oben in die Becheroeffnung, drei Flugstreifen dahinter
+    hit: [...CUP, ball(12.6, 6.8), { d: 'M17.4 3l-.8 1.8M15.1 1.3L14 3.7M12.3.7l-.8 1.8' }],
     miss: [{ d: TABLE }, ball(7.5, 18.4), { d: 'M14.5 4.5l5.5 5.5M20 4.5l-5.5 5.5' }],
     airball: [...SMALL_CUP, { d: 'M2 20C4 7 12 3 19 7', dashed: true }, ball(20.5, 8.5, 2.2)],
     bouncer: [{ d: TABLE }, { d: 'M2.5 3.5L7 20.5l4.5-9', dashed: true, part: 'trail' }, ball(12.5, 8.8, 2.3), ...SMALL_CUP],
     trickshot: [{ d: 'M2 19c4 0 8-2 9-6s-3-5-4-2 3 5 7 2 5-6 5-8', dashed: true, part: 'trail' }, ball(19.5, 3.8, 2.1), { d: 'M18 15v5M15.5 17.5h5', part: 'plus' }],
     // Bombe: Explosion platzt aus dem Becher, mit ausgefuelltem Kern
     bomb: [
-        { d: 'M6 14.2L3.3 11.4 7.1 10.7 5.2 4.9 10.1 8.5 12 3.3 13.9 8.5 19.1 4.4 16.9 10.7 21 11.3 18 14.2z', soft: true, part: 'burst' },
-        { d: 'M8.6 14.2L6.4 11 10.3 11.3 12 7.7 13.7 11.3 17.6 11 15.4 14.2z', fill: true, part: 'core' },
-        { d: 'M6 14.2h12l-1.3 7a1.1 1.1 0 0 1-1.1.9H8.4a1.1 1.1 0 0 1-1.1-.9z', soft: true, part: 'cup' },
+        { d: 'M7 13.8L3.8 11.1 8 10.9 5.7 5.1 10.5 9 12 3.5 13.5 9 18.7 4.6 16 10.9 20.4 11.1 17 13.8z', soft: true, part: 'burst' },
+        { d: 'M9.1 13.8L6.8 10.8 10.5 11.3 12 7.8 13.4 11.3 17.2 10.8 14.9 13.8z', fill: true, part: 'core' },
+        { d: cupPath(12, 13.8, 10), soft: true, part: 'cup' },
     ],
     ballsback: [
         { d: 'M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5', part: 'arrows' },
@@ -42,7 +58,8 @@ export const KNECHT_ICONS = {
         { cx: 14.7, cy: 10.5, r: 1.5, fill: true, part: 'eye' },
         { d: 'M10.5 19v2M13.5 19v2', part: 'jaw' },
     ],
-    owncup: [{ d: TABLE }, { d: 'M3 10.5l9.5-3.5 2.3 8.2-9.4 2.6z', soft: true }, { d: 'M17 17h3M17.5 13.5l2.5-1.5' }],
+    // Eigener Becher: umgestossen, liegt auf der Seite (Oeffnung rechts), daneben laeuft es aus
+    owncup: [{ d: TABLE }, { d: cupPath(10, 11.63, 10, 81.4), soft: true }, { d: 'M18.2 17.6l2.8-1.1M18.4 14.3l2.2-1.7' }],
     reRack: [{ cx: 12, cy: 6.5, r: 2.9, soft: true, part: 'c3' }, { cx: 7.5, cy: 15, r: 2.9, soft: true, part: 'c1' }, { cx: 16.5, cy: 15, r: 2.9, soft: true, part: 'c2' }, { d: TABLE }],
     nachwurf: [{ d: 'M12 4v16M7 20h10' }, { d: 'M5 7h14', part: 'beam' }, { d: 'M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z', soft: true, part: 'beam' }],
     overtime: [{ d: 'M7 3h10M7 21h10', part: 'glass' }, { d: 'M8 3c0 5 4 6 4 9s-4 4-4 9h8c0-5-4-6-4-9s4-4 4-9z', soft: true, part: 'glass' }],

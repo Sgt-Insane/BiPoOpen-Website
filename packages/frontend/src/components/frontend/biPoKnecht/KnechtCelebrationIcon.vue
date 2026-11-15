@@ -24,7 +24,7 @@ const shapes = computed<KnechtIconShape[]>(() => KNECHT_ICONS[props.name]);
 
 // Flugbahn des Balls: die gestrichelte Linie des Symbols, danach in den Becher bzw. davon
 const MOTIONS: Partial<Record<KnechtIconName, { path: string; dur: string }>> = {
-    bouncer: { path: 'M2.5 3.5L7 20.5l4.5-9Q15.5 6 18.2 15', dur: '1s' },
+    bouncer: { path: 'M2.5 3.5L7 20.5l4.5-9Q15.5 6 18.2 16.5', dur: '1s' },
     trickshot: { path: 'M2 19c4 0 8-2 9-6s-3-5-4-2 3 5 7 2 5-6 5-8', dur: '1s' },
 };
 const motion = computed(() => MOTIONS[props.name] ?? null);
@@ -66,8 +66,8 @@ const classes = (shape: KnechtIconShape) => [
 
 /* ─── Bombe: Becher landet, Explosion platzt heraus, Kern flackert ─── */
 .kci--bomb .kci-cup{ transform-origin: 12px 22px; animation: kci-land .35s cubic-bezier(.3, 1.5, .5, 1) .1s both; }
-.kci--bomb .kci-burst{ transform-origin: 12px 14.2px; animation: kci-burst .5s cubic-bezier(.2, 1.6, .4, 1) .4s both, kci-throb .28s ease-in-out .9s 4 alternate; }
-.kci--bomb .kci-core{ transform-origin: 12px 14.2px; animation: kci-burst .4s cubic-bezier(.2, 1.6, .4, 1) .5s both, kci-flicker .12s steps(2) .9s 8; }
+.kci--bomb .kci-burst{ transform-origin: 12px 13.8px; animation: kci-burst .5s cubic-bezier(.2, 1.6, .4, 1) .4s both, kci-throb .28s ease-in-out .9s 4 alternate; }
+.kci--bomb .kci-core{ transform-origin: 12px 13.8px; animation: kci-burst .4s cubic-bezier(.2, 1.6, .4, 1) .5s both, kci-flicker .12s steps(2) .9s 8; }
 @keyframes kci-land{
     0%{ transform: translateY(-14px) scale(.6); opacity: 0; }
     100%{ transform: none; opacity: 1; }
@@ -166,7 +166,7 @@ const classes = (shape: KnechtIconShape) => [
 .kci--bouncer .kci-trail,
 .kci--trickshot .kci-trail,
 .kci--trickshot-hit .kci-trail{ animation: kci-fade .4s ease-out both; }
-.kci--bouncer .kci-cup{ transform-origin: 18.2px 21px; animation: kci-bump .3s ease-out 1.3s both; }
+.kci--bouncer .kci-cup{ transform-origin: 18.2px 21.3px; animation: kci-bump .3s ease-out 1.3s both; }
 .kci--trickshot .kci-plus,
 .kci--trickshot-hit .kci-plus{ transform-origin: 18px 17.5px; animation: kci-burst .4s cubic-bezier(.3, 1.8, .5, 1) 1.2s both; }
 @keyframes kci-fade{
