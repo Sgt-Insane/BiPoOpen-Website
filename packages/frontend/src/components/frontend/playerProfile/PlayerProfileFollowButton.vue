@@ -59,7 +59,7 @@ const onClick = async () => {
             detail: wasAllOff
                 ? `Benachrichtigungen sind wieder an. ${followToastDetail(firstName.value)}`
                 : getsAllAnyway
-                    ? 'Du bekommst gerade ohnehin alle Spiele. Stell in den Einstellungen auf „Nur meine Spieler“, um nur deinen Spielern zu folgen.'
+                    ? `Du bekommst schon alle Spiele, also auch die von ${firstName.value}. Nur deine Spieler? In den Einstellungen „Nur meine Spieler“ wählen.`
                     : followToastDetail(firstName.value),
             ...((wasAllOff || getsAllAnyway) && { action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH } }),
             life: wasAllOff || getsAllAnyway ? 6000 : 5000,

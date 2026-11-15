@@ -76,7 +76,7 @@
                     />
                 </div>
 
-                <button v-if="canAddPlayer(side)" type="button" class="ge-add-player" @click="addPlayer(side)">
+                <button v-if="canAddPlayer(side)" type="button" class="ge-add-player" :aria-label="`Mitspieler für ${sideLabels[sideIndex]} hinzufügen`" @click="addPlayer(side)">
                     <i class="pi pi-plus"></i>
                     Mitspieler hinzufügen
                 </button>

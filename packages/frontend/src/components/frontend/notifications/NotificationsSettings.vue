@@ -65,8 +65,11 @@
             </div>
         </div>
 
-        <template v-if="usesFollowedPlayers">
+        <!-- Auch sichtbar, wenn noch nichts auf "Nur meine Spieler" steht, sobald man jemandem folgt:
+             sonst verschwanden gefolgte Spieler scheinbar (Nutzertest) -->
+        <template v-if="usesFollowedPlayers || followedPlayers.length">
             <h2 class="nt-section-title">Meine Spieler</h2>
+            <div v-if="!usesFollowedPlayers" class="ns-follow-hint">Wirkt erst, wenn oben bei einem Bereich „Nur meine Spieler“ gewählt ist. Jetzt bekommst du alle Spiele.</div>
             <div class="nt-card ns-follow">
                 <div class="ns-search">
                     <i class="pi pi-search ns-search-icon"></i>
@@ -193,6 +196,11 @@ const onDeactivate = async () => {
 </script>
 
 <style scoped>
+.ns-follow-hint {
+	margin: -4px 4px 8px;
+	font-size: 13px;
+	color: var(--bp-text-muted);
+}
 /* ─── Status ─── */
 .ns-active {
     display: flex;

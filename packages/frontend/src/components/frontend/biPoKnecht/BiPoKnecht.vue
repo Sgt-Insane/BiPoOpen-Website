@@ -154,33 +154,44 @@
 
             <KnechtSheet :visible="sheet === 'menu'" title="Einstellungen & Sonderfälle" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <div class="kn-menu-list">
+                    <!-- Einheitlich: Auswahl als Segmente, An/Aus als Schalter (Zustand immer sichtbar), Aktionen als Knoepfe -->
                     <div class="kn-menu-label">Modus</div>
                     <SelectButton :modelValue="modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setMode" />
                     <div v-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
-                    <button v-if="mode === 'referee'" type="button" class="kn-menu-button" :class="{ 'kn-menu-button--on': proEnabled }" @click="toggleProMode">
-                        <KnechtIcon name="miss" /> Knecht Pro (Kanten, Wurfzeit) {{ proEnabled ? 'an' : 'aus' }}
+                    <button v-if="mode === 'referee'" type="button" role="switch" class="kn-menu-toggle" :aria-checked="proEnabled" @click="toggleProMode">
+                        <KnechtIcon name="miss" />
+                        <span class="kn-menu-toggle-text">Knecht Pro <small>Becherkanten und Wurfzeiten erfassen</small></span>
+                        <span class="kn-menu-switch" aria-hidden="true"></span>
                     </button>
+
+                    <div class="kn-menu-label">Anzeige & Rückmeldung</div>
+                    <button v-if="fullscreenSupported" type="button" role="switch" class="kn-menu-toggle" :aria-checked="fullscreen" @click="toggleFullscreen">
+                        <i class="pi pi-window-maximize"></i>
+                        <span class="kn-menu-toggle-text">Vollbild</span>
+                        <span class="kn-menu-switch" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" role="switch" class="kn-menu-toggle" :aria-checked="!game.sound.isMuted.value" @click="game.sound.toggleMute()">
+                        <i class="pi pi-volume-up"></i>
+                        <span class="kn-menu-toggle-text">Ton</span>
+                        <span class="kn-menu-switch" aria-hidden="true"></span>
+                    </button>
+                    <button v-if="vibrationSupported" type="button" role="switch" class="kn-menu-toggle" :aria-checked="vibrationEnabled" @click="toggleVibration">
+                        <i class="pi pi-mobile"></i>
+                        <span class="kn-menu-toggle-text">Vibration</span>
+                        <span class="kn-menu-switch" aria-hidden="true"></span>
+                    </button>
+                    <div class="kn-menu-label">Animationen im {{ mode === 'player' ? 'Spieler' : 'Schiri' }}-Modus</div>
+                    <SelectButton :modelValue="animationLevel" :options="ANIMATION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setAnimationLevel" />
+                    <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Auch bei jedem Treffer' : animationLevel === 'special' ? 'Nur Bombe, On Fire, Formationen & Co.' : 'Keine großen Animationen' }}</div>
+
+                    <div class="kn-menu-label">Tisch</div>
                     <button type="button" class="kn-menu-button" @click="swapColors">
                         <i class="pi pi-palette"></i> Becherfarben tauschen
                     </button>
                     <button type="button" class="kn-menu-button" @click="swapSides">
                         <i class="pi pi-sync"></i> Seiten tauschen
                     </button>
-                    <div v-if="rotationSupported && mode === 'player'" class="kn-menu-hint">Oder einfach das Handy auf dem Tisch umdrehen</div>
-                    <button v-if="fullscreenSupported" type="button" class="kn-menu-button" @click="toggleFullscreen">
-                        <i :class="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"></i>
-                        {{ fullscreen ? 'Vollbild beenden' : 'Vollbild' }}
-                    </button>
-                    <button v-if="vibrationSupported" type="button" class="kn-menu-button" @click="toggleVibration">
-                        <i class="pi pi-mobile"></i> Vibration {{ vibrationEnabled ? 'ausschalten' : 'einschalten' }}
-                    </button>
-                    <div class="kn-menu-label">Animationen im {{ mode === 'player' ? 'Spieler' : 'Schiri' }}-Modus</div>
-                    <SelectButton :modelValue="animationLevel" :options="ANIMATION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setAnimationLevel" />
-                    <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Auch bei jedem Treffer' : animationLevel === 'special' ? 'Nur Bombe, On Fire, Formationen & Co.' : 'Keine großen Animationen' }}</div>
-                    <button type="button" class="kn-menu-button" @click="game.sound.toggleMute()">
-                        <i :class="game.sound.isMuted.value ? 'pi pi-volume-off' : 'pi pi-volume-up'"></i>
-                        Ton {{ game.sound.isMuted.value ? 'einschalten' : 'ausschalten' }}
-                    </button>
+                    <div class="kn-menu-hint">{{ mode === 'player' ? 'Oder einfach das Handy auf dem Tisch umdrehen' : 'Oder das Handy umdrehen, wenn du auf die andere Tischseite gehst' }}</div>
 
                     <div class="kn-menu-label">Sonderfälle</div>
                     <button type="button" class="kn-menu-button" @click="sheet = 'ownCup'"><KnechtIcon name="owncup" /> Eigene Becher runtergeworfen</button>
@@ -245,7 +256,6 @@ import { formatPoints, getPlayerName, getTeam, getTeamColor, getTeamName, swapCu
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
 import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
 import { addShots } from '@/components/frontend/shots/shots';
-import { requestRotationPermission, useTableRotation } from './useTableRotation';
 import { isVibrationSupported, toggleVibration, vibrationEnabled } from './knechtHaptics';
 import { ANIMATION_OPTIONS, animationLevel, animationMode, setAnimationLevel } from './knechtAnimations';
 import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
@@ -317,12 +327,24 @@ const swapColors = () => {
     sheet.value = null;
 };
 
-// Handy flach auf dem Tisch um 180 Grad gedreht: Seiten tauschen (nur Spielermodus, laufendes Spiel)
-const rotationEnabled = computed(() => mode.value === 'player' && game.isStarted.value && !game.isOver.value && !sheet.value);
-const { supported: rotationSupported } = useTableRotation(rotationEnabled, () => {
-    swapSides();
-    toast.add({ severity: 'info', summary: 'Seiten getauscht', life: 1500 });
-});
+// Seiten durch Drehen:
+// - Spielermodus: das Handy liegt flach, Umdrehen bringt die Seiten von selbst zum richtigen Team.
+//   Kein automatischer Tausch (der hat das Umdrehen wieder rueckgaengig gemacht, Nutzertest).
+// - Schiri-Modus: der Schiri haelt das Handy quer. Geht er auf die andere Tischseite und dreht das Handy,
+//   dreht das System das Bild mit (Querformat links <-> rechts) - links und rechts muessen dann tauschen.
+const onScreenTurn = () => {
+    const type = screen.orientation?.type ?? '';
+    if (!type.startsWith('landscape') || mode.value !== 'referee' || !game.isStarted.value || game.isOver.value) {
+        lastLandscape = type.startsWith('landscape') ? type : lastLandscape;
+        return;
+    }
+    if (lastLandscape && lastLandscape !== type) {
+        swapSides();
+        toast.add({ severity: 'info', summary: 'Seiten getauscht', life: 1500 });
+    }
+    lastLandscape = type;
+};
+let lastLandscape: string | null = screen.orientation?.type?.startsWith('landscape') ? screen.orientation.type : null;
 
 const pause = () => {
     paused.value = true;
@@ -365,7 +387,8 @@ const celebrationFlipped = computed(() => mode.value === 'player' && game.celebr
 
 // ─── Knecht Pro (nur Schiedsrichter): Doppelkante und Abprallrichtung nach einem Kanten-Nullwurf ───
 const PRO_KEY = 'bipo_knecht_pro';
-const proEnabled = ref(localStorage.getItem(PRO_KEY) === 'on');
+// Im Schiri-Modus standardmaessig an (Kanten, Wurfzeiten), abschaltbar im Menue
+const proEnabled = ref(localStorage.getItem(PRO_KEY) !== 'off');
 const proActive = computed(() => proEnabled.value && mode.value === 'referee');
 const toggleProMode = () => {
     proEnabled.value = !proEnabled.value;
@@ -483,7 +506,6 @@ const confirmAbort = () => {
 };
 
 const startGame = (teamIndex: number) => {
-    requestRotationPermission();
     game.match.time = new Date().getTime();
     game.start(teamIndex);
     enterFullscreen();
@@ -530,6 +552,7 @@ watch(game.isOver, (isOver) => {
 
 onMounted(() => {
     orientationQuery.addEventListener('change', onOrientationChange);
+    screen.orientation?.addEventListener('change', onScreenTurn);
     document.addEventListener('fullscreenchange', onFullscreenChange);
     if (game.isStarted.value && !game.isOver.value) requestWakeLock();
     if (game.droppedActions)
@@ -538,6 +561,7 @@ onMounted(() => {
 
 onUnmounted(() => {
     orientationQuery.removeEventListener('change', onOrientationChange);
+    screen.orientation?.removeEventListener('change', onScreenTurn);
     document.removeEventListener('fullscreenchange', onFullscreenChange);
     releaseWakeLock();
     unlockOrientation();
@@ -833,9 +857,6 @@ onUnmounted(() => {
     70%{ box-shadow: 0 0 0 7px rgba(229, 72, 77, 0); }
     100%{ box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
 }
-.kn-menu-button--on{
-    border-color: var(--main-color);
-}
 .kn-shot{
     z-index: 28;
 }
@@ -936,5 +957,60 @@ onUnmounted(() => {
     border-color: var(--bp-primary-weak);
     background: var(--bp-primary-faint);
     color: var(--main-color);
+}
+/* An/Aus-Einstellung: gleiche Zeile wie ein Knopf, rechts ein Schalter mit sichtbarem Zustand */
+.kn-menu-toggle{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 6px 14px;
+    border: 1px solid var(--bp-border);
+    border-radius: 12px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.kn-menu-toggle-text{
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+.kn-menu-toggle-text small{
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--bp-text-muted);
+}
+.kn-menu-switch{
+    position: relative;
+    flex-shrink: 0;
+    width: 44px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--bp-fill-strong);
+    transition: background .2s ease;
+}
+.kn-menu-switch::after{
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+    transition: transform .2s ease;
+}
+.kn-menu-toggle[aria-checked="true"] .kn-menu-switch{
+    background: var(--main-color);
+}
+.kn-menu-toggle[aria-checked="true"] .kn-menu-switch::after{
+    transform: translateX(18px);
 }
 </style>

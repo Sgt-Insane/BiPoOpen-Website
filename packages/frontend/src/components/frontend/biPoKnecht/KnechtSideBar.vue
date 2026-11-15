@@ -1,34 +1,32 @@
 <template>
-    <!-- Schwebendes Menue: ein Kreis mit drei Punkten am Rand, das Spielfeld bleibt in voller Breite.
-         Ein Tipp klappt die Knoepfe auf, ein Tipp daneben oder auf einen Knopf klappt sie wieder zu. -->
+    <!-- Schwebende Knoepfe am Rand, das Spielfeld bleibt in voller Breite. Immer sichtbar: Rueckgaengig,
+         drei Punkte (mittig) und Spielverlauf. Die drei Punkte klappen Punktestand und Einstellungen dazu auf. -->
     <div class="KnechtSideBar" :class="{ 'kn-fab--open': open }">
         <div v-if="open" class="kn-fab-backdrop" @click="open = false"></div>
 
         <nav class="kn-fab-menu" aria-label="BiPo Knecht">
             <transition-group name="kn-fab-item">
-                <template v-if="open">
-                    <button key="undo" type="button" class="kn-side-button" :disabled="!canUndo" title="Letzten Wurf rückgängig machen" aria-label="Rückgängig" @click="pick('undo')">
-                        <i class="pi pi-undo"></i>
-                    </button>
-                    <button key="scoreboard" type="button" class="kn-side-button" title="Punktestand" aria-label="Punktestand" @click="pick('scoreboard')">
-                        <i class="pi pi-trophy"></i>
-                    </button>
-                </template>
+                <button v-if="open" key="scoreboard" type="button" class="kn-side-button" title="Punktestand" aria-label="Punktestand" @click="pick('scoreboard')">
+                    <i class="pi pi-trophy"></i>
+                </button>
             </transition-group>
 
-            <button type="button" class="kn-side-button kn-fab" :title="open ? 'Schließen' : 'Aktionen öffnen'" :aria-expanded="open" aria-label="Aktionen" @click="open = !open">
+            <button type="button" class="kn-side-button" :disabled="!canUndo" title="Letzten Wurf rückgängig machen" aria-label="Rückgängig" @click="pick('undo')">
+                <i class="pi pi-undo"></i>
+            </button>
+
+            <button type="button" class="kn-side-button kn-fab" :title="open ? 'Schließen' : 'Mehr'" :aria-expanded="open" aria-label="Aktionen" @click="open = !open">
                 <i :class="open ? 'pi pi-times' : 'pi pi-ellipsis-v'"></i>
             </button>
 
+            <button type="button" class="kn-side-button" title="Spielverlauf" aria-label="Spielverlauf" @click="pick('timeline')">
+                <i class="pi pi-clock"></i>
+            </button>
+
             <transition-group name="kn-fab-item">
-                <template v-if="open">
-                    <button key="timeline" type="button" class="kn-side-button" title="Spielverlauf" aria-label="Spielverlauf" @click="pick('timeline')">
-                        <i class="pi pi-clock"></i>
-                    </button>
-                    <button key="menu" type="button" class="kn-side-button" title="Einstellungen, Sonderfälle & Pause" aria-label="Einstellungen & Sonderfälle" @click="pick('menu')">
-                        <i class="pi pi-bars"></i>
-                    </button>
-                </template>
+                <button v-if="open" key="menu" type="button" class="kn-side-button" title="Einstellungen, Sonderfälle & Pause" aria-label="Einstellungen & Sonderfälle" @click="pick('menu')">
+                    <i class="pi pi-cog"></i>
+                </button>
             </transition-group>
         </nav>
     </div>
@@ -98,9 +96,12 @@ const pick = (action: 'undo' | 'scoreboard' | 'timeline' | 'menu') => {
     opacity: .35;
     cursor: default;
 }
-/* Geschlossen dezent, damit er nicht vom Spiel ablenkt */
-.kn-fab{
-    opacity: .85;
+/* Geschlossen dezent, damit die Knoepfe nicht vom Spiel ablenken */
+.kn-side-button:not(:disabled){
+    opacity: .9;
+}
+.kn-fab--open .kn-side-button:not(:disabled){
+    opacity: 1;
 }
 .kn-fab--open .kn-fab{
     opacity: 1;
