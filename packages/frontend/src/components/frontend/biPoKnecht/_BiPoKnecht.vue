@@ -8,7 +8,7 @@
             :startTeamIndex="game.startTeamIndex"
             :actions="game.actions"
             :refereeUsed="game.refereeUsed"
-            :live="liveInfo"
+            :live="isFeatureOn('live') || live.binding.value ? liveInfo : null"
             :initialSwapped="game.guest"
             @change="onChange"
             @exit="abort"
@@ -36,6 +36,7 @@ import { isDemoMode } from '@/util/demoGames';
 import { isLiveEnabled, setLiveEnabled, type LiveBinding, type LiveProgress } from './knechtLive';
 import { useKnechtLiveSync } from './useKnechtLiveSync';
 import type { KnechtLiveInfo } from './KnechtLivePanel.vue';
+import { isFeatureOn } from '@/util/featureFlags';
 
 type ActiveGame = {
     key: number;

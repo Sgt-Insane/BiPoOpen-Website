@@ -5,7 +5,9 @@
 # Einrichtung (einmalig):
 #   1. Im Vercel-Projekt des Backends die Umgebungsvariable RELEASE_PUSH_SECRET setzen (beliebiges langes Geheimnis)
 #   2. Im GitHub-Repository unter Settings > Secrets > Actions dasselbe Geheimnis als RELEASE_PUSH_SECRET anlegen
-# Fuer ein neues Update: oben in releases.json eine neue Version eintragen und nach main mergen.
+# Fuer ein neues Update: unten in releases.json eine neue Version eintragen und nach main mergen.
+# Eintraege mit "draft": true sind Entwuerfe (Features nur im Entwicklermodus sichtbar, siehe
+# packages/frontend/src/util/featureFlags.ts): kein Push, bis "draft" entfernt wird.
 
 name: Release-Push
 
@@ -29,7 +31,7 @@ jobs:
             echo "RELEASE_PUSH_SECRET fehlt - kein Release-Push"
             exit 0
           fi
-          RELEASE=$(jq -c '.[-1] | {version, title, notes}' packages/frontend/src/releases.json)
+          RELEASE=$(jq -c '[.[] | select(.draft != true)] | .[-1] | {version, title, notes}' packages/frontend/src/releases.json)
           echo "Release: $RELEASE"
           curl --fail-with-body -sS -X POST "https://bipoopen-backend.vercel.app/push/release" \
             -H "Authorization: Bearer $RELEASE_PUSH_SECRET" \

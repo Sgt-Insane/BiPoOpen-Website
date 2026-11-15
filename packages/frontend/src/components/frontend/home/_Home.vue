@@ -10,7 +10,7 @@
         />
 
         <!-- Live-Ticker: laufende Knecht-Spiele (nur sichtbar, wenn eins laeuft) -->
-        <HomeLiveGames />
+        <HomeLiveGames v-if="isFeatureOn('live')" />
 
         <HomeHero
             :openGames="openGames"
@@ -34,6 +34,7 @@
 <script setup lang="ts">
 import HomeHero from './HomeHero.vue';
 import HomeLiveGames from '@/components/frontend/live/HomeLiveGames.vue';
+import { isFeatureOn } from '@/util/featureFlags';
 import HomeRecentGames from './HomeRecentGames.vue';
 import HomePhotoMosaic from './HomePhotoMosaic.vue';
 import { useHomeData } from './useHomeData';

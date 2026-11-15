@@ -108,7 +108,7 @@
                 <i class="pi pi-angle-right"></i>
             </button>
             <!-- Zweites Handy: einem laufenden Knecht-Spiel mit Code beitreten -->
-            <button v-if="launch" type="button" class="ge-join" @click="onJoin()">
+            <button v-if="launch && isFeatureOn('live')" type="button" class="ge-join" @click="onJoin()">
                 <i class="pi pi-mobile"></i> Spiel läuft schon auf einem anderen Handy? <b>Mit Code beitreten</b>
             </button>
 
@@ -149,6 +149,7 @@ import GameEntryPlayerSearch from './GameEntryPlayerSearch.vue';
 import GameEntryScorePicker from './GameEntryScorePicker.vue';
 import { createEmptySides, getScoreChances, getSideName, getSideScore, type GameEntrySide } from './gameEntry';
 import { PUSH_SETTINGS_PATH, usePushNotifications } from '@/components/shared/usePushNotifications';
+import { isFeatureOn } from '@/util/featureFlags';
 
 const MAX_PLAYERS_PER_SIDE = 4;
 

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { isDemoMode } from '@/util/demoGames';
+import { isFeatureOn } from '@/util/featureFlags';
 import type { KnechtAction } from './knechtEngine';
 
 // Live-Spiele: laufende Knecht-Spiele fuer den Live-Ticker und fuer das Tracking mit zwei Handys.
@@ -79,5 +80,9 @@ export const getWatchLink = (id: string) => `${window.location.origin}/Live/${id
 
 // Live-Uebertragung ein/aus (bleibt fuer die naechsten Spiele erhalten)
 const LIVE_KEY = 'bipo_knecht_live';
-export const isLiveEnabled = () => { try { return localStorage.getItem(LIVE_KEY) !== 'off'; } catch { return true; } };
+// Live nur, wenn das Feature freigegeben ist (bzw. im Entwicklermodus an) und nicht auf diesem Handy abgeschaltet
+export const isLiveEnabled = () => {
+    if (!isFeatureOn('live')) return false;
+    try { return localStorage.getItem(LIVE_KEY) !== 'off'; } catch { return true; }
+};
 export const setLiveEnabled = (enabled: boolean) => { try { localStorage.setItem(LIVE_KEY, enabled ? 'on' : 'off'); } catch { /* egal */ } };

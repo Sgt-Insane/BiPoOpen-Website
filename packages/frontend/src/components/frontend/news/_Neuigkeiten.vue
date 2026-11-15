@@ -7,7 +7,8 @@
                     <button type="button" class="nw-back" aria-label="Zurück" @click="goBack()">
                         <i class="pi pi-chevron-left"></i>
                     </button>
-                    <h1 class="nw-hero-title">Neuigkeiten</h1>
+                    <h1 class="nw-hero-title" @click="onTitleTap()">Neuigkeiten</h1>
+                    <router-link v-if="devState.enabled" to="/Entwickler" class="nw-dev">DEV</router-link>
                 </div>
                 <div class="nw-hero-hint">
                     Was sich auf der Seite und im BiPo Knecht geändert hat.
@@ -18,6 +19,7 @@
             <section v-for="release in releases" :key="release.version" class="nw-release">
                 <div class="nw-release-head">
                     <span class="nw-version">v{{ release.version }}</span>
+                    <span v-if="release.draft" class="nw-draft">Entwurf</span>
                     <h2 class="nw-release-title">{{ release.title }}</h2>
                     <span class="nw-date">{{ formatDate(release.date) }}</span>
                 </div>
@@ -31,11 +33,24 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import RELEASES from '@/releases.json';
+import { computed } from 'vue';
+import { devState, draftReleases, publishedReleases, setDevMode } from '@/util/featureFlags';
 
-// Neueste Version zuerst (src/releases.json; nach dem Deploy verschickt die GitHub Action dazu einen Push)
-const releases = [...RELEASES].reverse();
+// Neueste Version zuerst (src/releases.json; nach dem Deploy verschickt die GitHub Action dazu einen Push).
+// Entwuerfe ("draft": true) nur im Entwicklermodus.
+const releases = computed(() => [...publishedReleases, ...(devState.enabled ? draftReleases : [])].reverse());
 const router = useRouter();
+
+// Versteckter Zugang zum Entwicklermodus: 7× schnell auf die Ueberschrift tippen
+let taps: number[] = [];
+const onTitleTap = () => {
+    const now = Date.now();
+    taps = [...taps.filter(time => now - time < 3000), now];
+    if (taps.length < 7) return;
+    taps = [];
+    setDevMode(true);
+    router.push('/Entwickler');
+};
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -73,6 +88,25 @@ const goBack = () => {
     gap: 4px;
     height: 44px;
 }
+.nw-dev{
+    margin-left: auto;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #F5A524;
+    color: #0C1E47;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-decoration: none;
+}
+.nw-draft{
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #FFF4DB;
+    color: #9A6400;
+    font-size: 11px;
+    font-weight: 700;
+}
 .nw-back{
     display: flex;
     align-items: center;
@@ -86,6 +120,7 @@ const goBack = () => {
     cursor: pointer;
 }
 .nw-hero-title{
+    user-select: none;
     margin: 0;
     font-size: 22px;
     font-weight: 800;

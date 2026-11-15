@@ -134,6 +134,18 @@ const routes = [
 		}
 	},
 
+	// Entwicklermodus: Features in Arbeit auf diesem Geraet einschalten (versteckt: 7x auf "Neuigkeiten" tippen)
+	{
+		path: '/Entwickler',
+		name: 'Entwickler',
+		component: () => import('@/components/frontend/developer/_Developer.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Entwickler',
+			description: 'Entwicklermodus',
+			detailPage: true
+		}
+	},
+
 	// Live-Ticker eines laufenden Knecht-Spiels
 	{
 		path: '/Live/:LiveId',

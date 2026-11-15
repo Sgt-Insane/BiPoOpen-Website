@@ -9,7 +9,21 @@
             "Kanten-Erkennung, Ellenbogen-Call und Knecht Pro mit Wurfzeiten im Schiri-Modus",
             "Spielverlauf mit allen Würfen, Minuten, Highlights, Elo je Spieler und Auszeichnungen",
             "Offene Shots: nach 3 Airballs „Später“ trinken und auf der Webseite abhaken",
-            "Gentleman's Rule mit abwechselnden Bällen, On Fire zählt je Spieler über die Züge"
+            "Gentleman's Rule mit abwechselnden Bällen, On Fire zählt je Spieler über die Züge",
+            "Würfe nachträglich ändern – auch während des Spiels, mit Vorschau der Folgen",
+            "Begriffe wie Meile, Heaten Up oder Elo antippen für eine kurze Erklärung",
+            "Spielerprofil aufgeräumt: Elo-Verlauf, Rekorde und Auszeichnungen"
+        ]
+    },
+    {
+        "version": "2.1",
+        "date": "2026-11-15",
+        "title": "Live-Ticker",
+        "draft": true,
+        "notes": [
+            "Laufende Knecht-Spiele live auf der Startseite mitverfolgen",
+            "Zwei Handys zählen ein Spiel – beitreten per Code oder Link",
+            "Spielverlauf live: jeder Wurf erscheint sofort"
         ]
     }
 ]
