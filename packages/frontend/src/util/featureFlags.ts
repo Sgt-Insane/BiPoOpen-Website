@@ -11,6 +11,9 @@ import { isDemoMode } from '@/util/demoGames';
 //   2. Mergen: auf der Live-Seite nur im Entwicklermodus sichtbar (7× auf „Neuigkeiten“ tippen oder /Entwickler)
 //   3. Freigeben: in releases.json beim Eintrag dieser Version "draft": true entfernen und mergen
 //      -> Feature fuer alle sichtbar, die GitHub Action verschickt den Update-Push
+//
+// Versionsnummern MAJOR.MINOR.PATCH: grosses Update = erste Zahl, neues Feature = zweite, Bugfix/Optimierung = dritte.
+// Vorschlag fuer die naechste Nummer aus den Commits seit der letzten Version: npm run version:next
 
 export type Release = { version: string; date: string; title: string; notes: string[]; draft?: boolean };
 
@@ -18,12 +21,12 @@ export const FEATURES = {
     live: {
         title: 'Live-Ticker & zweites Handy',
         description: 'Knecht-Spiele live auf der Startseite verfolgen und mit zwei Handys zählen (Code oder Link).',
-        release: '2.1',
+        release: '2.1.0',
     },
     shareOverlay: {
         title: 'Story-Overlay',
         description: 'Statistik eines Spiels als durchsichtiges Bild im Story-Format, zum Drüberlegen über ein eigenes Foto.',
-        release: '2.1',
+        release: '2.1.0',
     },
 } satisfies Record<string, { title: string; description: string; release: string }>;
 
