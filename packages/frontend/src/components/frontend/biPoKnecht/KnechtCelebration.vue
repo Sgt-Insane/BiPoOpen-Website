@@ -555,10 +555,10 @@ const rerackCups = computed(() => {
     animation: kc-icon .7s cubic-bezier(.3, 1.6, .5, 1) .1s both, kc-shake .4s linear .8s 2;
 }
 
-/* Treffer: kurze Variante (1,1 s statt 2,2 s), ohne Streifen */
+/* Treffer: kurze Variante (1,4 s statt 2,2 s), ohne Streifen */
 .kc--hit .kc-flash,
 .kc--hit .kc-content{
-    animation-duration: 1.1s;
+    animation-duration: 1.4s;
 }
 .kc--hit .kc-stripes{
     display: none;

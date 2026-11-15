@@ -11,6 +11,11 @@
             <circle v-else-if="'r' in shape" :cx="shape.cx" :cy="shape.cy" :r="shape.r" :class="classes(shape)" />
             <path v-else :d="shape.d" :class="classes(shape)" />
         </template>
+        <!-- Treffer: Bier spritzt aus dem Becher, wenn der Ball eintaucht -->
+        <g v-if="kind === 'hit'" class="kci-splash">
+            <path class="kci-splash-crown" d="M7.2 9.6c.5-2.4 1.5-2.8 2-1 .5-3.2 1.8-3.6 2.8-.6.9-3 2.2-2.6 2.8.6.5-1.8 1.5-1.4 2 1" />
+            <circle v-for="drop in SPLASH_DROPS" :key="drop.x" class="kci-drop" cx="12" cy="9" :r="drop.r" :style="{ '--dx': `${drop.x}px`, '--dy': `${drop.y}px`, '--d': `${drop.d}s` }" />
+        </g>
     </svg>
 </template>
 
@@ -28,6 +33,15 @@ const MOTIONS: Partial<Record<KnechtIconName, { path: string; dur: string }>> = 
     trickshot: { path: 'M2 19c4 0 8-2 9-6s-3-5-4-2 3 5 7 2 5-6 5-8', dur: '1s' },
 };
 const motion = computed(() => MOTIONS[props.name] ?? null);
+
+// Bierspritzer beim Treffer: Richtung (dx, dy) und Groesse je Tropfen
+const SPLASH_DROPS = [
+    { x: -7, y: -5.5, r: 1.3, d: 0 },
+    { x: -3.4, y: -9, r: 1, d: .03 },
+    { x: .5, y: -10.5, r: 1.4, d: .01 },
+    { x: 4, y: -8.5, r: 1.1, d: .04 },
+    { x: 7.2, y: -5, r: 1.2, d: .02 },
+];
 
 const classes = (shape: KnechtIconShape) => [
     shape.part ? `kci-${shape.part}` : null,
@@ -83,15 +97,36 @@ const classes = (shape: KnechtIconShape) => [
     50%{ opacity: .45; }
 }
 
-/* ─── Treffer: Ball faellt entlang der Streifen in den Becher, der Becher federt ─── */
-.kci--hit .kci-ball{ animation: kci-drop .55s cubic-bezier(.5, 0, .7, 1) .05s both; }
-.kci--hit .kci-streaks{ animation: kci-fade .3s ease-out both; }
-.kci--hit .kci-cup{ transform-origin: 12px 21.2px; animation: kci-bump .3s ease-out .55s both; }
+/* ─── Treffer: Ball fliegt mit den drei Streifen in den Becher, das Bier spritzt ─── */
+.kci--hit .kci-ball{ animation: kci-drop .6s cubic-bezier(.45, 0, .8, .6) .05s both; }
+.kci--hit .kci-streaks{ animation: kci-streaks .6s cubic-bezier(.45, 0, .8, .6) .05s both; }
+.kci--hit .kci-cup{ transform-origin: 12px 21.2px; animation: kci-bump .3s ease-out .6s both; }
+.kci-splash{ fill: #FFD54A; stroke: none; }
+.kci-splash-crown{ fill: #FFD54A; stroke: white; stroke-width: .9; transform-origin: 12px 9.6px; animation: kci-crown .45s ease-out .6s both; }
+.kci-drop{ stroke: white; stroke-width: .5; animation: kci-spray .55s cubic-bezier(.2, .7, .4, 1) both; animation-delay: calc(.6s + var(--d)); }
 @keyframes kci-drop{
-    0%{ transform: translate(4px, -9px); opacity: 0; }
-    20%{ opacity: 1; }
-    60%{ transform: translate(0, 0); }
-    100%{ transform: translate(-.6px, 4.5px) scale(.75); opacity: 0; }
+    0%{ transform: translate(5px, -11px); opacity: 0; }
+    15%{ opacity: 1; }
+    70%{ transform: translate(0, 0); }
+    100%{ transform: translate(-.5px, 4px) scale(.7); opacity: 0; }
+}
+/* Streifen fliegen mit dem Ball und verschwinden am Becherrand */
+@keyframes kci-streaks{
+    0%{ transform: translate(5px, -11px); opacity: 0; }
+    15%{ opacity: 1; }
+    70%{ transform: translate(0, 0); opacity: 1; }
+    100%{ transform: translate(-.4px, 2px); opacity: 0; }
+}
+@keyframes kci-crown{
+    0%{ transform: scaleY(0) scaleX(.6); opacity: 1; }
+    45%{ transform: scaleY(1.2) scaleX(1.05); opacity: 1; }
+    100%{ transform: scaleY(.3) scaleX(1.15); opacity: 0; }
+}
+@keyframes kci-spray{
+    0%{ transform: translate(0, 0) scale(.4); opacity: 0; }
+    15%{ opacity: 1; }
+    60%{ transform: translate(var(--dx), var(--dy)) scale(1); opacity: 1; }
+    100%{ transform: translate(calc(var(--dx) * 1.25), calc(var(--dy) * .3 + 3px)) scale(.8); opacity: 0; }
 }
 
 /* ─── Balls Back: die Pfeile drehen sich um den Ball, der Ball springt zurueck ─── */

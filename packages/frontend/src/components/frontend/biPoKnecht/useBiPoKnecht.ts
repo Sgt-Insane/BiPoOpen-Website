@@ -26,7 +26,7 @@ export type CupPick = {
 const BANNER_DURATION = 1800;
 const CELEBRATION_DURATION = 2200;
 // Normaler Treffer: kurze Animation, damit sie beim schnellen Eintragen nicht stoert
-const HIT_DURATION = 1100;
+const HIT_DURATION = 1400;
 
 // Grosse Animation wie beim Bowling. Zusaetzlich zu den Bannern der Engine auch fuer Aktionen ohne Regelfolge.
 export type KnechtCelebrationKind =
