@@ -41,6 +41,7 @@
                 type="button"
                 class="kn-start-option"
                 :class="{ 'kn-start-option--active': selected === teamIndex }"
+                :aria-pressed="selected === teamIndex"
                 :style="{ '--kn-team-color': getTeamColor(match, teamIndex) }"
                 @click="selected = teamIndex"
             >

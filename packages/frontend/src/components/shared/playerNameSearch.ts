@@ -1,16 +1,14 @@
 // Gemeinsame Rangfolge fuer alle Spielersuchen (Kopfzeile, Spiel eintragen, Vergleich):
-// 1. Name beginnt mit der Eingabe ("Ma" -> "Matthias Weck")
-// 2. ein Wort im Namen beginnt damit ("We" -> "Matthias Weck")
-// 3. kommt irgendwo vor ("ma" -> "Thomas")
+// 1. ein Wort im Namen beginnt mit der Eingabe ("Ma" -> "Matthias Weck", "We" -> "Matthias Weck")
+// 2. kommt irgendwo vor ("ma" -> "Thomas")
 // Innerhalb jeder Gruppe: wer mehr Spiele hat zuerst, dann alphabetisch.
+// Vor- und Nachname zaehlen gleich, sonst stuende bei "Weck" ein Profil, das nur "Weck" heisst
+// (1 Spiel), vor den aktiven Wecks.
 
 export const normalizePlayerSearch = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase();
 
-const matchRank = (name: string, search: string) => {
-    if (name.startsWith(search)) return 0;
-    if (name.split(' ').some(word => word.startsWith(search))) return 1;
-    return 2;
-};
+const matchRank = (name: string, search: string) =>
+    name.split(' ').some(word => word.startsWith(search)) ? 0 : 1;
 
 export const rankPlayerNames = (names: string[], query: string, matchCounts: Record<string, number> = {}) => {
     const search = normalizePlayerSearch(query);

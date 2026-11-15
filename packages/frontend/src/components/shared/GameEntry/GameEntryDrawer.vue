@@ -78,7 +78,7 @@
 
                 <button v-if="canAddPlayer(side)" type="button" class="ge-add-player" @click="addPlayer(side)">
                     <i class="pi pi-plus"></i>
-                    Mitspieler ({{ side.players.length + 1 }} gegen {{ side.players.length + 1 }})
+                    Mitspieler hinzufügen
                 </button>
             </div>
 
@@ -275,7 +275,11 @@ const canSave = computed(() =>
 const saveLabel = computed(() => {
     if (!hasAllNames.value) return props.incompleteLabel;
     if (hasDuplicateNames.value) return 'Doppelt gewählt';
-    if (!hasAllScores.value) return 'Treffer wählen';
+    if (!hasAllScores.value) {
+        // Bei mehreren Spielern pro Team zaehlt jeder einzeln: sagen, wer noch fehlt
+        const missing = sides.value.flatMap(side => side.players).find(player => player.score === null);
+        return missing?.name.trim() ? `Treffer für ${missing.name.trim()} wählen` : 'Treffer wählen';
+    }
     if (isDraw.value && !props.allowDraw) return 'Kein Unentschieden möglich';
     return `Ergebnis speichern · ${totals.value[0]} : ${totals.value[1]}`;
 });

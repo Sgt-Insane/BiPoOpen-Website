@@ -16,7 +16,7 @@
                 </template>
             </transition-group>
 
-            <button type="button" class="kn-side-button kn-fab" :title="open ? 'Schließen' : 'Menü öffnen'" :aria-expanded="open" aria-label="Knecht-Menü" @click="open = !open">
+            <button type="button" class="kn-side-button kn-fab" :title="open ? 'Schließen' : 'Aktionen öffnen'" :aria-expanded="open" aria-label="Aktionen" @click="open = !open">
                 <i :class="open ? 'pi pi-times' : 'pi pi-ellipsis-v'"></i>
             </button>
 
@@ -25,7 +25,7 @@
                     <button key="timeline" type="button" class="kn-side-button" title="Spielverlauf" aria-label="Spielverlauf" @click="pick('timeline')">
                         <i class="pi pi-clock"></i>
                     </button>
-                    <button key="menu" type="button" class="kn-side-button" title="Menü" aria-label="Menü" @click="pick('menu')">
+                    <button key="menu" type="button" class="kn-side-button" title="Einstellungen, Sonderfälle & Pause" aria-label="Einstellungen & Sonderfälle" @click="pick('menu')">
                         <i class="pi pi-bars"></i>
                     </button>
                 </template>

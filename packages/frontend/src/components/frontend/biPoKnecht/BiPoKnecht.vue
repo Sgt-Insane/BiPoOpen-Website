@@ -152,7 +152,7 @@
                 <KnechtLivePanel :live="live ?? null" @start="emit('live', 'start')" @stop="emit('live', 'stop'); sheet = null" @leave="emit('live', 'leave')" />
             </KnechtSheet>
 
-            <KnechtSheet :visible="sheet === 'menu'" title="Menü" :flipped="sheetFlipped" @update:visible="sheet = null">
+            <KnechtSheet :visible="sheet === 'menu'" title="Einstellungen & Sonderfälle" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <div class="kn-menu-list">
                     <div class="kn-menu-label">Modus</div>
                     <SelectButton :modelValue="modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setMode" />
