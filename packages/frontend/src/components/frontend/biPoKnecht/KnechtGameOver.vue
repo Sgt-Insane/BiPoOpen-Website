@@ -80,7 +80,7 @@
             </template>
         </div>
 
-        <KnechtSheet :visible="editTurn !== null" title="Eintrag korrigieren" subtitle="Der Rest des Spiels wird neu berechnet" @update:visible="editTurn = null">
+        <KnechtSheet :visible="editTurn !== null" title="Eintrag korrigieren" subtitle="Spätere Würfe werden wenn nötig angepasst" @update:visible="editTurn = null">
             <KnechtTurnEditor v-if="editTurn !== null" :game="game" :turnIndex="editTurn" @done="editTurn = null" />
         </KnechtSheet>
     </div>

@@ -117,8 +117,13 @@
                 <KnechtScoreboard :match="game.match" :state="game.state.value" />
             </KnechtSheet>
 
-            <KnechtSheet :visible="sheet === 'timeline'" title="Spielverlauf" subtitle="Neueste Würfe oben" :flipped="sheetFlipped" @update:visible="sheet = null">
-                <KnechtTimeline :match="game.match" :state="game.state.value" newestFirst />
+            <KnechtSheet :visible="sheet === 'timeline'" title="Spielverlauf" subtitle="Neueste Würfe oben · antippen zum Korrigieren" :flipped="sheetFlipped" @update:visible="sheet = null">
+                <KnechtTimeline :match="game.match" :state="game.state.value" newestFirst editable @edit="openTurnEditor" />
+            </KnechtSheet>
+
+            <!-- Eintrag korrigieren, auch waehrend des Spiels -->
+            <KnechtSheet :visible="sheet === 'edit'" title="Eintrag korrigieren" subtitle="Spätere Würfe werden wenn nötig angepasst" :flipped="sheetFlipped" @update:visible="sheet = editTurn = null">
+                <KnechtTurnEditor v-if="editTurn !== null" :game="game" :turnIndex="editTurn" @done="sheet = 'timeline'; editTurn = null" />
             </KnechtSheet>
 
             <KnechtSheet :visible="sheet === 'trickshot'" title="Trickshot" :subtitle="`${throwerName} hat verfehlt – wer hat den Ball gefangen?`" :flipped="sheetFlipped" @update:visible="sheet = null">
@@ -208,6 +213,7 @@ import KnechtSideBar from './KnechtSideBar.vue';
 import KnechtSheet from './KnechtSheet.vue';
 import KnechtScoreboard from './KnechtScoreboard.vue';
 import KnechtTimeline from './KnechtTimeline.vue';
+import KnechtTurnEditor from './KnechtTurnEditor.vue';
 import KnechtCelebration from './KnechtCelebration.vue';
 import KnechtOwnCup from './KnechtOwnCup.vue';
 import KnechtElbow from './KnechtElbow.vue';
@@ -252,7 +258,12 @@ const modeSetting = ref<ModeSetting>(storedMode === 'referee' || storedMode === 
 const swapped = ref(false);
 const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
-const sheet = ref<'scoreboard' | 'timeline' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
+const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
+const editTurn = ref<number | null>(null);
+const openTurnEditor = (turnIndex: number) => {
+    editTurn.value = turnIndex;
+    sheet.value = 'edit';
+};
 
 const setMode = (value: ModeSetting) => {
     modeSetting.value = value;
