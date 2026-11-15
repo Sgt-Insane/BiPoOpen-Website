@@ -82,6 +82,12 @@
                 </button>
             </div>
 
+            <!-- Offene Spiele: gewaehlte Spieler zufaellig auf die Teams verteilen -->
+            <button v-if="canShuffle" type="button" class="ge-add-player ge-shuffle" @click="shuffleTeams()">
+                <i class="pi pi-sync"></i>
+                Teams auslosen
+            </button>
+
             <!-- Elo-Vorschau, sobald das Ergebnis feststeht -->
             <div v-if="eloChanges.length" class="ge-elo">
                 <div class="ge-elo-header">
@@ -198,6 +204,27 @@ watch([visible, () => props.initialSides], ([isVisible]) => {
 const allNames = computed(() => sides.value.flatMap(side => side.players.map(player => player.name.trim())).filter(name => name));
 
 const getExcludedNames = (player: { name: string }) => allNames.value.filter(name => name !== player.name.trim());
+
+// Teams auslosen: ab drei gewaehlten Spielern und solange noch keine Treffer eingetragen sind.
+// Die Platzzahl je Team bleibt, nur die Namen werden gemischt.
+const canShuffle = computed(() => !props.lockedNames
+    && sides.value.flatMap(side => side.players).filter(player => player.name.trim()).length >= 3
+    && sides.value.every(side => side.players.every(player => player.score === null)));
+const shuffleTeams = () => {
+    const names = sides.value.flatMap(side => side.players.map(player => player.name.trim())).filter(Boolean);
+    for (let index = names.length - 1; index > 0; index--) {
+        const swap = Math.floor(Math.random() * (index + 1));
+        [names[index], names[swap]] = [names[swap], names[index]];
+    }
+    // abwechselnd verteilen, damit beide Teams gleich viele bekommen
+    const slots = [0, 1].flatMap(sideIndex => sides.value[sideIndex].players.map((_, playerIndex) => ({ sideIndex, playerIndex })))
+        .sort((first, second) => first.playerIndex - second.playerIndex || first.sideIndex - second.sideIndex);
+    sides.value.forEach(side => { side.name = ''; side.players.forEach(player => { player.name = ''; }); });
+    names.forEach((name, index) => {
+        const slot = slots[index];
+        if (slot) sides.value[slot.sideIndex].players[slot.playerIndex].name = name;
+    });
+};
 
 const setPlayerName = (side: GameEntrySide, playerIndex: number, name: string) => {
     side.players[playerIndex].name = name;

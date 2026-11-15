@@ -133,6 +133,17 @@ onMounted(() => {
          renderBullet: (index, className) => {
             return '<span class="' + className + '">' + convertNumberToCharacter(index+1) + '</span>';
          }
+      },
+      on: {
+         // Andere Gruppe: wer weiter unten war, springt an den Anfang der neuen Gruppe (unter die klebende Gruppenauswahl)
+         slideChange: () => {
+            const container = document.getElementById('GameScheduleGroupsSwiper');
+            const pagination = document.getElementById('GameScheduleGroupsSwiper-Pagination');
+            if (!container) return;
+            const offset = (pagination?.getBoundingClientRect().bottom ?? 120) + 8;
+            const top = container.getBoundingClientRect().top + window.scrollY - offset;
+            if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
+         }
       }
    });
 });
