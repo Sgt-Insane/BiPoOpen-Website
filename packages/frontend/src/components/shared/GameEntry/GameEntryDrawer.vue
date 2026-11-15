@@ -258,8 +258,14 @@ const setTeams = (teams: { name: string; logo?: string }[]) => {
     sides.value = teams.map(team => ({ logo: team.logo, players: [{ name: team.name, score: null }] }));
 }
 
+// Leere Zusatzplaetze (aus Versehen "Mitspieler hinzufuegen") zaehlen nicht: weder als fehlender Spieler noch beim Speichern
+const filledSides = computed(() => sides.value.map(side => ({
+    ...side,
+    players: side.players.filter((player, playerIndex) => playerIndex === 0 || player.name.trim() || player.score !== null),
+})));
+
 // ─── Ergebnis ───
-const totals = computed(() => sides.value.map(getSideScore));
+const totals = computed(() => filledSides.value.map(getSideScore));
 
 const winnerIndex = computed(() => {
     const [score1, score2] = totals.value;
@@ -267,7 +273,7 @@ const winnerIndex = computed(() => {
     return score1 > score2 ? 0 : 1;
 });
 
-const hasAllNames = computed(() => sides.value.every(side => side.players.every(player => player.name.trim())));
+const hasAllNames = computed(() => filledSides.value.every(side => side.players.every(player => player.name.trim())));
 const hasDuplicateNames = computed(() =>
     new Set(allNames.value.map(name => name.toLowerCase())).size !== allNames.value.length
 );
@@ -285,7 +291,7 @@ const saveLabel = computed(() => {
     if (hasDuplicateNames.value) return 'Doppelt gewählt';
     if (!hasAllScores.value) {
         // Bei mehreren Spielern pro Team zaehlt jeder einzeln: sagen, wer noch fehlt
-        const missing = sides.value.flatMap(side => side.players).find(player => player.score === null);
+        const missing = filledSides.value.flatMap(side => side.players).find(player => player.score === null);
         return missing?.name.trim() ? `Treffer für ${missing.name.trim()} wählen` : 'Treffer wählen';
     }
     if (isImpossible.value) return `Unmöglicher Spielstand · ${totals.value[0]} : ${totals.value[1]}`;
@@ -301,13 +307,13 @@ const eloExplainedVisible = ref(false);
 const eloChanges = computed(() => {
     if (!props.eloPreview || !isEloLoaded.value || winnerIndex.value === -1 || !hasAllNames.value || hasDuplicateNames.value) return [];
 
-    const states = sides.value.map(side => side.players.map(player => getEloState(player.name) ?? { rating: ELO_START, games: 0 }));
+    const states = filledSides.value.map(side => side.players.map(player => getEloState(player.name) ?? { rating: ELO_START, games: 0 }));
     const deltas = getEloDeltas(states, {
         winner: winnerIndex.value as 0 | 1,
         scores: totals.value as [number, number],
-        hits: sides.value.map(side => side.players.map(player => player.score ?? 0)),
+        hits: filledSides.value.map(side => side.players.map(player => player.score ?? 0)),
     });
-    return sides.value.flatMap((side, sideIndex) => side.players.map((player, playerIndex) => {
+    return filledSides.value.flatMap((side, sideIndex) => side.players.map((player, playerIndex) => {
         const before = states[sideIndex][playerIndex].rating;
         const delta = deltas[sideIndex][playerIndex];
         const name = player.name.trim();
@@ -339,7 +345,7 @@ const runAction = async (action: () => Promise<boolean | void>, successSummary: 
 
 const onSave = () => {
     if (!canSave.value) return;
-    const result: GameEntrySide[] = JSON.parse(JSON.stringify(sides.value));
+    const result: GameEntrySide[] = JSON.parse(JSON.stringify(filledSides.value));
     const [name1, name2] = result.map(getSideName);
     const playerNames = allNames.value.map(name => getPlayerForLeagueTeam(name) ?? name);
     runAction(() => props.save(result), `${name1} ${totals.value[0]} : ${totals.value[1]} ${name2}`, 'Spiel nicht gespeichert', () => takePushHint(playerNames));
@@ -375,13 +381,13 @@ const canLaunch = computed(() => hasAllNames.value && !hasDuplicateNames.value);
 // Was fehlt noch fuer den Knecht? z.B. "Noch 1 Spieler für Team 2"
 const missingLabel = computed(() => {
     if (hasDuplicateNames.value) return 'Ein Spieler ist doppelt gewählt';
-    const missing = sides.value.map(side => side.players.filter(player => !player.name.trim()).length);
+    const missing = filledSides.value.map(side => side.players.filter(player => !player.name.trim()).length);
     const parts = missing.flatMap((count, index) => count ? [`${count} Spieler für ${props.sideLabels[index]}`] : []);
     return parts.length ? `Noch ${parts.join(' und ')} wählen` : props.incompleteLabel;
 });
 
 const onJoin = () => {
-    const code = window.prompt('Code vom anderen Handy (steht im Knecht unter „Live & zweites Handy“):')?.trim();
+    const code = window.prompt('Code vom anderen Handy (steht im Knecht oben und im Menü):')?.trim();
     if (!code) return;
     visible.value = false;
     router.push({ path: '/Knecht', query: { join: code.toUpperCase() } });
@@ -389,7 +395,7 @@ const onJoin = () => {
 
 const onLaunch = () => {
     if (!canLaunch.value || !props.launch) return;
-    const result: GameEntrySide[] = JSON.parse(JSON.stringify(sides.value));
+    const result: GameEntrySide[] = JSON.parse(JSON.stringify(filledSides.value));
     visible.value = false;
     props.launch(result);
 }

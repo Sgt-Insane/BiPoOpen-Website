@@ -30,7 +30,7 @@
                         </div>
                         <div class="mtl-accuracy">
                             <span class="mtl-accuracy-bar"><span :style="{ width: `${row.accuracy}%` }"></span></span>
-                            <span class="mtl-accuracy-label">{{ row.hits }}/{{ row.throws }} Treffer · {{ row.accuracy }} %</span>
+                            <span class="mtl-accuracy-label">{{ row.hits }} Treffer bei {{ row.throws }} Würfen · {{ row.accuracy }} %</span>
                         </div>
                     </div>
                 </div>

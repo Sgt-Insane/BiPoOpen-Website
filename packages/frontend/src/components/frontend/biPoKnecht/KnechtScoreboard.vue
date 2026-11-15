@@ -18,7 +18,7 @@
                     <span class="kn-score-player-points">{{ formatPoints(stats.points) }} <small>Becher</small></span>
                 </div>
                 <div class="kn-score-line">
-                    {{ stats.hits }}/{{ stats.throws }} Treffer · {{ getAccuracy(stats) }} % · beste Serie {{ stats.bestStreak }}
+                    {{ stats.hits }} Treffer bei {{ stats.throws }} Würfen · {{ getAccuracy(stats) }} % · beste Serie {{ stats.bestStreak }}
                 </div>
                 <div v-if="getSpecials(stats).length" class="kn-score-specials">
                     <span v-for="special in getSpecials(stats)" :key="special.text" class="kn-score-special"><KnechtIcon :name="special.icon" /> {{ special.text }}</span>

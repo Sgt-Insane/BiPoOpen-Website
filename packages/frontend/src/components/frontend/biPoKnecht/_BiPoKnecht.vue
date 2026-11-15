@@ -92,7 +92,7 @@ const live = useKnechtLiveSync({
     onKicked: () => {
         clearStoredGame();
         game.value = null;
-        toast.add({ severity: 'warn', summary: 'Vom anderen Handy getrennt', detail: 'Das Spiel wird dort allein weitergezählt. Hier wird nichts gespeichert.', life: 6000 });
+        toast.add({ severity: 'warn', summary: 'Vom anderen Handy getrennt', detail: 'Das Spiel wird dort allein weitergezählt. Hier wird nichts gespeichert.' });
         router.push('/');
     },
     onEnded: (status, liveGame) => {

@@ -141,7 +141,7 @@
             <KnechtSheet :visible="sheet === 'trickshot'" title="Trickshot" :subtitle="`${throwerName} hat verfehlt – wer hat den Ball gefangen?`" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <div class="kn-menu-list">
                     <button v-for="(player, playerIndex) in activeTeam.players" :key="playerIndex" type="button" class="kn-menu-button" @click="catchTrickshot(playerIndex)">
-                        <KnechtIcon name="trickshot" /> {{ player.name }} wirft den Trickshot
+                        <KnechtIcon name="trickshot" /> {{ player.name }} hat gefangen
                     </button>
                 </div>
             </KnechtSheet>
@@ -167,7 +167,7 @@
                     <div v-else-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
                     <button v-if="mode === 'referee'" type="button" role="switch" class="kn-menu-toggle" :aria-checked="proEnabled" @click="toggleProMode">
                         <KnechtIcon name="miss" />
-                        <span class="kn-menu-toggle-text">Knecht Pro <small>Becherkanten und Wurfzeiten erfassen</small></span>
+                        <span class="kn-menu-toggle-text">Knecht Pro <small>Wurfzeiten und Kanten erfassen – Kante: Fehlwurf knapp neben den Becher tippen</small></span>
                         <span class="kn-menu-switch" aria-hidden="true"></span>
                     </button>
 
