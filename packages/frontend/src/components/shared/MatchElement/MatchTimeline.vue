@@ -1,7 +1,7 @@
 <template>
     <div class="MatchTimeline">
         <div class="mtl-header">
-            <span class="mtl-title">Spielverlauf <GlossaryHint :terms="['nullwurf', 'airball', 'trickshot', 'bouncer', 'ballsBack', 'bombe', 'heatenUp', 'onFire', 'reRack', 'gentleman']" title="Begriffe im Spielverlauf" /></span>
+            <span class="mtl-title">Spielverlauf</span>
             <span v-if="duration || match.referee" class="mtl-duration">
                 <template v-if="match.referee"><i class="pi pi-flag" aria-hidden="true"></i> Schiri: {{ match.referee }}</template>
                 <template v-if="match.referee && duration"> · </template>{{ duration }}
@@ -52,7 +52,7 @@
                     <span class="mtl-highlight-minute">{{ highlight.minute !== null ? `${highlight.minute}'` : '' }}</span>
                     <span class="mtl-highlight-icon"><KnechtIcon :name="highlight.icon" /></span>
                     <span class="mtl-text">
-                        <span class="mtl-label">{{ highlight.title }}</span>
+                        <span class="mtl-label"><GlossaryText :text="highlight.title" /></span>
                         <span class="mtl-player">{{ highlight.detail }}</span>
                     </span>
                 </button>
@@ -101,7 +101,7 @@
                 <span class="mtl-minute-mark">{{ item.minute }}'</span>
             </div>
             <div v-else-if="item.kind === 'event'" class="mtl-event-row" :style="{ '--mtl-team-color': getTeamColor(match, item.teamIndex) }">
-                <span class="mtl-event"><KnechtIcon :name="item.icon" /> {{ item.label }}</span>
+                <span class="mtl-event"><KnechtIcon :name="item.icon" /> <GlossaryText :text="item.label" /></span>
             </div>
             <div v-else class="mtl-row" :ref="el => setRowElement(item.row.key, el)"
                 :class="{ 'mtl-row--quiet': item.row.quiet, 'mtl-row--highlight': highlightKeys.has(item.row.key), 'mtl-row--flash': flashKey === item.row.key }"
@@ -110,7 +110,7 @@
                 <div class="mtl-side mtl-side--left">
                     <template v-if="row.teamIndex === 0">
                         <span class="mtl-text">
-                            <span class="mtl-label">{{ row.label }}</span>
+                            <span class="mtl-label"><GlossaryText :text="row.label" /></span>
                             <span v-if="row.player" class="mtl-player">{{ row.player }}</span>
                         </span>
                         <span class="mtl-icon"><KnechtIcon :name="row.icon" /></span>
@@ -129,7 +129,7 @@
                     <template v-if="row.teamIndex === 1">
                         <span class="mtl-icon"><KnechtIcon :name="row.icon" /></span>
                         <span class="mtl-text">
-                            <span class="mtl-label">{{ row.label }}</span>
+                            <span class="mtl-label"><GlossaryText :text="row.label" /></span>
                             <span v-if="row.player" class="mtl-player">{{ row.player }}</span>
                         </span>
                     </template>
@@ -148,7 +148,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, PropType, ref } from 'vue';
-import GlossaryHint from '@/components/shared/GlossaryHint.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
+import GlossaryText from '@/components/shared/GlossaryText.vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';

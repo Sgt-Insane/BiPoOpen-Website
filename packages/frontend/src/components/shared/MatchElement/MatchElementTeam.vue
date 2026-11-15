@@ -49,7 +49,7 @@
                 </div>
                 <!-- Elo nach dem Spiel, im Doppel der Durchschnitt -->
                 <div v-if="elo" class="mt-team-elo">
-                    {{ elo.players > 1 ? 'Ø ' : '' }}{{ elo.rating.toLocaleString('de-DE') }} Elo
+                    <GlossaryWord :term="elo.players > 1 ? 'eloAverage' : 'elo'">{{ elo.players > 1 ? 'Ø ' : '' }}{{ elo.rating.toLocaleString('de-DE') }} Elo</GlossaryWord>
                 </div>
             </div>
         </div>
@@ -76,6 +76,7 @@
 import { PropType, computed, inject } from 'vue';
 import { getMatchScore } from "@/util/tournamentMatchFunctions";
 import Avatar from '@/components/shared/Avatar.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import { vFitText, type FitTextGroup } from '@/components/shared/fitText';
 import type { EloMatchSide } from '@/components/frontend/worldRanking/eloRating';

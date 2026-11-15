@@ -1,7 +1,7 @@
 <template>
     <section class="pp-section">
         <div class="pp-section-head">
-            <h2 class="pp-section-title">BiPo Knecht <GlossaryHint :terms="['knecht', 'ballsBack', 'bouncer', 'bombe', 'onFire', 'trickshot', 'airball', 'letzterBecher', 'deathcup']" title="Knecht-Begriffe" /></h2>
+            <h2 class="pp-section-title"><GlossaryWord term="knecht">BiPo Knecht</GlossaryWord></h2>
             <span class="pp-knecht-games">{{ stats.games }} {{ stats.games === 1 ? 'Spiel' : 'Spiele' }} gezählt</span>
         </div>
 
@@ -29,7 +29,7 @@
             <div v-if="highlights.length" class="pp-knecht-highlights">
                 <span v-for="highlight in highlights" :key="highlight.label" class="pp-knecht-chip">
                     <KnechtIcon :name="highlight.icon" />
-                    <b>{{ highlight.value }}</b> {{ highlight.label }}
+                    <b>{{ highlight.value }}</b> <GlossaryWord :text="highlight.label" />
                 </span>
             </div>
         </div>
@@ -38,7 +38,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import GlossaryHint from '@/components/shared/GlossaryHint.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import type { KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { getAccuracy, type KnechtCareerStats } from '@/components/frontend/biPoKnecht/knechtStats';

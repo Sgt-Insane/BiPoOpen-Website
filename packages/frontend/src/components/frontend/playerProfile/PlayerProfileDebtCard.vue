@@ -2,7 +2,7 @@
     <!-- Schuldenkonto: offene Nackte Meilen und Shots dieser Person, ganz oben im Profil -->
     <section v-if="hasAny" class="pp-section">
         <div class="pp-section-head">
-            <h2 class="pp-section-title">Schuldenkonto <GlossaryHint :terms="['schuldenkonto', 'nackteMeile', 'shot']" /></h2>
+            <h2 class="pp-section-title"><GlossaryWord term="schuldenkonto">Schuldenkonto</GlossaryWord></h2>
             <span class="pp-section-aside">{{ openTotal ? `${openTotal} offen` : 'alles beglichen ✓' }}</span>
         </div>
 
@@ -11,7 +11,7 @@
                 <span class="pp-debt-icon" aria-hidden="true">🍑</span>
                 <span class="pp-debt-text">
                     <b>{{ miles.open }}</b>
-                    <span>{{ miles.open === 1 ? 'Meile offen' : 'Meilen offen' }}</span>
+                    <span><GlossaryWord term="nackteMeile">{{ miles.open === 1 ? 'Meile' : 'Meilen' }}</GlossaryWord> offen</span>
                     <small>{{ miles.done }} gelaufen</small>
                 </span>
             </router-link>
@@ -19,7 +19,7 @@
                 <span class="pp-debt-icon" aria-hidden="true">🥃</span>
                 <span class="pp-debt-text">
                     <b>{{ shots.open }}</b>
-                    <span>{{ shots.open === 1 ? 'Shot offen' : 'Shots offen' }}</span>
+                    <span><GlossaryWord term="shot">{{ shots.open === 1 ? 'Shot' : 'Shots' }}</GlossaryWord> offen</span>
                     <small>{{ shots.done }} getrunken</small>
                 </span>
             </router-link>
@@ -29,7 +29,7 @@
 
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue';
-import GlossaryHint from '@/components/shared/GlossaryHint.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import { getGameData, getCachedGameData, type GameData } from '@/util/gameDataCache';
 import { getNackteMeilen } from '@/components/frontend/nackteMeilen/nackteMeilen';
 import { getShots, type Shot } from '@/components/frontend/shots/shots';

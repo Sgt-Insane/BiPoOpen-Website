@@ -48,23 +48,11 @@
                 </article>
             </div>
         </section>
-
-        <!-- Begriffe: kurze Erklaerungen, Ziel der (i)-Knoepfe auf der Seite -->
-        <section id="begriffe" class="ru-section ru-section--gray">
-            <h2 class="ru-label">Begriffe</h2>
-            <div class="ru-card ru-glossary">
-                <div v-for="entry in GLOSSARY_LIST" :key="entry.term" class="ru-glossary-entry">
-                    <div class="ru-title">{{ entry.term }}</div>
-                    <div class="ru-glossary-text">{{ entry.text }}</div>
-                </div>
-            </div>
-        </section>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { GLOSSARY } from '@/components/shared/glossary';
 import { useRoute } from 'vue-router';
 import SelectButton from 'primevue/selectbutton';
 import { useGrayPage } from '@/components/shared/useGrayPage';
@@ -79,9 +67,6 @@ const RULE_SETS = [
 // /Regeln?Liga oeffnet direkt die Liga-Regeln
 const route = useRoute();
 const ruleSet = ref<'general' | 'league'>('Liga' in route.query ? 'league' : 'general');
-
-// Begriffe, sortiert; /Regeln#begriffe springt direkt dorthin (scrollBehavior im Router)
-const GLOSSARY_LIST = Object.values(GLOSSARY).sort((a, b) => a.term.localeCompare(b.term, 'de'));
 
 // Alle Regeln starten eingeklappt
 const openRules = reactive(new Set<string>());
@@ -457,24 +442,6 @@ const visibleSections = computed(() => ruleSet.value === 'league' ? leagueSectio
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--ru-label);
-}
-.ru-glossary{
-    padding: 4px 16px;
-}
-.ru-glossary-entry{
-    padding: 10px 0;
-}
-.ru-glossary-entry + .ru-glossary-entry{
-    border-top: 1px solid var(--bp-border);
-}
-.ru-glossary-text{
-    margin-top: 2px;
-    font-size: 14px;
-    line-height: 1.45;
-    color: var(--bp-text);
-}
-#begriffe{
-    scroll-margin-top: 70px;
 }
 .ru-card{
     background: var(--bp-surface);

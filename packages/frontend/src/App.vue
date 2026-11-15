@@ -5,6 +5,7 @@ import AppBottomNav from '@/components/shared/AppBottomNav.vue';
 import TournamentPickerDrawer from '@/components/shared/TournamentPickerDrawer.vue';
 import AddGameDrawer from '@/components/shared/GameEntry/AddGameDrawer.vue';
 import PlayerSearchDrawer from '@/components/shared/PlayerSearchDrawer.vue';
+import GlossaryPopover from '@/components/shared/GlossaryPopover.vue';
 import Toast from 'primevue/toast';
 import { Analytics } from '@vercel/analytics/vue';
 import { SpeedInsights } from '@vercel/speed-insights/vue';
@@ -88,6 +89,8 @@ onBeforeMount(async() => {
 	<AddGameDrawer/>
 	<!-- Spielersuche (Lupe im Header) -->
 	<PlayerSearchDrawer/>
+	<!-- Erklaerblase fuer antippbare Fachbegriffe -->
+	<GlossaryPopover/>
 </template>
 
 <style>

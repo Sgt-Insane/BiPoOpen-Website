@@ -1,5 +1,6 @@
 // Kurz erklaerte Fachbegriffe der Seite (Nutzertest: viele Begriffe waren Neulingen unklar).
-// Wird vom (i)-Knopf (GlossaryHint) und im Abschnitt "Begriffe" auf der Regeln-Seite angezeigt.
+// Erklaerungswuerdige Woerter sind antippbar (GlossaryWord / GlossaryText) und zeigen die Erklaerung
+// in einer kleinen Blase direkt am Wort (GlossaryPopover, einmal in App.vue).
 
 export type GlossaryTerm = { term: string; text: string };
 
@@ -29,3 +30,31 @@ export const GLOSSARY = {
 } satisfies Record<string, GlossaryTerm>;
 
 export type GlossaryKey = keyof typeof GLOSSARY;
+
+// Schreibweisen auf der Seite -> Begriff (klein geschrieben, auch Mehrzahl)
+const ALIASES: Record<string, GlossaryKey> = {
+    'nackte meile': 'nackteMeile', 'nackte meilen': 'nackteMeile', 'meile': 'nackteMeile', 'meilen': 'nackteMeile', 'meilen offen': 'nackteMeile', 'meile offen': 'nackteMeile',
+    'shot': 'shot', 'shots': 'shot', 'shot offen': 'shot', 'shots offen': 'shot',
+    'schuldenkonto': 'schuldenkonto',
+    'offenes spiel': 'offenesSpiel',
+    'nullwurf': 'nullwurf', 'fehlwurf': 'nullwurf',
+    'airball': 'airball', 'airballs': 'airball',
+    'bouncer': 'bouncer',
+    'balls back': 'ballsBack', 'balls-back': 'ballsBack',
+    'bombe': 'bombe', 'bomben': 'bombe',
+    'heaten up': 'heatenUp',
+    'on fire': 'onFire', 'on-fire': 'onFire',
+    'trickshot': 'trickshot', 'trickshots': 'trickshot', 'trickshot-fang': 'trickshot', 'trickshot-treffer': 'trickshot',
+    're-rack': 'reRack',
+    'deathcup': 'deathcup', 'deathcups': 'deathcup',
+    'letzter becher': 'letzterBecher', 'letzte becher': 'letzterBecher',
+    'nachwurf': 'gentleman', "gentleman's rule": 'gentleman', 'verlängerung': 'gentleman',
+    'sp': 'tableColumns', 'diff': 'tableColumns', 'trend': 'tableColumns',
+};
+
+export const findGlossaryKey = (text: string): GlossaryKey | null => {
+    const clean = text.trim().toLowerCase().replace(/^\d+\s+/, '');
+    if (ALIASES[clean]) return ALIASES[clean];
+    if (clean.startsWith('ø') && clean.includes('elo')) return 'eloAverage';
+    return null;
+};

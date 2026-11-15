@@ -1,6 +1,6 @@
 <template>
     <section class="HomeRecentGames">
-        <h2 class="hr-title">{{ title }} <GlossaryHint :terms="['offenesSpiel', 'liga', 'eloAverage', 'nackteMeile', 'shot']" /></h2>
+        <h2 class="hr-title">{{ title }}</h2>
 
         <Tabs v-model:value="activeFilter" class="p-tabs-chips">
             <TabList class="hr-filter">
@@ -25,7 +25,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import GlossaryHint from '@/components/shared/GlossaryHint.vue';
 import Skeleton from 'primevue/skeleton';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
