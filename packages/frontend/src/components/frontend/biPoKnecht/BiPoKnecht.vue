@@ -11,38 +11,26 @@
                 @menu="sheet = 'menu'"
             />
 
-            <!-- Zwei Handys: jedes liegt an einem Tischende und zeigt nur die Becher des Gegners.
-                 Ist das andere Team dran, ist dieses Handy ausgegraut (Menue und Knoepfe am Rand bleiben nutzbar). -->
-            <div v-if="twoPhone" class="kn-field kn-field--player kn-field--two">
-                <KnechtPlayers :game="game" :teamIndex="opponentSide" compact />
-                <div class="kn-end kn-end--target">
-                    <KnechtRack :game="game" :teamIndex="opponentSide" direction="up" :isTarget="isTarget(opponentSide)">
-                        <template #front><KnechtControls v-if="isTarget(opponentSide)" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
-                    </KnechtRack>
-                </div>
-                <KnechtPlayers :game="game" :teamIndex="phoneSide!" />
-                <div v-if="waitingForOther" class="kn-wait">
-                    <div class="kn-wait-card">
-                        <div class="kn-wait-title">{{ getTeamName(game.match, opponentSide) }} ist dran</div>
-                        <div class="kn-wait-text">Dieses Handy geht weiter, sobald das andere Handy die Würfe eingetragen hat.</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Spielermodus: Handy liegt auf dem Tisch, jedes Team tippt an seinem Tischende -->
-            <div v-else-if="mode === 'player'" class="kn-field kn-field--player">
-                <KnechtPlayers :game="game" :teamIndex="topTeam" rotated :compact="!isThrowing(topTeam)" />
+            <!-- Spielermodus: Handy liegt auf dem Tisch, jedes Team tippt an seinem Tischende.
+                 Zwei Handys: gleiche Ansicht, das eigene Team immer unten und nichts gedreht (jedes Handy liest nur
+                 ein Team). Ist das andere Team dran, sieht man den Stand, die Eingabe ist aber gesperrt. -->
+            <div v-if="mode === 'player'" class="kn-field kn-field--player">
+                <KnechtPlayers :game="game" :teamIndex="topTeam" :rotated="!twoPhone" :compact="!isThrowing(topTeam)" />
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(topTeam) }">
                     <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam)">
                         <template #front><KnechtControls v-if="isTarget(topTeam)" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(bottomTeam) }">
-                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) ? 'up' : 'down'" :isTarget="isTarget(bottomTeam)" :rotated="isTarget(bottomTeam)">
-                        <template #front><KnechtControls v-if="isTarget(bottomTeam)" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
+                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && !twoPhone ? 'up' : 'down'" :isTarget="isTarget(bottomTeam)" :rotated="isTarget(bottomTeam) && !twoPhone">
+                        <template #front><KnechtControls v-if="isTarget(bottomTeam) && !waitingForOther" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
                 <KnechtPlayers :game="game" :teamIndex="bottomTeam" :compact="!isThrowing(bottomTeam)" />
+                <!-- Zwei Handys, das andere Team ist dran: Feld sichtbar, aber nicht bedienbar -->
+                <div v-if="waitingForOther" class="kn-wait">
+                    <div class="kn-wait-pill">{{ getTeamName(game.match, opponentSide) }} ist dran · Eingabe am anderen Handy</div>
+                </div>
             </div>
 
             <!-- Schiedsrichter: Tisch von der Seite, quer -->
@@ -204,7 +192,8 @@
                     <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Auch bei jedem Treffer' : animationLevel === 'special' ? 'Nur Bombe, On Fire, Formationen & Co.' : 'Keine großen Animationen' }}</div>
 
                     <div class="kn-menu-label">Tisch</div>
-                    <button type="button" class="kn-menu-button" @click="swapColors">
+                    <!-- Gemeinsame Einstellungen des Spiels: nur am ersten Handy (das zweite zaehlt nur mit) -->
+                    <button v-if="!isGuest" type="button" class="kn-menu-button" @click="swapColors">
                         <i class="pi pi-palette"></i> Becherfarben tauschen
                     </button>
                     <button v-if="!twoPhone" type="button" class="kn-menu-button" @click="swapSides">
@@ -228,9 +217,13 @@
                     <button type="button" class="kn-menu-button" @click="$emit('leave')">
                         <i class="pi pi-sign-out"></i> Zur Webseite (Spiel bleibt gespeichert)
                     </button>
-                    <button type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmAbort">
+                    <button v-if="!isGuest" type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmAbort">
                         <i class="pi pi-times"></i> Spiel abbrechen
                     </button>
+                    <button v-else type="button" class="kn-menu-button kn-menu-button--danger" @click="emit('live', 'leave')">
+                        <i class="pi pi-sign-out"></i> Dieses Handy abmelden (Spiel läuft am anderen weiter)
+                    </button>
+                    <div v-if="isGuest" class="kn-menu-hint">Becherfarben, Abbrechen und Speichern macht das erste Handy.</div>
                 </div>
             </KnechtSheet>
         </div>
@@ -311,6 +304,8 @@ const swapped = ref(false);
 // Zwei Handys (nur Spielermodus): dieses Handy liegt bei phoneSide und zeigt die Becher des Gegners
 const twoPhone = computed(() => props.phoneSide === 0 || props.phoneSide === 1);
 const opponentSide = computed(() => 1 - (props.phoneSide ?? 0));
+// Zweites Handy: zaehlt nur mit, gemeinsame Einstellungen (Farben, Abbrechen, Speichern) macht das erste
+const isGuest = computed(() => props.live?.role === 'guest');
 const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
 const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
@@ -393,7 +388,8 @@ const teamPoints = computed(() => getTeamPoints(state.value));
 
 // Spielermodus: Team 1 (rot) steht unten, getauscht oben. Schiedsrichter: Team 1 wirft von links.
 // Am Tischende eines Teams stehen dessen Becher und (im Spielermodus) dessen Spieler.
-const bottomTeam = computed(() => swapped.value ? 1 : 0);
+// Zwei Handys: das eigene Team liegt unten
+const bottomTeam = computed(() => twoPhone.value ? props.phoneSide! : swapped.value ? 1 : 0);
 const topTeam = computed(() => 1 - bottomTeam.value);
 const leftTeam = computed(() => swapped.value ? 1 : 0);
 const rightTeam = computed(() => 1 - leftTeam.value);
@@ -638,9 +634,8 @@ onUnmounted(() => {
 }
 .kn-field--player{ flex-direction: column; }
 .kn-field--referee{ flex-direction: row; }
-/* Zwei Handys: nur die Becher des Gegners, ueber die ganze Hoehe */
-.kn-field--two{ position: relative; }
-.kn-field--two .kn-end{ flex: 1 1 0; }
+/* Zwei Handys, das andere Team ist dran: Stand bleibt lesbar, Eingabe gesperrt */
+.kn-field--player{ position: relative; }
 .kn-wait{
     position: absolute;
     inset: 0;
@@ -648,27 +643,19 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
-    background: color-mix(in srgb, var(--bp-surface) 55%, rgba(31, 35, 40, .55));
-    backdrop-filter: grayscale(1);
+    background: rgba(128, 128, 128, .18);
+    backdrop-filter: grayscale(.85);
 }
-.kn-wait-card{
-    max-width: 300px;
-    padding: 16px 18px;
-    border-radius: 16px;
-    background: var(--bp-surface);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
-    text-align: center;
-}
-.kn-wait-title{
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--bp-text-strong);
-}
-.kn-wait-text{
-    margin-top: 4px;
+.kn-wait-pill{
+    max-width: calc(100% - 136px);
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--bp-text-strong);
+    color: var(--bp-surface);
     font-size: 13px;
-    color: var(--bp-text-muted);
+    font-weight: 700;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .2);
 }
 
 .kn-end{
