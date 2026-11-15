@@ -14,8 +14,8 @@ const TABLE = 'M2 21.5h20';
 const ball = (cx: number, cy: number, r = 2.5): KnechtIconShape => ({ cx, cy, r, ball: true });
 
 export const KNECHT_ICONS = {
-    // Treffer: Ball fliegt schraeg in den Becher, drei Flugstreifen dahinter
-    hit: [...CUP, ball(14, 6.6), { d: 'M10.6 .8l2.1 1.5M8.1 3l2.9 2.1M6.9 6.1l2.1 1.5' }],
+    // Treffer: Ball faellt von schraeg oben in die Becheroeffnung, drei Flugstreifen dahinter
+    hit: [...CUP, ball(11.2, 6.8), { d: 'M11 .8l1 1.7M8.1 1.7l1.3 2.2M6 3.8l1 1.7' }],
     miss: [{ d: TABLE }, ball(7.5, 18.4), { d: 'M14.5 4.5l5.5 5.5M20 4.5l-5.5 5.5' }],
     airball: [...SMALL_CUP, { d: 'M2 20C4 7 12 3 19 7', dashed: true }, ball(20.5, 8.5, 2.2)],
     bouncer: [{ d: TABLE }, { d: 'M2.5 3.5L7 20.5l4.5-9', dashed: true }, ball(12.5, 8.8, 2.3), ...SMALL_CUP],
