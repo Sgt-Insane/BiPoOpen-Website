@@ -1,13 +1,19 @@
 import type { StickerData, StickerPlayer } from './stickerData';
 
-// Zeichnet die Teilen-Sticker als transparentes PNG (1080 px breit, wie eine Story).
-// Kein Hintergrund: der Sticker liegt in Insta/Snapchat ueber einem eigenen Foto.
+// Zeichnet das Story-Overlay als transparentes PNG im Story-Format (1080 x 1920).
+// Nur Schrift und Grafik, alles andere bleibt durchsichtig: es liegt in Insta/Snapchat ueber einem eigenen Foto.
 // 'light' = weisse Schrift mit Schatten (fuer dunkle Fotos), 'dark' = dunkle Schrift (fuer helle Fotos).
 
 export type StickerTemplate = 'result' | 'curve' | 'player' | 'awards';
 export type StickerTheme = 'light' | 'dark';
 
 const WIDTH = 1080;
+const HEIGHT = 1920;
+// Abstand zu den Bedienelementen von Insta/Snapchat oben und unten
+const SAFE_TOP = 250;
+const SAFE_BOTTOM = 340;
+
+export type StickerPosition = 'top' | 'middle' | 'bottom';
 const PAD = 70;
 // Wie die Ueberschriften der Seite: Systemschrift (fett verfuegbar)
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -193,8 +199,8 @@ const drawAwards = (ctx: Ctx, palette: Palette, data: StickerData) => {
     return y + 10;
 };
 
-// Hoehe vorab: einmal auf eine grosse Leinwand zeichnen und dann zuschneiden
-export const renderSticker = (data: StickerData, template: StickerTemplate, theme: StickerTheme, player?: StickerPlayer): HTMLCanvasElement => {
+// Inhalt erst auf eine Entwurfs-Leinwand zeichnen (Hoehe ergibt sich), dann an die gewaehlte Stelle im Story-Format setzen
+export const renderSticker = (data: StickerData, template: StickerTemplate, theme: StickerTheme, player?: StickerPlayer, position: StickerPosition = 'bottom'): HTMLCanvasElement => {
     const draft = document.createElement('canvas');
     draft.width = WIDTH;
     draft.height = 1400;
@@ -205,10 +211,12 @@ export const renderSticker = (data: StickerData, template: StickerTemplate, them
         : template === 'player' && player ? drawPlayer(ctx, palette, data, player)
         : drawAwards(ctx, palette, data);
 
+    const content = Math.ceil(height);
     const canvas = document.createElement('canvas');
     canvas.width = WIDTH;
-    canvas.height = Math.ceil(height);
-    canvas.getContext('2d')!.drawImage(draft, 0, 0);
+    canvas.height = HEIGHT;
+    const top = position === 'top' ? SAFE_TOP : position === 'middle' ? (HEIGHT - content) / 2 : HEIGHT - SAFE_BOTTOM - content;
+    canvas.getContext('2d')!.drawImage(draft, 0, 0, WIDTH, content, 0, Math.round(top), WIDTH, content);
     return canvas;
 };
 

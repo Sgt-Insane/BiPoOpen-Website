@@ -12,19 +12,19 @@
             "Gentleman's Rule mit abwechselnden Bällen, On Fire zählt je Spieler über die Züge",
             "Würfe nachträglich ändern – auch während des Spiels, mit Vorschau der Folgen",
             "Begriffe wie Meile, Heaten Up oder Elo antippen für eine kurze Erklärung",
-            "Spielerprofil aufgeräumt: Elo-Verlauf, Rekorde und Auszeichnungen",
-            "Story-Sticker: Endstand, Spielverlauf und eigene Stats als Bild für Insta und Snapchat"
+            "Spielerprofil aufgeräumt: Elo-Verlauf, Rekorde und Auszeichnungen"
         ]
     },
     {
         "version": "2.1",
         "date": "2026-11-15",
-        "title": "Live-Ticker",
+        "title": "Live-Ticker & Story-Overlay",
         "draft": true,
         "notes": [
             "Laufende Knecht-Spiele live auf der Startseite mitverfolgen",
             "Zwei Handys zählen ein Spiel – beitreten per Code oder Link",
-            "Spielverlauf live: jeder Wurf erscheint sofort"
+            "Spielverlauf live: jeder Wurf erscheint sofort",
+            "Story-Overlay: Endstand, Spielverlauf und eigene Stats als durchsichtiges Bild über dein Foto legen"
         ]
     }
 ]

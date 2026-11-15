@@ -20,6 +20,11 @@ export const FEATURES = {
         description: 'Knecht-Spiele live auf der Startseite verfolgen und mit zwei Handys zählen (Code oder Link).',
         release: '2.1',
     },
+    shareOverlay: {
+        title: 'Story-Overlay',
+        description: 'Statistik eines Spiels als durchsichtiges Bild im Story-Format, zum Drüberlegen über ein eigenes Foto.',
+        release: '2.1',
+    },
 } satisfies Record<string, { title: string; description: string; release: string }>;
 
 export type FeatureKey = keyof typeof FEATURES;

@@ -1,9 +1,9 @@
 <template>
-    <!-- Teilen-Sticker: transparente Bilder fuer Insta-/Snapchat-Storys, zum Durchwischen -->
+    <!-- Story-Overlay: durchsichtige Bilder im Story-Format zum Drueberlegen ueber ein Foto, zum Durchwischen -->
     <div class="ShareStickerPanel">
         <div ref="track" class="ss-track" @scroll.passive="onScroll">
             <div v-for="slide in slides" :key="slide.key" class="ss-slide">
-                <div class="ss-preview" :class="`ss-preview--${theme}`">
+                <div class="ss-preview" :class="`ss-preview--${theme}`" :style="photoUrl ? { backgroundImage: `url(${photoUrl})` } : undefined">
                     <img v-if="slide.url" :src="slide.url" :alt="slide.label" class="ss-image" />
                 </div>
                 <div class="ss-label">{{ slide.label }}</div>
@@ -17,6 +17,13 @@
             <button type="button" role="radio" :aria-checked="theme === 'light'" @click="theme = 'light'">Helle Schrift</button>
             <button type="button" role="radio" :aria-checked="theme === 'dark'" @click="theme = 'dark'">Dunkle Schrift</button>
         </div>
+        <div class="ss-segmented" role="radiogroup" aria-label="Position">
+            <button v-for="option in POSITIONS" :key="option.value" type="button" role="radio" :aria-checked="position === option.value" @click="position = option.value">{{ option.label }}</button>
+        </div>
+        <label class="ss-photo">
+            <i class="pi pi-image"></i> {{ photoUrl ? 'Anderes Foto für die Vorschau' : 'Eigenes Foto für die Vorschau' }}
+            <input type="file" accept="image/*" @change="onPhoto" />
+        </label>
 
         <div class="ss-actions">
             <button v-if="canShare" type="button" class="ss-button ss-button--primary" :disabled="busy" @click="share()">
@@ -29,18 +36,30 @@
                 <i class="pi pi-download"></i> Speichern
             </button>
         </div>
-        <div class="ss-hint">{{ message || 'Tipp: „Kopieren“ und in der Insta- oder Snapchat-Story einfügen – dann liegt das Bild als Sticker über deinem Foto.' }}</div>
+        <div class="ss-hint">{{ message || 'Das Bild ist bis auf die Statistik durchsichtig: in der Insta- oder Snapchat-Story über dein Foto legen und auf volle Größe ziehen.' }}</div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { buildStickerData } from './stickerData';
-import { loadStickerFonts, renderSticker, toPngBlob, type StickerTemplate, type StickerTheme } from './stickerRender';
+import { loadStickerFonts, renderSticker, toPngBlob, type StickerPosition, type StickerTemplate, type StickerTheme } from './stickerRender';
 
 const props = defineProps<{ match: Match; eloDeltas?: Record<string, number> }>();
 
 const theme = ref<StickerTheme>('light');
+const position = ref<StickerPosition>('bottom');
+const POSITIONS: { label: string; value: StickerPosition }[] = [{ label: 'Oben', value: 'top' }, { label: 'Mitte', value: 'middle' }, { label: 'Unten', value: 'bottom' }];
+
+// Eigenes Foto nur als Vorschau-Hintergrund (bleibt auf dem Handy, wird nicht mitgespeichert)
+const photoUrl = ref('');
+const onPhoto = (event: Event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    if (photoUrl.value) URL.revokeObjectURL(photoUrl.value);
+    photoUrl.value = URL.createObjectURL(file);
+};
+onBeforeUnmount(() => { if (photoUrl.value) URL.revokeObjectURL(photoUrl.value); });
 const data = computed(() => buildStickerData(props.match, props.eloDeltas));
 
 type Slide = { key: string; label: string; template: StickerTemplate; playerIndex?: number; url: string };
@@ -58,13 +77,13 @@ const render = async () => {
     await loadStickerFonts();
     canvases.clear();
     slides.value = SLIDE_LIST().map(slide => {
-        const canvas = renderSticker(data.value, slide.template, theme.value, slide.playerIndex !== undefined ? data.value.players[slide.playerIndex] : undefined);
+        const canvas = renderSticker(data.value, slide.template, theme.value, slide.playerIndex !== undefined ? data.value.players[slide.playerIndex] : undefined, position.value);
         canvases.set(slide.key, canvas);
         return { ...slide, url: canvas.toDataURL('image/png') };
     });
 };
 onMounted(render);
-watch([theme, data], render);
+watch([theme, position, data], render);
 
 // Aktuelle Vorlage aus der Scroll-Position
 const track = ref<HTMLElement | null>(null);
@@ -83,7 +102,7 @@ const canCopy = typeof navigator !== 'undefined' && !!navigator.clipboard?.write
 const currentFile = async () => {
     const slide = slides.value[current.value] ?? slides.value[0];
     const blob = await toPngBlob(canvases.get(slide.key)!);
-    const name = `bipo-${slide.key}.png`;
+    const name = `bipo-overlay-${slide.key}.png`;
     return { blob, file: new File([blob], name, { type: 'image/png' }), name };
 };
 
@@ -109,7 +128,7 @@ const share = () => run(async () => {
 const copy = () => run(async () => {
     // Safari verlangt das Promise direkt im ClipboardItem (sonst geht die Nutzer-Geste verloren)
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': currentFile().then(entry => entry.blob) })]);
-    return 'Kopiert – jetzt in der Story einfügen (lange tippen → Einfügen).';
+    return 'Kopiert – in der Story einfügen (lange tippen → Einfügen) und auf volle Größe ziehen.';
 });
 
 const download = () => run(async () => {
@@ -147,13 +166,15 @@ const download = () => run(async () => {
     gap: 8px;
     scroll-snap-align: center;
 }
-/* Beispiel-"Foto" hinter dem Sticker, damit man die Transparenz sieht */
+/* Vorschau im Story-Format mit Beispiel-"Foto" (oder eigenem Foto) dahinter, damit man die Transparenz sieht */
 .ss-preview{
-    display: grid;
-    place-items: center;
-    min-height: 260px;
-    padding: 18px;
+    width: min(100%, calc(52vh * 9 / 16));
+    aspect-ratio: 9 / 16;
+    margin: 0 auto;
+    overflow: hidden;
     border-radius: 16px;
+    background-size: cover;
+    background-position: center;
 }
 .ss-preview--light{
     background: radial-gradient(circle at 30% 20%, #5B6B8C 0%, #1E2A44 55%, #0E1424 100%);
@@ -164,7 +185,27 @@ const download = () => run(async () => {
 .ss-image{
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
+}
+.ss-photo{
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    border: 1.5px dashed var(--bp-border-strong);
+    border-radius: 12px;
+    color: var(--bp-text-muted);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.ss-photo input{
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
 }
 .ss-label{
     font-size: 14px;

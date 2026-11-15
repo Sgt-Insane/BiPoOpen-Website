@@ -27,8 +27,8 @@
                         </span>
                     </div>
                 </div>
-                <button type="button" class="kn-over-share" @click="shareOpen = true">
-                    <i class="pi pi-instagram"></i> Story-Sticker teilen
+                <button v-if="isFeatureOn('shareOverlay')" type="button" class="kn-over-share" @click="shareOpen = true">
+                    <i class="pi pi-instagram"></i> Story-Overlay teilen
                 </button>
             </template>
 
@@ -86,7 +86,7 @@
             </template>
         </div>
 
-        <KnechtSheet :visible="shareOpen" title="Story-Sticker" subtitle="Durchwischen, dann teilen oder kopieren" @update:visible="shareOpen = false">
+        <KnechtSheet :visible="shareOpen" title="Story-Overlay" subtitle="Durchwischen, dann teilen oder speichern" @update:visible="shareOpen = false">
             <ShareStickerPanel v-if="shareOpen" :match="shareMatch" />
         </KnechtSheet>
         <KnechtSheet :visible="editTurn !== null" title="Eintrag korrigieren" subtitle="Spätere Würfe werden wenn nötig angepasst" @update:visible="editTurn = null">
@@ -110,6 +110,7 @@ import {
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
+import { isFeatureOn } from '@/util/featureFlags';
 
 const props = withDefaults(defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean; canSave?: boolean }>(), { canSave: true });
 const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
@@ -117,7 +118,7 @@ const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
 const toast = useToast();
 const match = props.game.match;
 
-// Story-Sticker: das fertige Spiel (mit Verlauf und Punkten) als Bild teilen
+// Story-Overlay (noch im Entwicklermodus): das fertige Spiel (mit Verlauf und Punkten) als Bild teilen
 const shareOpen = ref(false);
 const shareMatch = computed(() => buildKnechtMatch(match, props.game.state.value));
 

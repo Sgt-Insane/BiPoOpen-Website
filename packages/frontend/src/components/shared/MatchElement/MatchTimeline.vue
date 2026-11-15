@@ -6,12 +6,12 @@
                 <template v-if="match.referee"><i class="pi pi-flag" aria-hidden="true"></i> Schiri: {{ match.referee }}</template>
                 <template v-if="match.referee && duration"> · </template>{{ duration }}
             </span>
-            <button v-if="!live" type="button" class="mtl-share" @click="shareOpen = true">
-                <i class="pi pi-instagram"></i> Story-Sticker
+            <button v-if="showShare" type="button" class="mtl-share" @click="shareOpen = true">
+                <i class="pi pi-instagram"></i> Story-Overlay
             </button>
         </div>
-        <BottomSheet v-if="!live" v-model:visible="shareOpen">
-            <template #header><span class="mtl-share-title">Story-Sticker</span></template>
+        <BottomSheet v-if="showShare" v-model:visible="shareOpen">
+            <template #header><span class="mtl-share-title">Story-Overlay</span></template>
             <ShareStickerPanel v-if="shareOpen" :match="match" :eloDeltas="eloDeltas" />
         </BottomSheet>
 
@@ -167,6 +167,7 @@ import { formatSeconds, getThrowTimes } from '@/components/frontend/biPoKnecht/k
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import BottomSheet from '@/components/shared/BottomSheet.vue';
 import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
+import { isFeatureOn } from '@/util/featureFlags';
 import { getTeamColor, formatDuration, formatPoints, getAwards, getPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 
 // Spaltenkopf der Wurfliste: im 1 gegen 1 der Spieler, sonst die Spieler des Teams
@@ -417,7 +418,8 @@ const playerRows = computed(() => {
     }));
 });
 
-// Story-Sticker: Elo-Aenderung je Spieler fuer die Spieler-Vorlage
+// Story-Overlay (noch im Entwicklermodus): Elo-Aenderung je Spieler fuer die Spieler-Vorlage
+const showShare = computed(() => !props.live && isFeatureOn('shareOverlay'));
 const shareOpen = ref(false);
 const eloDeltas = computed(() => Object.fromEntries(playerRows.value.flatMap(team => team.players)
     .filter(player => player.elo).map(player => [player.name, player.elo!.delta])));
