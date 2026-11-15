@@ -554,6 +554,12 @@ const rerackCups = computed(() => {
     animation: kc-icon .7s cubic-bezier(.3, 1.6, .5, 1) .1s both, kc-shake .4s linear .8s 2;
 }
 
+/* Karten: dunkler Kreis, damit die gelbe bzw. rote Karte heraussticht */
+.kc--yellow-card .kc-icon,
+.kc--red-card .kc-icon{
+    background: #1F2328;
+}
+
 /* ─── Formationen ─── */
 .kc-formation{
     position: relative;

@@ -188,6 +188,9 @@ const classes = (shape: KnechtIconShape) => [
 /* ─── Karten: werden hochgehalten wie vom Schiri ─── */
 .kci--yellow-card .kci-card,
 .kci--red-card .kci-card{ transform-origin: 12px 22px; animation: kci-show .5s cubic-bezier(.3, 1.5, .5, 1) .15s both, kci-wiggle .25s ease-in-out .7s 3 alternate; }
+/* Karte in echter Farbe (der Kreis dahinter ist dunkel, siehe KnechtCelebration) */
+.kci--yellow-card .kci-card.kci-soft{ fill: #F5C518; }
+.kci--red-card .kci-card.kci-soft{ fill: #E5484D; }
 @keyframes kci-show{
     0%{ transform: translateY(14px) rotate(-30deg); opacity: 0; }
     100%{ transform: rotate(-8deg); opacity: 1; }
