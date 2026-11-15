@@ -261,6 +261,7 @@ declare global {
         extraStats: ExtraStats;
         badges: PlayerBadge[];
         knecht: import('./src/components/frontend/biPoKnecht/knechtStats').KnechtCareerStats | null; // nur Spiele, die mit dem BiPo Knecht gezaehlt wurden
+        knechtHeatmap: import('./src/components/frontend/playerProfile/playerHeatmap').CupHeatmap | null; // Treffer/Kanten je Becherposition
     };
 
     type PlayerEloSummary = {

@@ -6,6 +6,7 @@ import { calculateBadges, type RecordKey, type RecordStanding } from "./BadgeReg
 import { getLeagueTeamForPlayer, getPlayerForLeagueTeam } from "@/components/frontend/league/LeaguePlayersData";
 import { ELO_START, buildEloGames, computeElo, getEloHistory, getEloMatchChanges, getEloPlayerKey, getEloRanking, type EloPlayerState } from "@/components/frontend/worldRanking/eloRating";
 import { getKnechtCareerStats } from "@/components/frontend/biPoKnecht/knechtStats";
+import { getPlayerCupHeatmap } from "./playerHeatmap";
 
 const TREND_PERIOD_DAYS: Record<Exclude<TrendPeriod, 'all'>, number> = {
     '1m': 30,
@@ -597,6 +598,7 @@ export const buildPlayerProfileData = (data: GameData, playerName: string, trend
         ...summarizeHistory(filteredHistory, playerName, leagueTeam),
         badges: matchHistory.length ? getPlayerBadges(data, playerName, matchHistory) : [],
         knecht: getKnechtCareerStats([...data.openGames, ...data.leagueGames], playerName),
+        knechtHeatmap: getPlayerCupHeatmap([...data.openGames, ...data.leagueGames], playerName),
     };
 };
 

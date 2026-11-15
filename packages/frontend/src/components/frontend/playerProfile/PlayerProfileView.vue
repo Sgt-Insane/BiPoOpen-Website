@@ -30,7 +30,7 @@
 
         <PlayerProfileActivity v-if="profileData.firstGameTime" :matchHistory="profileData.allMatchHistory"/>
 
-        <PlayerProfileKnechtCard v-if="profileData.knecht" :stats="profileData.knecht"/>
+        <PlayerProfileKnechtCard v-if="profileData.knecht" :stats="profileData.knecht" :heatmap="profileData.knechtHeatmap"/>
 
         <!-- Statistik je Spielart -->
         <section class="pp-section">
