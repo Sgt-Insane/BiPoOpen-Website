@@ -32,7 +32,7 @@
             </div>
 
             <div v-if="loading" class="pc-card pc-empty"><i class="pi pi-spin pi-spinner"></i> Lade Statistiken …</div>
-            <div v-else-if="!profiles[0] || !profiles[1]" class="pc-card pc-empty">Wähle zwei Spieler, um sie zu vergleichen.</div>
+            <div v-else-if="!profiles[0] || !profiles[1]" class="pc-card pc-empty">{{ profiles[0] || profiles[1] ? 'Wähle noch einen zweiten Spieler zum Vergleichen.' : 'Wähle zwei Spieler, um sie zu vergleichen.' }}</div>
 
             <template v-else>
                 <!-- Direkte Duelle und gemeinsame Spiele -->

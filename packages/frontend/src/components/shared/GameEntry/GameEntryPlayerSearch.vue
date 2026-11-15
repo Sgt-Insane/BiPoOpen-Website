@@ -5,7 +5,7 @@
             <Avatar :name="modelValue" shape="circle" class="gp-avatar" />
             <span class="gp-chip-name">{{ modelValue }}</span>
             <EloChip :rating="getElo(modelValue)" />
-            <button type="button" class="gp-icon-button" aria-label="Spieler entfernen" @click="emit('clear')">
+            <button type="button" class="gp-icon-button" :aria-label="`${modelValue} entfernen`" @click="emit('clear')">
                 <i class="pi pi-times"></i>
             </button>
         </div>

@@ -11,6 +11,7 @@
             :class="{ 'gs-selected': score === modelValue }"
             :style="{ '--gs-weight': weights[score] }"
             :aria-checked="score === modelValue"
+            :aria-label="`${score} ${label}`"
             :disabled="disabled"
             @click="emit('update:modelValue', score)"
         >{{ score }}</button>
