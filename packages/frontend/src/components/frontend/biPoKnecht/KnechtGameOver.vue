@@ -27,6 +27,9 @@
                         </span>
                     </div>
                 </div>
+                <button type="button" class="kn-over-share" @click="shareOpen = true">
+                    <i class="pi pi-instagram"></i> Story-Sticker teilen
+                </button>
             </template>
 
             <!-- Schritt 2: Zusammenfassung, Verlauf bearbeiten, Schiedsrichter -->
@@ -83,6 +86,9 @@
             </template>
         </div>
 
+        <KnechtSheet :visible="shareOpen" title="Story-Sticker" subtitle="Durchwischen, dann teilen oder kopieren" @update:visible="shareOpen = false">
+            <ShareStickerPanel v-if="shareOpen" :match="shareMatch" />
+        </KnechtSheet>
         <KnechtSheet :visible="editTurn !== null" title="Eintrag korrigieren" subtitle="Spätere Würfe werden wenn nötig angepasst" @update:visible="editTurn = null">
             <KnechtTurnEditor v-if="editTurn !== null" :game="game" :turnIndex="editTurn" @done="editTurn = null" />
         </KnechtSheet>
@@ -103,12 +109,17 @@ import {
     getTeamColor, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getPlayerName, getSaveLabel, getTeamName, saveKnechtGame,
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
+import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
 
 const props = withDefaults(defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean; canSave?: boolean }>(), { canSave: true });
 const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
 
 const toast = useToast();
 const match = props.game.match;
+
+// Story-Sticker: das fertige Spiel (mit Verlauf und Punkten) als Bild teilen
+const shareOpen = ref(false);
+const shareMatch = computed(() => buildKnechtMatch(match, props.game.state.value));
 
 const step = ref<'awards' | 'summary'>('awards');
 const editTurn = ref<number | null>(null);
@@ -218,6 +229,21 @@ const save = async (rematch: boolean) => {
     color: var(--bp-text-muted);
 }
 
+.kn-over-share{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    margin-top: 4px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 12px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
 .kn-over-section-title{
     display: flex;
     align-items: baseline;
