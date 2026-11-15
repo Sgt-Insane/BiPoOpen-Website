@@ -41,20 +41,32 @@ export const getNewFormations = (before: KnechtState, next: KnechtState) => [0, 
     return formation ? [{ rackIndex, formation }] : [];
 });
 
-const ENGINE_CELEBRATIONS: KnechtCelebrationKind[] = ['bomb', 'on-fire', 'heating-up', 'ballsback', 'deathcup', 'nachwurf', 'overtime'];
+// Folgen fuer den naechsten Ball/Zug: kommen nach dem Treffer und nach einer neuen Formation
+const FOLLOW_UP_EVENTS: KnechtCelebrationKind[] = ['heating-up', 'on-fire', 'ballsback', 'nachwurf', 'overtime'];
 
-// Welche Animation passt zu dieser Aktion? Regel-Ereignisse (Bombe, On Fire ...) gehen vor.
-export const getCelebrationKind = (next: KnechtState, action: KnechtAction, previous?: KnechtAction): KnechtCelebrationKind | null => {
-    if (next.banner && (ENGINE_CELEBRATIONS as string[]).includes(next.banner)) return next.banner as KnechtCelebrationKind;
-    if (action.type === 'reRack') return 'rerack';
-    if (action.type === 'elbow') return action.cups.length ? 'red-card' : 'yellow-card';
-    if (action.type === 'trickshot') return 'trickshot';
-    if (action.type === 'throw' && action.outcome === 'hit') {
-        if (previous?.type === 'trickshot' && previous.catcher === action.player) return 'trickshot-hit';
-        if (action.bouncer) return 'bouncer';
+// Animationen einer Aktion in der Reihenfolge, in der es am Tisch passiert:
+// 1. der Wurf selbst (letzter Becher, Bombe, Bouncer, Trickshot ...)
+// 2. neue benannte Formation der stehenden Becher
+// 3. was daraus fuer den naechsten Ball/Zug folgt (Heaten Up, On Fire, Balls Back, Nachwurf, Verlaengerung)
+export const getCelebrations = (before: KnechtState, next: KnechtState, action: KnechtAction, previous?: KnechtAction) => {
+    const throwKinds: KnechtCelebrationKind[] = [];
+    const newTurn = next.turns.length > before.turns.length ? next.turns[next.turns.length - 1] : null;
+    if (newTurn?.type === 'lastCup' && next.status === 'playing') throwKinds.push('lastcup');
+    if (next.events.includes('deathcup')) throwKinds.push('deathcup');
+    else if (next.events.includes('bomb')) throwKinds.push('bomb');
+    else if (action.type === 'reRack') throwKinds.push('rerack');
+    else if (action.type === 'elbow') throwKinds.push(action.cups.length ? 'red-card' : 'yellow-card');
+    else if (action.type === 'trickshot') throwKinds.push('trickshot');
+    else if (action.type === 'throw' && action.outcome === 'hit') {
+        if (previous?.type === 'trickshot' && previous.catcher === action.player) throwKinds.push('trickshot-hit');
+        else if (action.bouncer) throwKinds.push('bouncer');
     }
-    return null;
+    const followUps = next.events.filter(event => (FOLLOW_UP_EVENTS as string[]).includes(event)) as KnechtCelebrationKind[];
+    // Verlaengerung: neu aufgestellte Becher sind keine geworfene Formation
+    const formations = followUps.includes('overtime') ? [] : getNewFormations(before, next);
+    return { throwKinds, formations, followUps };
 };
+
 const BALL_DURATION = 1500;
 
 // size: Balldurchmesser in Pixeln, passend zur Bechergroesse auf dem Bildschirm
@@ -203,14 +215,12 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         const playerIndex = action.type === 'trickshot' ? action.catcher : action.type === 'throw' || action.type === 'deathcup' || action.type === 'elbow' ? action.player : null;
         const nameTeam = action.type === 'elbow' ? action.team : throwingTeam;
         const name = playerIndex === null ? '' : (nameTeam === 0 ? match.team1 : match.team2).players[playerIndex]?.name ?? '';
-        const kind = getCelebrationKind(next, action, newActions[newActions.length - 2]);
-        // Letzter Becher getroffen: eigene Animation vor allem anderen (z.B. danach der Nachwurf)
-        const newTurn = next.turns.length > before.turns.length ? next.turns[next.turns.length - 1] : null;
-        const lastCup = newTurn?.type === 'lastCup' && next.status === 'playing';
+        const { throwKinds, formations, followUps } = getCelebrations(before, next, action, newActions[newActions.length - 2]);
+        const facing = action.type === 'elbow' ? 1 - action.team : throwingTeam;
         celebrate([
-            ...(lastCup ? [{ kind: 'lastcup' as const, player: name, teamIndex: throwingTeam }] : []),
-            ...(kind ? [{ kind, player: name, teamIndex: action.type === 'elbow' ? 1 - action.team : throwingTeam }] : []),
-            ...getNewFormations(before, next).map(({ rackIndex, formation }) => ({ kind: 'formation' as const, player: '', teamIndex: 1 - rackIndex, formation })),
+            ...throwKinds.map(kind => ({ kind, player: name, teamIndex: facing })),
+            ...formations.map(({ rackIndex, formation }) => ({ kind: 'formation' as const, player: '', teamIndex: 1 - rackIndex, formation })),
+            ...followUps.map(kind => ({ kind, player: name, teamIndex: facing })),
         ]);
         return true;
     };

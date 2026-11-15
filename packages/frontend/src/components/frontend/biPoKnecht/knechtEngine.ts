@@ -91,7 +91,8 @@ export type KnechtState = {
     winnerTeamIndex: number | null;
     endReason: EndReason | null;
     victoryBonus: number;                       // Siegpunkt(e) bei sonst punktgleichem Ende
-    banner: BannerEvent;
+    banner: BannerEvent;                        // wichtigstes Ereignis der letzten Aktion (Banner)
+    events: NonNullable<BannerEvent>[];         // alle Ereignisse der letzten Aktion in zeitlicher Reihenfolge (Animationen)
     elbowCalls: number[][];                     // Ellenbogen-Calls je Team und Spieler
 };
 
@@ -147,6 +148,7 @@ export const createInitialState = (config: KnechtConfig): KnechtState => ({
     endReason: null,
     victoryBonus: 0,
     banner: null,
+    events: [],
 });
 
 export const cloneState = (state: KnechtState): KnechtState => structuredClone(state);
@@ -328,6 +330,7 @@ const finish = (state: KnechtState, winnerTeamIndex: number, reason: EndReason) 
     state.round.current = null;
     state.decider = null;
     if (!state.banner || state.banner === 'heating-up' || state.banner === 'on-fire') state.banner = reason === 'deathcup' ? 'deathcup' : 'win';
+    if (reason !== 'deathcup') state.events.push('win');
     addVictoryBonus(state);
 };
 
@@ -360,6 +363,7 @@ const startOvertime = (state: KnechtState, startTeamIndex: number, time: number)
     state.markers.push({ kind: 'overtime', teamIndex: startTeamIndex, afterTurnIndex: state.turns.length, time });
     startRound(state, startTeamIndex);
     state.banner = 'overtime';
+    state.events.push('overtime');
 };
 
 const startNachwurf = (state: KnechtState, nachwurfTeam: number, time: number) => {
@@ -367,6 +371,7 @@ const startNachwurf = (state: KnechtState, nachwurfTeam: number, time: number) =
     state.nachwurfTeamIndex = nachwurfTeam;
     state.markers.push({ kind: 'nachwurf', teamIndex: nachwurfTeam, afterTurnIndex: state.turns.length, time });
     state.banner = 'nachwurf';
+    state.events.push('nachwurf');
 };
 
 const endNachwurf = (state: KnechtState, time: number) => {
@@ -392,6 +397,7 @@ const endRound = (state: KnechtState, time: number) => {
 
     if (state.round.ballHits.length === BALLS_PER_ROUND && state.round.ballHits.every(hit => hit)) {
         if (state.banner !== 'bomb') state.banner = 'ballsback';
+        state.events.push('ballsback');
         startRound(state, team, true);
         return;
     }
@@ -484,6 +490,7 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
             },
         }, action.time, [credit(base / 2 + bomberBonus)]);
         state.banner = 'bomb';
+        state.events.push('bomb');
         return endBall(state, action.time);
     }
 
@@ -499,6 +506,7 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
     if (onFireEnabled && state.nachwurfTeamIndex === null) {
         if (streakBefore + 1 === 2) state.banner = 'heating-up';
         if (streakBefore + 1 >= 3) state.banner = 'on-fire';
+        if (streakBefore + 1 >= 2) state.events.push(state.banner as 'heating-up' | 'on-fire');
     }
 
     // Weiterwerfen nur bei On Fire (im Nachwurf kommt der Ball stattdessen in der naechsten Runde zurueck).
@@ -552,6 +560,7 @@ const applyDeathcup = (state: KnechtState, action: Extract<KnechtAction, { type:
     pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'deathcup', data: { cups: remaining } },
         action.time, [{ teamIndex: team, playerIndex: action.player, points: remaining.length }]);
     state.banner = 'deathcup';
+    state.events.push('deathcup');
     finish(state, team, 'deathcup');
 };
 
@@ -618,6 +627,7 @@ const ownRackCleared = (state: KnechtState, team: number, time: number) => {
 const applyActionInPlace = (state: KnechtState, action: KnechtAction) => {
     if (state.status !== 'playing') fail('Das Spiel ist bereits vorbei');
     state.banner = null;
+    state.events = [];
     switch (action.type) {
         case 'throw': applyThrow(state, action); break;
         case 'trickshot': applyTrickshot(state, action); break;
