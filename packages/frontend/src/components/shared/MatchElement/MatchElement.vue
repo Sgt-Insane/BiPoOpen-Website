@@ -10,8 +10,8 @@
          </div>
 
          <!-- Team Name & Score -->
-         <MatchElementTeam :match="match" :isTeam2="false" :playersVisible="playersVisible" :placeholder="team1Placeholder" :avatarShape="avatarShape" :elo="matchElo?.[0]" :fitTextGroup="nameFitGroup"/> <!-- Team 1 -->
-         <MatchElementTeam :match="match" :isTeam2="true" :playersVisible="playersVisible" :placeholder="team2Placeholder" :avatarShape="avatarShape" :elo="matchElo?.[1]" :fitTextGroup="nameFitGroup"/> <!-- Team 2 -->
+         <MatchElementTeam :match="match" :isTeam2="false" :playersVisible="playersVisible" :placeholder="team1Placeholder" :avatarShape="avatarShape" :elo="matchElo?.[0]" :showEloChange="showEloChange" :fitTextGroup="nameFitGroup"/> <!-- Team 1 -->
+         <MatchElementTeam :match="match" :isTeam2="true" :playersVisible="playersVisible" :placeholder="team2Placeholder" :avatarShape="avatarShape" :elo="matchElo?.[1]" :showEloChange="showEloChange" :fitTextGroup="nameFitGroup"/> <!-- Team 2 -->
 
          <!-- Spielverlauf Timeline -->
          <MatchTimeline v-if="hasTurns && playersVisible" :match="match" />
@@ -60,6 +60,8 @@ const props = defineProps({
    chipLabel: {type: String, default: undefined},
    // Elo nach dem Spiel klein unter jedem Team
    showElo: {type: Boolean, default: false},
+   // Zusaetzlich die Elo-Veraenderung durch das Spiel (nur zusammen mit showElo)
+   showEloChange: {type: Boolean, default: false},
 });
 
 const emit = defineEmits<{ edit: [match: Match] }>();

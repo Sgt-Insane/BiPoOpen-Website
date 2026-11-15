@@ -4,7 +4,7 @@
 
         <Tabs v-model:value="activeFilter" class="p-tabs-chips">
             <TabList class="hr-filter">
-                <Tab v-for="filter in FILTERS" :key="filter.value" :value="filter.value">{{ filter.label }}</Tab>
+                <Tab v-for="filter in GAME_FILTERS" :key="filter.value" :value="filter.value">{{ filter.label }}</Tab>
             </TabList>
         </Tabs>
 
@@ -17,6 +17,11 @@
 
             <MatchElement v-for="entry in visibleGames" v-else :key="entry.match._id" :match="entry.match" :gameType="entry.type" showChip showDate showElo class="hr-entry" />
         </div>
+
+        <!-- Gewaehlter Filter wird auf die Ergebnisse-Seite mitgenommen -->
+        <router-link v-if="!loading" :to="resultsLink" class="bp-more-button">
+            Alle Ergebnisse <i class="pi pi-chevron-right"></i>
+        </router-link>
     </section>
 </template>
 
@@ -27,8 +32,7 @@ import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
-import { isCupGame } from '@/components/frontend/league/LeagueUtilFunctions';
-import { withLeagueTeamLogos } from '@/components/frontend/league/LeaguePlayersData';
+import { GAME_FILTERS, combineResults, matchesFilter, type GameFilter } from '@/components/frontend/results/resultsUtil';
 
 const props = defineProps<{
     openGames: Match[];
@@ -36,29 +40,19 @@ const props = defineProps<{
     loading: boolean;
 }>();
 
-type GameType = 'league' | 'cup' | 'open';
-type Filter = 'all' | GameType;
-
 const GAME_COUNT = 6;
 
-const FILTERS: { label: string; value: Filter }[] = [
-    { label: 'Alle', value: 'all' },
-    { label: 'Liga', value: 'league' },
-    { label: 'Cup', value: 'cup' },
-    { label: 'Offen', value: 'open' },
-];
+const activeFilter = ref<GameFilter>('all');
 
-const activeFilter = ref<Filter>('all');
-
-const allGames = computed(() => [
-    ...props.openGames.map(match => ({ match, type: 'open' as GameType, time: match.time ?? 0 })),
-    ...props.leagueGames.map(match => ({ match, type: (isCupGame(match) ? 'cup' : 'league') as GameType, time: match.time ?? 0 })),
-].sort((a, b) => b.time - a.time));
+const allGames = computed(() => combineResults(props.openGames, props.leagueGames));
 
 const visibleGames = computed(() => allGames.value
-    .filter(entry => activeFilter.value === 'all' || entry.type === activeFilter.value)
-    .slice(0, GAME_COUNT)
-    .map(entry => entry.type === 'open' ? entry : { ...entry, match: withLeagueTeamLogos(entry.match) }));
+    .filter(entry => matchesFilter(entry, activeFilter.value))
+    .slice(0, GAME_COUNT));
+
+const resultsLink = computed(() => activeFilter.value === 'all'
+    ? '/Ergebnisse'
+    : { path: '/Ergebnisse', query: { typ: activeFilter.value } });
 </script>
 
 <style scoped>

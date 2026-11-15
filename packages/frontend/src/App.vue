@@ -256,6 +256,35 @@ html.bp-gray-page body{
 	text-align: left;
 }
 
+/* Weisser Button ueber die ganze Breite unter einer Liste (z.B. "Alle Ergebnisse", "Aeltere Spiele laden") */
+.bp-more-button{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	height: 44px;
+	padding: 0 16px;
+	border: 1px solid var(--bp-border);
+	border-radius: 12px;
+	background: var(--bp-surface);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+	color: var(--bp-text-strong);
+	font-size: 15px;
+	font-weight: 700;
+	text-decoration: none;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+	transition: background .2s ease;
+}
+.bp-more-button:hover{
+	background: var(--bp-fill-soft);
+	color: var(--bp-text-strong);
+}
+.bp-more-button .pi{
+	font-size: 12px;
+}
+
 /* Lade-Skelett: grauer Platzhalter mit Schimmer, Groesse setzt der Aufrufer */
 .bp-skeleton{
 	border-radius: 16px;
