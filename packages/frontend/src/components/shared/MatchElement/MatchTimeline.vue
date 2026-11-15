@@ -1,7 +1,7 @@
 <template>
     <div class="MatchTimeline">
         <div class="mtl-header">
-            <span class="mtl-title">Spielverlauf</span>
+            <span class="mtl-title">Spielverlauf <GlossaryHint :terms="['nullwurf', 'airball', 'trickshot', 'bouncer', 'ballsBack', 'bombe', 'heatenUp', 'onFire', 'reRack', 'gentleman']" title="Begriffe im Spielverlauf" /></span>
             <span v-if="duration || match.referee" class="mtl-duration">
                 <template v-if="match.referee"><i class="pi pi-flag" aria-hidden="true"></i> Schiri: {{ match.referee }}</template>
                 <template v-if="match.referee && duration"> · </template>{{ duration }}
@@ -78,9 +78,19 @@
             <line v-for="y in [2, 21, 40]" :key="y" x1="0" x2="100" :y1="y" :y2="y" class="mtl-chart-grid" vector-effect="non-scaling-stroke" />
             <polyline v-for="line in chartLines" :key="line.teamIndex" :points="line.points" :stroke="getTeamColor(match, line.teamIndex)" class="mtl-chart-line" vector-effect="non-scaling-stroke" />
         </svg>
+        <div v-if="chartLines.length" class="mtl-chart-legend">
+            <span v-for="line in chartLines" :key="line.teamIndex" class="mtl-chart-key" :style="{ '--mtl-team-color': getTeamColor(match, line.teamIndex) }">{{ getSideName(line.teamIndex) }}</span>
+            <span class="mtl-chart-caption">getroffene Becher im Spielverlauf</span>
+        </div>
 
         <!-- Alle Wuerfe: Team 1 links, Team 2 rechts, in der Mitte Zwischenstand. Fehlwuerfe kleiner und grau,
              Re-Rack/Nachwurf/Verlaengerung in der Mitte. Jede Spielminute als graue Zahl, auch ohne Wurf. -->
+        <!-- Lange Spiele: Fehlwuerfe ausblendbar -->
+        <div v-if="quietCount" class="mtl-filter" role="radiogroup" aria-label="Würfe filtern">
+            <button type="button" role="radio" :aria-checked="!onlyHits" :class="{ 'is-active': !onlyHits }" @click="setOnlyHits(false)">Alle Würfe <small>{{ rows.length }}</small></button>
+            <button type="button" role="radio" :aria-checked="onlyHits" :class="{ 'is-active': onlyHits }" @click="setOnlyHits(true)">Nur Treffer <small>{{ rows.length - quietCount }}</small></button>
+        </div>
+
         <div class="mtl-list">
             <!-- Wer steht auf welcher Seite: bleibt beim Scrollen oben sichtbar -->
             <div class="mtl-list-head">
@@ -137,7 +147,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, ref } from 'vue';
+import { computed, nextTick, PropType, ref } from 'vue';
+import GlossaryHint from '@/components/shared/GlossaryHint.vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
@@ -297,7 +308,12 @@ const setRowElement = (key: number, element: unknown) => {
     else rowElements.delete(key);
 };
 const flashKey = ref<number | null>(null);
-const scrollToRow = (key: number) => {
+const scrollToRow = async (key: number) => {
+    // Ausgeblendeten Wurf (z.B. gefangener Trickshot) erst wieder einblenden
+    if (onlyHits.value && rows.value.find(row => row.key === key)?.quiet) {
+        onlyHits.value = false;
+        await nextTick();
+    }
     rowElements.get(key)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     flashKey.value = key;
     setTimeout(() => { if (flashKey.value === key) flashKey.value = null; }, 1600);
@@ -331,15 +347,28 @@ const entries = computed(() => {
     return list.sort((a, b) => a.position - b.position);
 });
 
+// Filter "Nur Treffer": Fehlwuerfe, Airballs und gefangene Trickshots ausblenden (Re-Rack bleibt). Wahl wird gemerkt.
+const ONLY_HITS_KEY = 'bp-timeline-only-hits';
+const onlyHits = ref((() => { try { return localStorage.getItem(ONLY_HITS_KEY) === '1'; } catch { return false; } })());
+const setOnlyHits = (value: boolean) => {
+    onlyHits.value = value;
+    try { localStorage.setItem(ONLY_HITS_KEY, value ? '1' : '0'); } catch { /* egal */ }
+};
+const quietCount = computed(() => rows.value.filter(row => row.quiet).length);
+const isVisible = (item: TimelineItem) => !onlyHits.value || item.kind !== 'row' || !item.row.quiet || item.row.key < 0;
+
 const items = computed<TimelineItem[]>(() => {
-    if (!hasMinuteGrid.value) return entries.value.map(entry => entry.item);
+    if (!hasMinuteGrid.value) return entries.value.map(entry => entry.item).filter(isVisible);
     const start = props.match.time ?? 0;
     const lastMinute = Math.max(0, ...entries.value.map(entry => entry.minute ?? 0));
     const endMinute = props.match.endTime && start ? Math.floor((props.match.endTime - start) / 60000) : lastMinute;
     const list: TimelineItem[] = [];
     for (let minute = 0; minute <= Math.max(lastMinute, endMinute); minute++) {
+        const inMinute = entries.value.filter(entry => (entry.minute ?? 0) === minute && isVisible(entry.item));
+        // Nur Treffer: Minuten ohne sichtbaren Eintrag weglassen
+        if (onlyHits.value && !inMinute.length) continue;
         list.push({ kind: 'minute', key: `m${minute}`, minute });
-        entries.value.filter(entry => (entry.minute ?? 0) === minute).forEach(entry => list.push(entry.item));
+        inMinute.forEach(entry => list.push(entry.item));
     }
     return list;
 });
@@ -577,6 +606,63 @@ const chartLines = computed(() => {
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+.mtl-chart-legend{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin: -4px 0 12px;
+    font-size: 11px;
+    color: var(--bp-text-muted);
+}
+.mtl-chart-key{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 700;
+    color: var(--bp-text);
+}
+.mtl-chart-key::before{
+    content: '';
+    width: 12px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--mtl-team-color);
+}
+.mtl-chart-caption{
+    margin-left: auto;
+}
+.mtl-filter{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 8px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--bp-fill);
+
+    button {
+        padding: 6px 0;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--bp-text-muted);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    button.is-active {
+        background: var(--bp-surface);
+        color: var(--bp-text-strong);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    }
+    small {
+        margin-left: 3px;
+        font-weight: 500;
+        color: var(--bp-text-muted);
+    }
 }
 .mtl-list-head{
     position: sticky;

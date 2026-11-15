@@ -1,7 +1,7 @@
 <template>
     <section class="pp-section">
         <div class="pp-section-head">
-            <h2 class="pp-section-title">BiPo Knecht</h2>
+            <h2 class="pp-section-title">BiPo Knecht <GlossaryHint :terms="['knecht', 'ballsBack', 'bouncer', 'bombe', 'onFire', 'trickshot', 'airball', 'letzterBecher', 'deathcup']" title="Knecht-Begriffe" /></h2>
             <span class="pp-knecht-games">{{ stats.games }} {{ stats.games === 1 ? 'Spiel' : 'Spiele' }} gezählt</span>
         </div>
 
@@ -38,6 +38,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import GlossaryHint from '@/components/shared/GlossaryHint.vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import type { KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { getAccuracy, type KnechtCareerStats } from '@/components/frontend/biPoKnecht/knechtStats';

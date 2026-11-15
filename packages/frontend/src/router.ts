@@ -304,7 +304,9 @@ const routes = [
 const router = createRouter({
 	history: createWebHistory(),
 	routes: routes,
-	scrollBehavior() {
+	scrollBehavior(to) {
+		// Anker wie /Regeln#begriffe: nach dem Rendern der Seite dorthin springen (unter der festen App-Leiste)
+		if (to.hash) return new Promise(resolve => setTimeout(() => resolve({ el: to.hash, top: 70 }), 300));
 		return { top: 0 }
 	}
 });

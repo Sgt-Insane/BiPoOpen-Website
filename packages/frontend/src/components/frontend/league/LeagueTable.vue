@@ -10,6 +10,8 @@
         :canAddGames="props.canAddGames"
     />
 
+    <div class="league-columns-hint">Spalten erklärt <GlossaryHint :terms="['tableColumns', 'liga']" title="Liga-Tabelle" /></div>
+
     <!-- lazy: nur die aktive Tabelle wird gerendert -->
     <Tabs v-model:value="activeTableTab" class="p-tabs-chips" lazy>
         <TabList v-if="hasRueckrunde" ref="tabList" class="league-table-sticky-tablist pt-[12px] pb-[12px]" :style="{ top: tabListTop }">
@@ -59,6 +61,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
+import GlossaryHint from '@/components/shared/GlossaryHint.vue';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
@@ -110,6 +113,15 @@ const openPlayerOverview = (playerName: string) => {
 </script>
 
 <style scoped>
+.league-columns-hint {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    margin-bottom: -4px;
+    font-size: 12px;
+    color: var(--bp-text-muted);
+}
 :deep(.p-tablist.league-table-sticky-tablist) {
     position: sticky;
     z-index: 3;

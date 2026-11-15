@@ -2,7 +2,7 @@
     <!-- Schuldenkonto: offene Nackte Meilen und Shots dieser Person, ganz oben im Profil -->
     <section v-if="hasAny" class="pp-section">
         <div class="pp-section-head">
-            <h2 class="pp-section-title">Schuldenkonto</h2>
+            <h2 class="pp-section-title">Schuldenkonto <GlossaryHint :terms="['schuldenkonto', 'nackteMeile', 'shot']" /></h2>
             <span class="pp-section-aside">{{ openTotal ? `${openTotal} offen` : 'alles beglichen ✓' }}</span>
         </div>
 
@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue';
+import GlossaryHint from '@/components/shared/GlossaryHint.vue';
 import { getGameData, getCachedGameData, type GameData } from '@/util/gameDataCache';
 import { getNackteMeilen } from '@/components/frontend/nackteMeilen/nackteMeilen';
 import { getShots, type Shot } from '@/components/frontend/shots/shots';
