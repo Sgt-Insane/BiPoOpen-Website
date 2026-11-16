@@ -26,7 +26,7 @@ const props = defineProps<{ playerName: string }>();
 
 const router = useRouter();
 const toast = useToast();
-const { isActive, settingsLoaded, usesFollowedPlayers, allCategoriesOff, loadSettings, isFollowing, followPlayer, followToastDetail, unfollowPlayer } = usePushNotifications();
+const { isActive, settingsLoaded, usesFollowedPlayers, allCategoriesOff, loadSettings, isFollowing, followPlayer, followToastDetail, followOnlyMyPlayers, unfollowPlayer } = usePushNotifications();
 
 const busy = ref(false);
 // Bis die Einstellungen da sind ausgeblendet, sonst blitzt der Button kurz auf
@@ -35,6 +35,13 @@ const following = computed(() => isActive.value && isFollowing(props.playerName)
 const firstName = computed(() => props.playerName.split(' ')[0]);
 
 watch(isActive, (active) => { if (active) loadSettings(); }, { immediate: true });
+
+const onlyMyPlayers = async () => {
+    await followOnlyMyPlayers();
+    // Variable statt Literal: "action" ist eine eigene Erweiterung des Toasts (siehe App.vue)
+    const message = { severity: 'success' as const, summary: 'Nur noch deine Spieler', detail: 'Ändern kannst du das jederzeit in den Benachrichtigungen.', action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH }, life: 5000 };
+    toast.add(message);
+};
 
 const onClick = async () => {
     if (!isActive.value) {
@@ -59,10 +66,12 @@ const onClick = async () => {
             detail: wasAllOff
                 ? `Benachrichtigungen sind wieder an. ${followToastDetail(firstName.value)}`
                 : getsAllAnyway
-                    ? `Du bekommst schon alle Spiele, also auch die von ${firstName.value}. Nur deine Spieler? In den Einstellungen „Nur meine Spieler“ wählen.`
+                    ? `Du bekommst gerade alle Spiele. Ab jetzt nur noch die Spiele deiner Spieler?`
                     : followToastDetail(firstName.value),
-            ...((wasAllOff || getsAllAnyway) && { action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH } }),
-            life: wasAllOff || getsAllAnyway ? 6000 : 5000,
+            // Ueberall "Alle Spiele": Folgen bewirkt erst etwas mit "Nur meine Spieler" - direkt anbieten
+            ...(wasAllOff && { action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH } }),
+            ...(getsAllAnyway && { action: { label: 'Nur meine Spieler', run: onlyMyPlayers } }),
+            life: wasAllOff || getsAllAnyway ? 8000 : 5000,
         });
     }
     busy.value = false;

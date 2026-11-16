@@ -7,7 +7,7 @@
         <div class="kn-players-header">
             <Avatar v-if="team.logo" :name="teamName" :avatarImage="team.logo" shape="square" class="kn-team-logo" />
             <span class="kn-team-name">{{ teamName }}</span>
-            <span v-if="isActive" class="kn-turn-badge">{{ turnBadge }}</span>
+            <span v-if="isActive" class="kn-turn-badge"><GlossaryWord v-if="turnBadge === 'Nachwurf'" term="gentleman">Nachwurf</GlossaryWord><template v-else>{{ turnBadge }}</template></span>
             <!-- Airballs bis zum naechsten Shot -->
             <span v-if="airballsTowardsShot > 0" class="kn-shot-pill" :title="`${airballsTowardsShot} von 3 Airballs bis zum Shot`">🥃 {{ airballsTowardsShot }}/3</span>
             <!-- Serie auch sichtbar, wenn das Team gerade nicht wirft (Liste eingeklappt) -->

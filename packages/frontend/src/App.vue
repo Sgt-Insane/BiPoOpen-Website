@@ -53,12 +53,12 @@ onBeforeMount(async() => {
 				<div class="app-toast-text">
 					<div class="app-toast-summary">{{ message.summary }}</div>
 					<div v-if="message.detail" class="app-toast-detail">{{ message.detail }}</div>
-					<!-- Optionaler Link im Toast: toast.add({ ..., action: { label, to } }) -->
+					<!-- Optionaler Link im Toast: toast.add({ ..., action: { label, to } }) oder Aktion: action: { label, run } -->
 					<button
 						v-if="message.action"
 						type="button"
 						class="app-toast-action"
-						@click="closeCallback(); router.push(message.action.to)"
+						@click="closeCallback(); message.action.run ? message.action.run() : router.push(message.action.to)"
 					>{{ message.action.label }}</button>
 				</div>
 				<!-- Restlaufzeit, schrumpft ueber die Lebensdauer des Toasts -->

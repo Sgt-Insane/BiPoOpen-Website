@@ -69,7 +69,10 @@
              sonst verschwanden gefolgte Spieler scheinbar (Nutzertest) -->
         <template v-if="usesFollowedPlayers || followedPlayers.length">
             <h2 class="nt-section-title">Meine Spieler</h2>
-            <div v-if="!usesFollowedPlayers" class="ns-follow-hint">Wirkt erst, wenn oben bei einem Bereich „Nur meine Spieler“ gewählt ist. Jetzt bekommst du alle Spiele.</div>
+            <div v-if="!usesFollowedPlayers" class="ns-follow-hint">
+                Gerade bekommst du alle Spiele, deine Spieler also sowieso.
+                <button type="button" class="ns-follow-only" @click="followOnlyMyPlayers()">Nur noch meine Spieler</button>
+            </div>
             <div class="nt-card ns-follow">
                 <div class="ns-search">
                     <i class="pi pi-search ns-search-icon"></i>
@@ -127,7 +130,7 @@ const MAX_RESULTS = 6;
 defineProps<{ highlightCategory?: PushCategory }>();
 
 const toast = useToast();
-const { preferences, followModes, usesFollowedPlayers, followedPlayers, setPreference, setFollowMode, isFollowing, followPlayer, unfollowPlayer, sendTest, deactivate } = usePushNotifications();
+const { preferences, followModes, usesFollowedPlayers, followedPlayers, setPreference, setFollowMode, isFollowing, followPlayer, followOnlyMyPlayers, unfollowPlayer, sendTest, deactivate } = usePushNotifications();
 
 // Farben wie die Texte je Kategorie im Push-Design
 const categories: { key: PushCategory, title: string, text: string, icon: string, background: string, color: string }[] = [
@@ -459,5 +462,15 @@ const onDeactivate = async () => {
 }
 .ns-deactivate:hover {
     color: var(--bp-text-strong);
+}
+.ns-follow-only{
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--main-color);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
 }
 </style>

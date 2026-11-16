@@ -263,6 +263,12 @@ const followPlayer = (name: string) => {
 	return saveSettings();
 };
 
+// Alle Bereiche mit Spielern auf "Nur meine Spieler" (Angebot nach dem ersten Folgen)
+const followOnlyMyPlayers = () => {
+	CATEGORIES.filter(category => !CATEGORIES_WITHOUT_PLAYERS.includes(category)).forEach(category => { followModes[category] = 'followed'; });
+	return saveSettings();
+};
+
 const unfollowPlayer = (name: string) => {
 	followedPlayers.value = followedPlayers.value.filter(entry => normalize(entry) !== normalize(name));
 	return saveSettings();
@@ -297,6 +303,7 @@ export const usePushNotifications = () => {
 		isFollowing,
 		followPlayer,
 		followToastDetail,
+		followOnlyMyPlayers,
 		unfollowPlayer,
 		sendTest,
 	};
