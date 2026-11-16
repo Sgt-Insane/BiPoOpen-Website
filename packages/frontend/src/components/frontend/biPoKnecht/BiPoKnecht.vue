@@ -321,7 +321,7 @@ const setMode = (value: ModeSetting) => {
     // Fest Schiedsrichter: Querformat sperren. Auto darf nicht sperren, sonst kaeme man nicht mehr zurueck.
     if (value === 'referee') lockLandscape();
     else unlockOrientation();
-    sheet.value = null;
+    // Menue bleibt offen: Schalter wie Knecht Pro (nur Schiri) erscheinen sofort sichtbar
 };
 
 // ─── Vollbild (z.B. zwischendurch verlassen, um Nachrichten zu schreiben) ───
