@@ -310,10 +310,9 @@ const cupNumbersByTurn = computed(() => {
 });
 
 // Beim Trickshot-Fang: wer verfehlt hat und wer gefangen hat. Dahinter die getroffenen Becher.
-const getRowPlayer = (turn: Turn, team: Team, turnIndex: number) => {
+const getRowPlayer = (turn: Turn, _team: Team, turnIndex: number) => {
     const cups = cupNumbersByTurn.value.get(turnIndex);
     const cupText = cups?.length ? `Becher ${cups.join(', ')}` : '';
-    if (team.players.length <= 1) return cupText;
     let name = getPlayerName(props.match, turn.teamIndex, turn.playerIndex);
     const catcher = getData(turn).catcherIndex;
     if (turn.type === 'trickshot' && typeof catcher === 'number') name = `${name} → ${getPlayerName(props.match, turn.teamIndex, catcher)}`;

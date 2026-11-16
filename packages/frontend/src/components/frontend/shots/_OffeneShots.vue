@@ -23,7 +23,7 @@
                 </div>
 
                 <div class="nm-hero-hint">
-                    Je 3 Airballs eines Teams trinkt jede Person einen Shot.
+                    Je 3 <GlossaryWord term="airball">Airballs</GlossaryWord> eines Teams trinkt jede Person einen Shot.
                     <router-link to="/Nackte-Meilen" class="nm-hero-link">Nackte Meilen <i class="pi pi-angle-right"></i></router-link>
                 </div>
             </div>
@@ -108,6 +108,7 @@ import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Avatar from '@/components/shared/Avatar.vue';
 import InfoButton from '@/components/shared/InfoButton.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import SkeletonList from '@/components/shared/SkeletonList.vue';
 import { getShots, setShotDrunk, type Shot } from './shots';
 

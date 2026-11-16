@@ -21,6 +21,8 @@
             :loading="isLoading"
         />
 
+        <HomeKnechtCard />
+
         <HomeRecentGames
             :openGames="openGames"
             :leagueGames="leagueGames"
@@ -33,6 +35,7 @@
 
 <script setup lang="ts">
 import HomeHero from './HomeHero.vue';
+import HomeKnechtCard from './HomeKnechtCard.vue';
 import HomeLiveGames from '@/components/frontend/live/HomeLiveGames.vue';
 import { isFeatureOn } from '@/util/featureFlags';
 import HomeRecentGames from './HomeRecentGames.vue';

@@ -30,7 +30,7 @@ export const GLOSSARY = {
     vergleich: { term: 'Spieler-Vergleich', text: 'Links der erste, rechts der zweite Spieler. Der bessere Wert ist farbig, der Balken zeigt das Verhältnis der beiden Werte.' },
     getroffen: { term: 'Getroffen', text: 'So viele Becher hat das Team (oder der Spieler) beim Gegner schon gezählt bekommen, Bouncer und Bomben zählen mehrfach. Gewonnen ist erst, wenn beim Gegner kein Becher mehr steht.' },
     nackteMeilenSeite: { term: 'Nackte Meilen', text: 'Wer ein Spiel mit 0 Treffern beendet, schuldet eine nackte Meile. Hier steht, wer noch laufen muss und wer schon gelaufen ist.' },
-    shotsSeite: { term: 'Offene Shots', text: 'Je 3 Airballs eines Teams trinkt jede Person dieses Teams einen Shot. Auf „Später“ gelegte Shots stehen hier, bis sie getrunken sind.' },
+    shotsSeite: { term: 'Offene Shots', text: 'Ein Airball ist ein Wurf, der weder Becher noch Tisch berührt. Je 3 Airballs eines Teams trinkt jede Person dieses Teams einen Shot. Auf „Später“ gelegte Shots stehen hier, bis sie getrunken sind.' },
 } satisfies Record<string, GlossaryTerm>;
 
 export type GlossaryKey = keyof typeof GLOSSARY;
