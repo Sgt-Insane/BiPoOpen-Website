@@ -543,9 +543,12 @@ const getProgress = (): LiveProgress => ({
     actions: game.actions.value,
     // Becherfarben koennen sich nach dem Anlegen noch aendern (Startdialog, Menue)
     match: game.match,
+    paused: paused.value,
 });
 
 const applyRemote = (remote: LiveProgress): boolean => {
+    // Pause gilt fuer beide Handys (sonst wuerde das andere Handy sie beim naechsten Abgleich wieder aufheben)
+    if (typeof remote.paused === 'boolean' && remote.paused !== paused.value) paused.value = remote.paused;
     const colors = remote.match?.cupColors;
     if (colors && JSON.stringify(colors) !== JSON.stringify(game.match.cupColors)) game.match.cupColors = [...colors];
     if (remote.startTeamIndex !== null && game.startTeamIndex.value === null) {
@@ -561,7 +564,7 @@ const applyRemote = (remote: LiveProgress): boolean => {
 defineExpose({ getProgress, applyRemote });
 
 // ─── Fortschritt melden (wird im localStorage gesichert) ───
-watch([game.actions, game.startTeamIndex, refereeUsed], () => {
+watch([game.actions, game.startTeamIndex, refereeUsed, paused], () => {
     emit('change', { startTeamIndex: game.startTeamIndex.value, actions: game.actions.value, refereeUsed: refereeUsed.value });
 });
 

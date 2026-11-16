@@ -8,10 +8,13 @@ import crypto from 'crypto';
 type LiveGame = {
     id: string; code: string; token: string; match: unknown; startTeamIndex: number | null; startedAt: number | null;
     actions: unknown[]; version: number; status: 'live' | 'done' | 'aborted'; createdAt: number; updatedAt: number;
-    guestToken: string | null; guestId: string | null; guestSide: number | null;
+    guestToken: string | null; guestId: string | null; guestSide: number | null; paused?: boolean;
 };
 
 const STALE_MS = 2 * 60 * 60 * 1000;
+// Wie das Backend: im Ticker nur, was gerade laeuft (nicht pausiert, Aenderung in den letzten 15 Minuten)
+const TICKER_MS = 15 * 60 * 1000;
+const isInTicker = (game: LiveGame) => isFresh(game) && !game.paused && game.updatedAt > Date.now() - TICKER_MS;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const games = new Map<string, LiveGame>();
 
@@ -49,7 +52,7 @@ export const devLiveServer = (): Plugin => ({
             const touch = (game: LiveGame) => { game.version++; game.updatedAt = Date.now(); };
 
             if (req.method === 'GET' && parts[0] === 'list')
-                return send(200, { games: [...games.values()].filter(isFresh).sort((a, b) => b.updatedAt - a.updatedAt).map(toPublic) });
+                return send(200, { games: [...games.values()].filter(isInTicker).sort((a, b) => b.updatedAt - a.updatedAt).map(toPublic) });
 
             if (req.method === 'POST' && parts[0] === 'create') {
                 if (!body?.match || !Array.isArray(body.actions)) return send(400, { message: 'invalid game' });
@@ -93,6 +96,7 @@ export const devLiveServer = (): Plugin => ({
                 if (!Array.isArray(body.actions)) return send(400, { message: 'invalid payload' });
                 game.actions = body.actions;
                 if (body.startTeamIndex !== undefined) game.startTeamIndex = body.startTeamIndex;
+                if (typeof body.paused === 'boolean') game.paused = body.paused;
                 if (typeof body.startedAt === 'number') game.startedAt = body.startedAt;
                 if (body.match?.team1?.players && body.match?.team2?.players) game.match = body.match;
                 touch(game);

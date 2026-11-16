@@ -2,8 +2,11 @@ import { Request, Response } from "express";
 import crypto from "crypto";
 import LiveGame from "../models/LiveGame";
 
-// Live-Spiele: nach dieser Zeit ohne Aenderung gilt ein Spiel als verlassen und erscheint nicht mehr im Ticker
+// Live-Spiele: nach dieser Zeit ohne Aenderung gilt ein Spiel als verlassen und wird abgeraeumt
 const STALE_MS = 2 * 60 * 60 * 1000;
+// Im Ticker nur, was gerade laeuft: pausierte Spiele und Spiele ohne Aenderung seit 15 Minuten ausblenden
+// (mit dem naechsten Wurf bzw. "Weiterspielen" sind sie wieder da)
+const TICKER_MS = 15 * 60 * 1000;
 const MAX_ACTIONS = 600;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // ohne 0/O und 1/I
 
@@ -29,6 +32,7 @@ const toPublic = (game: any) => ({
     devices: game.guestToken ? 2 : 1,
     guestId: game.guestId ?? null,
     guestSide: game.guestSide ?? null,
+    paused: !!game.paused,
     updatedAt: game.updatedAt,
 });
 
@@ -124,7 +128,9 @@ const leave = (req: Request, res: Response) => {
 };
 
 const list = (req: Request, res: Response) => {
-    LiveGame.find(isFresh())
+    // Verlassene Spiele abraeumen (nebenbei, Fehler egal)
+    LiveGame.updateMany({ status: 'live', updatedAt: { $lt: Date.now() - STALE_MS } }, { $set: { status: 'aborted' } }).catch(() => {});
+    LiveGame.find({ status: 'live', paused: { $ne: true }, updatedAt: { $gt: Date.now() - TICKER_MS } })
         .sort({ updatedAt: -1 })
         .limit(20)
         .lean()
@@ -147,6 +153,7 @@ const sync = async (req: Request, res: Response) => {
     try {
         const update: Record<string, unknown> = { actions: req.body.actions, updatedAt: Date.now() };
         if (req.body.startTeamIndex !== undefined) update.startTeamIndex = req.body.startTeamIndex;
+        if (typeof req.body.paused === 'boolean') update.paused = req.body.paused;
         if (typeof req.body.startedAt === 'number') update.startedAt = req.body.startedAt;
         if (req.body.match?.team1?.players && req.body.match?.team2?.players) update.match = req.body.match;
         const game = await LiveGame.findOneAndUpdate(

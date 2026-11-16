@@ -31,8 +31,8 @@ type Options = {
     onKicked: () => void;
 };
 
-const keyOf = (progress: LiveProgress) => JSON.stringify([progress.startTeamIndex, progress.startedAt, progress.actions, progress.match?.cupColors ?? null]);
-const progressOf = (game: LiveGame): LiveProgress => ({ startTeamIndex: game.startTeamIndex, startedAt: game.startedAt, actions: game.actions, match: game.match });
+const keyOf = (progress: LiveProgress) => JSON.stringify([progress.startTeamIndex, progress.startedAt, progress.actions, progress.match?.cupColors ?? null, !!progress.paused]);
+const progressOf = (game: LiveGame): LiveProgress => ({ startTeamIndex: game.startTeamIndex, startedAt: game.startedAt, actions: game.actions, match: game.match, paused: !!game.paused });
 
 export const useKnechtLiveSync = (options: Options) => {
     const binding = ref<LiveBinding | null>(null);

@@ -17,6 +17,7 @@ export type LiveGame = {
     devices: number;
     guestId: string | null;     // zweites Handy (wechselt beim Trennen, daran merkt es das zweite Handy)
     guestSide: number | null;   // Tischseite des zweiten Handys (Teamindex), das erste steht gegenueber
+    paused?: boolean;           // im Knecht pausiert: nicht im Live-Ticker
     updatedAt: number;
 };
 
@@ -32,7 +33,8 @@ export type LiveBinding = {
 };
 
 // match: z.B. getauschte Becherfarben, damit das andere Handy und der Ticker sie auch sehen
-export type LiveProgress = { startTeamIndex: number | null; startedAt: number | null; actions: KnechtAction[]; match?: Match };
+// paused: Spiel ist pausiert, der Ticker blendet es solange aus
+export type LiveProgress = { startTeamIndex: number | null; startedAt: number | null; actions: KnechtAction[]; match?: Match; paused?: boolean };
 
 // Beitreten nicht moeglich: Spiel unbekannt/vorbei oder schon zwei Handys
 export class LiveJoinError extends Error {
