@@ -61,6 +61,7 @@
                                 :modelValue="player.name"
                                 :excludedNames="getExcludedNames(player)"
                                 :removable="playerIndex > 0"
+                                :placeholder="playerIndex > 0 ? `Mitspieler für ${sideLabels[sideIndex]} suchen …` : `Spieler für ${sideLabels[sideIndex]} suchen …`"
                                 @update:modelValue="name => setPlayerName(side, playerIndex, name)"
                                 @clear="clearPlayer(side, playerIndex)"
                             />
@@ -258,11 +259,12 @@ const setTeams = (teams: { name: string; logo?: string }[]) => {
     sides.value = teams.map(team => ({ logo: team.logo, players: [{ name: team.name, score: null }] }));
 }
 
-// Leere Zusatzplaetze (aus Versehen "Mitspieler hinzufuegen") zaehlen nicht: weder als fehlender Spieler noch beim Speichern
-const filledSides = computed(() => sides.value.map(side => ({
-    ...side,
-    players: side.players.filter((player, playerIndex) => playerIndex === 0 || player.name.trim() || player.score !== null),
-})));
+// Leere Plaetze (z.B. aus Versehen "Mitspieler hinzufuegen") zaehlen nicht, egal an welcher Stelle:
+// weder als fehlender Spieler noch beim Speichern. Nur ein ganz leeres Team behaelt seinen einen Platz.
+const filledSides = computed(() => sides.value.map(side => {
+    const players = side.players.filter(player => player.name.trim() || player.score !== null);
+    return { ...side, players: players.length ? players : side.players.slice(0, 1) };
+}));
 
 // ─── Ergebnis ───
 const totals = computed(() => filledSides.value.map(getSideScore));
@@ -387,8 +389,13 @@ const missingLabel = computed(() => {
 });
 
 const onJoin = () => {
-    const code = window.prompt('Code vom anderen Handy (steht im Knecht oben und im Menü):')?.trim();
-    if (!code) return;
+    const answer = window.prompt('Code vom anderen Handy (steht dort im Knecht-Menü unter „Live“):');
+    if (answer === null) return;
+    const code = answer.trim();
+    if (!code) {
+        toast.add({ severity: 'warn', summary: 'Kein Code eingegeben', detail: 'Den Code zeigt das andere Handy im Knecht-Menü unter „Live“.', life: 4000 });
+        return;
+    }
     visible.value = false;
     router.push({ path: '/Knecht', query: { join: code.toUpperCase() } });
 };
