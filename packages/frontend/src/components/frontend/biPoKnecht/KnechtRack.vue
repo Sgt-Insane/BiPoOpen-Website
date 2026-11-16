@@ -5,6 +5,7 @@
         :class="[`kn-rack--${direction}`, { 'kn-rack--target': isTarget, 'kn-rack--waiting': !isTarget, 'kn-rack--rotated': rotated, 'kn-rack--picking': !!game.pick.value }]"
         :style="{ '--kn-team-color': getTeamColor(game.match, teamIndex) }"
         @click="onTableClick"
+        @pointerdown.capture="rememberPointer"
     >
         <!-- Hinter den Bechern: Airball (Ball ueber den Tisch) -->
         <div v-if="isTarget" class="kn-zone kn-zone-airball" @click.stop="onAirballClick">
@@ -111,7 +112,22 @@ const BALL_TO_CUP = 0.42;
 const root = ref<HTMLElement | null>(null);
 const getBallSize = () => (root.value?.querySelector('.kn-cup')?.getBoundingClientRect().width ?? 44) * BALL_TO_CUP;
 
+// Wo der Finger wirklich war: Chrome rueckt Tipps auf dem Handy auf nahe Schaltflaechen (Touch-Korrektur),
+// das Klick-Ereignis landet dann auf dem Becher, obwohl knapp daneben (= Kante) getippt wurde.
+// pointerdown kommt unkorrigiert, daher zaehlt diese Position.
+const lastPointer = ref<{ x: number; y: number; time: number } | null>(null);
+const rememberPointer = (event: PointerEvent) => { lastPointer.value = { x: event.clientX, y: event.clientY, time: event.timeStamp }; };
+const getTapPoint = (event: MouseEvent) => {
+    const pointer = lastPointer.value;
+    return pointer && event.timeStamp - pointer.time < 1000 ? pointer : { x: event.clientX, y: event.clientY };
+};
+
 const onCupClick = (cup: number, event: MouseEvent) => {
+    // Tipp ausserhalb des runden Bechers (Touch-Korrektur): ist ein Wurf auf den Tisch bzw. an die Kante.
+    // Tastatur (detail 0) hat keine Position und trifft immer.
+    const cupRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const tap = getTapPoint(event);
+    if (!props.game.pick.value && event.detail > 0 && Math.hypot(tap.x - (cupRect.left + cupRect.width / 2), tap.y - (cupRect.top + cupRect.height / 2)) > cupRect.width / 2) return onTableClick(event);
     // Platz eines abgeraeumten Bechers (oder sonst nicht treffbar): zaehlt wie ein Tipp auf den Tisch
     const pick = props.game.pick.value;
     const tappable = pick ? pick.candidates.includes(cup) || pick.cup === cup : props.game.hittableCups.value.has(cup);
@@ -142,9 +158,10 @@ const getGeometry = (): RackGeometry | null => {
 const onTableClick = (event: MouseEvent) => {
     if (!props.isTarget || props.game.pick.value) return;
     const geometry = getGeometry();
-    const detail: { spot?: { x: number; y: number }; edge?: EdgeHit } = geometry ? classifyMiss({ x: event.clientX, y: event.clientY }, geometry) : {};
+    const tap = getTapPoint(event);
+    const detail: { spot?: { x: number; y: number }; edge?: EdgeHit } = geometry ? classifyMiss(tap, geometry) : {};
     if (props.game.throwMiss('miss', detail)) {
-        props.game.markBall('miss', event.clientX, event.clientY, getBallSize());
+        props.game.markBall('miss', tap.x, tap.y, getBallSize());
         vibrate(detail.edge ? 'edge' : 'table');
     }
 };

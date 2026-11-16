@@ -17,12 +17,12 @@
             <div v-if="mode === 'player'" class="kn-field kn-field--player">
                 <KnechtPlayers :game="game" :teamIndex="topTeam" :rotated="!twoPhone" :compact="!isThrowing(topTeam)" />
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(topTeam) }">
-                    <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam)">
+                    <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam) && !waitingForOther">
                         <template #front><KnechtControls v-if="isTarget(topTeam)" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(bottomTeam) }">
-                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && !twoPhone ? 'up' : 'down'" :isTarget="isTarget(bottomTeam)" :rotated="isTarget(bottomTeam) && !twoPhone">
+                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && !twoPhone ? 'up' : 'down'" :isTarget="isTarget(bottomTeam) && !waitingForOther" :rotated="isTarget(bottomTeam) && !twoPhone">
                         <template #front><KnechtControls v-if="isTarget(bottomTeam) && !waitingForOther" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
