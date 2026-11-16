@@ -68,10 +68,10 @@
         <!-- Auch sichtbar, wenn noch nichts auf "Nur meine Spieler" steht, sobald man jemandem folgt:
              sonst verschwanden gefolgte Spieler scheinbar (Nutzertest) -->
         <template v-if="usesFollowedPlayers || followedPlayers.length">
-            <h2 class="nt-section-title">Meine Spieler</h2>
+            <h2 class="nt-section-title">Gefolgte Spieler</h2>
             <div v-if="!usesFollowedPlayers" class="ns-follow-hint">
-                Gerade bekommst du alle Spiele, deine Spieler also sowieso.
-                <button type="button" class="ns-follow-only" @click="followOnlyMyPlayers()">Nur noch meine Spieler</button>
+                Gerade bekommst du alle Spiele, also auch die deiner gefolgten Spieler.
+                <button type="button" class="ns-follow-only" @click="followOnlyMyPlayers()">Nur noch gefolgte Spieler</button>
             </div>
             <div class="nt-card ns-follow">
                 <div class="ns-search">
@@ -142,7 +142,7 @@ const categories: { key: PushCategory, title: string, text: string, icon: string
 
 const followModeOptions: { value: PushFollowMode, label: string }[] = [
     { value: 'all', label: 'Alle Spiele' },
-    { value: 'followed', label: 'Nur meine Spieler' },
+    { value: 'followed', label: 'Nur gefolgte Spieler' },
 ];
 
 // ─── Pop-up-Anleitung ───

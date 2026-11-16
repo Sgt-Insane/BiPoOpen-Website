@@ -69,6 +69,8 @@ const playerPoints = computed(() => getFinalPlayerPoints(state.value)[props.team
 
 const turnBadge = computed(() => {
     if (state.value.nachwurfTeamIndex === props.teamIndex) return 'Nachwurf';
+    // Letzter Becher getroffen, der Zug laeuft noch: der naechste Ball darf nur noch in diesen Becher (beide drin = Sofortsieg)
+    if (state.value.decider?.teamIndex === props.teamIndex) return 'Letzter Becher · 2. Ball auch rein = Sofortsieg';
     if (state.value.round.ballsBack) return `Balls Back · Ball ${getBallNumber(state.value)}/2`;
     return `Am Zug · Ball ${getBallNumber(state.value)}/2`;
 });

@@ -54,7 +54,7 @@
                     <span class="kn-turn-start-icon">▶</span>
                     <span class="kn-turn-start-text">
                         <span class="kn-turn-start-title">Zug starten</span>
-                        <span class="kn-turn-start-team">{{ getTeamName(game.match, state.activeTeamIndex) }} hat die Bälle</span>
+                        <span class="kn-turn-start-team">{{ getTeamName(game.match, state.activeTeamIndex) }} hat die Bälle in der Hand – ab jetzt läuft die Wurfzeit</span>
                     </span>
                 </button>
             </div>
@@ -167,7 +167,7 @@
                     <div v-else-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
                     <button v-if="mode === 'referee'" type="button" role="switch" class="kn-menu-toggle" :aria-checked="proEnabled" @click="toggleProMode">
                         <KnechtIcon name="miss" />
-                        <span class="kn-menu-toggle-text">Knecht Pro <small>Wurfzeiten und Kanten erfassen – Kante: Fehlwurf knapp neben den Becher tippen</small></span>
+                        <span class="kn-menu-toggle-text">Knecht Pro <small>„Zug starten“ = Bälle in der Hand, ab da läuft die Wurfzeit · Kante: Fehlwurf knapp neben den Becher tippen</small></span>
                         <span class="kn-menu-switch" aria-hidden="true"></span>
                     </button>
 

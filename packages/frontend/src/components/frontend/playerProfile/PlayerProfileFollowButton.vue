@@ -39,7 +39,7 @@ watch(isActive, (active) => { if (active) loadSettings(); }, { immediate: true }
 const onlyMyPlayers = async () => {
     await followOnlyMyPlayers();
     // Variable statt Literal: "action" ist eine eigene Erweiterung des Toasts (siehe App.vue)
-    const message = { severity: 'success' as const, summary: 'Nur noch deine Spieler', detail: 'Ändern kannst du das jederzeit in den Benachrichtigungen.', action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH }, life: 5000 };
+    const message = { severity: 'success' as const, summary: 'Nur noch gefolgte Spieler', detail: 'Du bekommst nur noch Spiele der Spieler, denen du folgst. Ändern geht jederzeit in den Benachrichtigungen.', action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH }, life: 5000 };
     toast.add(message);
 };
 
@@ -66,11 +66,11 @@ const onClick = async () => {
             detail: wasAllOff
                 ? `Benachrichtigungen sind wieder an. ${followToastDetail(firstName.value)}`
                 : getsAllAnyway
-                    ? `Du bekommst gerade alle Spiele. Ab jetzt nur noch die Spiele deiner Spieler?`
+                    ? `Du bekommst gerade alle Spiele. Ab jetzt nur noch Spiele der Spieler, denen du folgst?`
                     : followToastDetail(firstName.value),
             // Ueberall "Alle Spiele": Folgen bewirkt erst etwas mit "Nur meine Spieler" - direkt anbieten
             ...(wasAllOff && { action: { label: 'Einstellungen ›', to: PUSH_SETTINGS_PATH } }),
-            ...(getsAllAnyway && { action: { label: 'Nur meine Spieler', run: onlyMyPlayers } }),
+            ...(getsAllAnyway && { action: { label: 'Nur gefolgte Spieler', run: onlyMyPlayers } }),
             life: wasAllOff || getsAllAnyway ? 8000 : 5000,
         });
     }

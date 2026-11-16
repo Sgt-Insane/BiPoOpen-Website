@@ -28,17 +28,6 @@
                     <span class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
                 </div>
 
-                <!-- Optionaler Teamname, sobald eine Seite mehrere Spieler hat -->
-                <input
-                    v-if="allowTeamName && !lockedNames && side.players.length > 1"
-                    v-model="side.name"
-                    class="ge-team-name-input"
-                    type="text"
-                    maxlength="30"
-                    placeholder="Teamname (optional)"
-                    autocomplete="off"
-                    :aria-label="`Teamname ${sideLabels[sideIndex]}`"
-                />
                 <div v-if="side.players.length > 1" class="ge-side-hint">Treffer je Spieler · das Team-Ergebnis ist die Summe</div>
 
                 <div v-for="(player, playerIndex) in side.players" :key="playerIndex" class="ge-player">
@@ -82,6 +71,18 @@
                     <i class="pi pi-plus"></i>
                     Mitspieler hinzufügen
                 </button>
+                <!-- Optionaler Teamname, sobald eine Seite mehrere Spieler hat. Unter den Spielern, damit er beim
+                     Hinzufuegen eines Mitspielers nicht ueber den Suchfeldern auftaucht (Nutzertest: Name landete als Teamname) -->
+                <input
+                    v-if="allowTeamName && !lockedNames && side.players.length > 1"
+                    v-model="side.name"
+                    class="ge-team-name-input"
+                    type="text"
+                    maxlength="30"
+                    placeholder="Teamname (optional)"
+                    autocomplete="off"
+                    :aria-label="`Teamname ${sideLabels[sideIndex]}`"
+                />
             </div>
 
             <!-- Offene Spiele: gewaehlte Spieler zufaellig auf die Teams verteilen -->
@@ -447,6 +448,7 @@ const onLaunch = () => {
 
 .ge-team-name-input{
     width: 100%;
+    margin-top: 8px;
     height: 38px;
     padding: 0 12px;
     border: 1.5px solid var(--bp-border);
