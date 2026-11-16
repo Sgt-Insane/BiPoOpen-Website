@@ -47,9 +47,10 @@
                     </div>
                     <div class="mt-team-score">{{ teamScore ?? '–' }}</div>
                 </div>
-                <!-- Elo nach dem Spiel, im Doppel der Durchschnitt -->
+                <!-- Elo nach dem Spiel und optional die Veraenderung, im Doppel jeweils der Durchschnitt -->
                 <div v-if="elo" class="mt-team-elo">
                     <GlossaryWord :term="elo.players > 1 ? 'eloAverage' : 'elo'">{{ elo.players > 1 ? 'Ø ' : '' }}{{ elo.rating.toLocaleString('de-DE') }} Elo</GlossaryWord>
+                    <span v-if="showEloChange" class="mt-team-elo-delta" :class="{ 'is-up': elo.delta > 0, 'is-down': elo.delta < 0 }">{{ eloDeltaLabel }}</span>
                 </div>
             </div>
         </div>
@@ -88,6 +89,8 @@ const props = defineProps({
     placeholder: {type: String, default: undefined},
     avatarShape: {type: String as () => 'circle' | 'square', default: 'circle'},
     elo: {type: Object as PropType<EloMatchSide>, default: undefined},
+    // Neben dem Elo die Veraenderung durch dieses Spiel (+12 / −8)
+    showEloChange: {type: Boolean, default: false},
     // Beide Teamnamen eines Spiels gleich gross (v-fit-text)
     fitTextGroup: {type: Object as PropType<FitTextGroup>, default: undefined},
 });
@@ -95,6 +98,13 @@ const props = defineProps({
 const team = computed(() => props.isTeam2 ? props.match.team2 : props.match.team1);
 // Mit dem BiPo Knecht gezaehlte Spiele haben Becherfarben je Team (rot/blau, ggf. getauscht)
 const knechtColor = computed(() => props.match.turns?.length ? getTeamColor(props.match, props.isTeam2 ? 1 : 0) : null);
+
+const eloDeltaLabel = computed(() => {
+    const delta = props.elo?.delta ?? 0;
+    if (delta > 0) return `+${delta}`;
+    if (delta < 0) return `−${Math.abs(delta)}`;
+    return '±0';
+});
 
 let teamName = computed(() => {
     if(team.value){
@@ -200,6 +210,16 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     line-height: 1.3;
     color: var(--bp-text-faint);
     font-variant-numeric: tabular-nums;
+}
+.mt-team-elo-delta{
+    margin-left: 2px;
+    font-weight: 700;
+}
+.mt-team-elo-delta.is-up{
+    color: var(--bp-success);
+}
+.mt-team-elo-delta.is-down{
+    color: var(--bp-danger);
 }
 .mt-team-win .mt-team-name{
     font-weight: 700;

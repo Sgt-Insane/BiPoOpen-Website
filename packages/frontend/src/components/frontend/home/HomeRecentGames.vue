@@ -19,24 +19,24 @@
             <div v-else-if="!visibleGames.length" class="hr-empty">Noch keine Spiele</div>
 
             <MatchElement v-for="entry in visibleGames" v-else :key="entry.match._id" :match="entry.match" :gameType="entry.type" showChip showDate showElo class="hr-entry" />
-
-            <button v-if="!loading && hiddenCount > 0" type="button" class="hr-more" @click="shown += GAME_COUNT">
-                Mehr anzeigen <span class="hr-more-count">noch {{ hiddenCount }}</span>
-            </button>
         </div>
+
+        <!-- Gewaehlter Filter wird auf die Ergebnisse-Seite mitgenommen -->
+        <router-link v-if="!loading && !isDebtFilter" :to="resultsLink" class="bp-more-button">
+            Alle Ergebnisse <i class="pi pi-chevron-right"></i>
+        </router-link>
     </section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import Skeleton from 'primevue/skeleton';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
 import HomeDebtList from './HomeDebtList.vue';
-import { isCupGame } from '@/components/frontend/league/LeagueUtilFunctions';
-import { withLeagueTeamLogos } from '@/components/frontend/league/LeaguePlayersData';
+import { GAME_FILTERS, combineResults, matchesFilter, type GameFilter } from '@/components/frontend/results/resultsUtil';
 
 const props = defineProps<{
     openGames: Match[];
@@ -44,16 +44,13 @@ const props = defineProps<{
     loading: boolean;
 }>();
 
-type GameType = 'league' | 'cup' | 'open';
-type Filter = 'all' | GameType | 'miles' | 'shots';
+// Spiel-Filter wie auf der Ergebnisse-Seite, dazu Nackte Meilen und Offene Shots als Kurzliste
+type Filter = GameFilter | 'miles' | 'shots';
 
 const GAME_COUNT = 6;
 
 const FILTERS: { label: string; value: Filter }[] = [
-    { label: 'Alle', value: 'all' },
-    { label: 'Liga', value: 'league' },
-    { label: 'Cup', value: 'cup' },
-    { label: 'Offen', value: 'open' },
+    ...GAME_FILTERS,
     { label: 'Meilen', value: 'miles' },
     { label: 'Shots', value: 'shots' },
 ];
@@ -62,42 +59,20 @@ const TITLES: Partial<Record<Filter, string>> = { miles: 'Nackte Meilen', shots:
 
 const activeFilter = ref<Filter>('all');
 const title = computed(() => TITLES[activeFilter.value] ?? 'Zuletzt gespielt');
+const isDebtFilter = computed(() => activeFilter.value === 'miles' || activeFilter.value === 'shots');
 
-const allGames = computed(() => [
-    ...props.openGames.map(match => ({ match, type: 'open' as GameType, time: match.time ?? 0 })),
-    ...props.leagueGames.map(match => ({ match, type: (isCupGame(match) ? 'cup' : 'league') as GameType, time: match.time ?? 0 })),
-].sort((a, b) => b.time - a.time));
+const allGames = computed(() => combineResults(props.openGames, props.leagueGames));
 
-// Zuerst 6, mit "Mehr anzeigen" jeweils 6 weitere; beim Filterwechsel wieder 6
-const shown = ref(GAME_COUNT);
-watch(activeFilter, () => { shown.value = GAME_COUNT; });
-const filteredGames = computed(() => allGames.value.filter(entry => activeFilter.value === 'all' || entry.type === activeFilter.value));
-const hiddenCount = computed(() => Math.max(0, filteredGames.value.length - shown.value));
+const visibleGames = computed(() => isDebtFilter.value ? [] : allGames.value
+    .filter(entry => matchesFilter(entry, activeFilter.value as GameFilter))
+    .slice(0, GAME_COUNT));
 
-const visibleGames = computed(() => filteredGames.value
-    .slice(0, shown.value)
-    .map(entry => entry.type === 'open' ? entry : { ...entry, match: withLeagueTeamLogos(entry.match) }));
+const resultsLink = computed(() => activeFilter.value === 'all'
+    ? '/Ergebnisse'
+    : { path: '/Ergebnisse', query: { typ: activeFilter.value } });
 </script>
 
 <style scoped>
-.hr-more{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    min-height: 44px;
-    border: 1.5px solid var(--bp-border);
-    border-radius: 12px;
-    background: var(--bp-surface);
-    color: var(--bp-text-strong);
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-}
-.hr-more-count{
-    font-weight: 600;
-    color: var(--bp-text-muted);
-}
 .HomeRecentGames{
     display: flex;
     flex-direction: column;

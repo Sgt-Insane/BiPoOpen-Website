@@ -49,6 +49,16 @@ const routes = [
 	},
 
 	{
+		path: '/Ergebnisse',
+		name: 'Ergebnisse',
+		component: () => import('@/components/frontend/results/_Results.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Ergebnisse',
+			description: 'Alle Ergebnisse'
+		}
+	},
+
+	{
 		path: '/Weltrangliste',
 		name: 'Weltrangliste',
 		component: () => import('@/components/frontend/worldRanking/_WorldRanking.vue'),
