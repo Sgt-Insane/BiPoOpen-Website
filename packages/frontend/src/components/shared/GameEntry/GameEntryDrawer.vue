@@ -39,6 +39,7 @@
                     autocomplete="off"
                     :aria-label="`Teamname ${sideLabels[sideIndex]}`"
                 />
+                <div v-if="side.players.length > 1" class="ge-side-hint">Treffer je Spieler · das Team-Ergebnis ist die Summe</div>
 
                 <div v-for="(player, playerIndex) in side.players" :key="playerIndex" class="ge-player">
                     <!-- Feste Namen: bei mehreren Spielern pro Seite steht der Name ueber den Treffern -->
@@ -523,6 +524,11 @@ const onLaunch = () => {
     font-size: 20px;
     font-weight: 800;
     color: var(--bp-text-strong);
+}
+.ge-side-hint{
+    font-size: 12px;
+    color: var(--bp-text-faint);
+    margin: -2px 0 6px;
 }
 .ge-side-score--empty{
     color: var(--bp-text-faint);

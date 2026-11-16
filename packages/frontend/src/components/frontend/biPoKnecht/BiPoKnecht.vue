@@ -49,7 +49,7 @@
             <KnechtCelebration :celebration="game.celebration.value" :flipped="celebrationFlipped" />
 
             <!-- Knecht Pro: Zug erst starten, wenn die Werfer die Baelle haben (misst die Wurfzeit ohne Baelleholen) -->
-            <div v-if="proActive && game.waitingForTurnStart.value && !paused && !confirmDialog" class="kn-overlay kn-turn-lock">
+            <div v-if="proActive && game.waitingForTurnStart.value && !paused && !confirmDialog" class="kn-overlay kn-turn-lock" @click.self="game.startTurn()">
                 <button type="button" class="kn-turn-start" :style="{ '--kn-team-color': getTeamColor(game.match, state.activeTeamIndex) }" @click="game.startTurn()">
                     <span class="kn-turn-start-icon">▶</span>
                     <span class="kn-turn-start-text">
