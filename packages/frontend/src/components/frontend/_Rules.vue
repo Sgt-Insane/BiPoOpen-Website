@@ -402,7 +402,7 @@ const leagueSections: Section[] = [
                 icon: 'pencil',
                 title: 'Spiele eintragen',
                 key: 'Ergebnis oder BiPo Knecht',
-                summary: 'über „Eintragen“',
+                summary: 'über „Spiel“ (Plus unten)',
                 points: [
                     'Liga- und Cup-Spiele direkt mit dem Ergebnis eintragen.',
                     'Oder live mit dem BiPo Knecht zählen: er kennt die Regeln und trägt das Ergebnis automatisch ein.',
