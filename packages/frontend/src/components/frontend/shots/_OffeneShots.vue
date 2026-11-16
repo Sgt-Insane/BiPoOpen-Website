@@ -376,7 +376,7 @@ const goBack = () => {
     width: 14px;
     height: 4px;
     border-radius: 2px;
-    background: var(--bp-navy);
+    background: var(--bp-hero);
 }
 .nm-count{
     font-size: 17px;

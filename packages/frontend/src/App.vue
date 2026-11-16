@@ -145,6 +145,7 @@ onBeforeMount(async() => {
   --bp-info: #2F6FE4;
   --bp-info-weak: #E8F0FE;
   --bp-navy: #1E3A6B;
+  --bp-hero: #1E3A6B;            /* Kopf-Kacheln mit weisser Schrift */
   --bp-navy-weak: #EAF0F8;
   --bp-violet: #5B3CC4;
   --bp-violet-weak: #EDE8FB;
@@ -198,6 +199,7 @@ html.bp-dark {
   --bp-info: #7FA8F5;
   --bp-info-weak: rgba(127, 168, 245, 0.16);
   --bp-navy: #A9C2EE;
+  --bp-hero: #1D2940;            /* dunkel: --bp-navy ist hier Hellblau (Textfarbe), weisse Schrift waere darauf unlesbar */
   --bp-navy-weak: rgba(127, 168, 245, 0.14);
   --bp-violet: #A48DF0;
   --bp-violet-weak: rgba(164, 141, 240, 0.16);

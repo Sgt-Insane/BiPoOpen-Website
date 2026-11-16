@@ -225,7 +225,7 @@ const goBack = () => {
     gap: 14px;
     padding: 8px 12px 18px;
     border-radius: 20px;
-    background: var(--bp-navy, #0C1E47);
+    background: var(--bp-hero);
     color: white;
 }
 .pc-hero-head{

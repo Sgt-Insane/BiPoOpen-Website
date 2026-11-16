@@ -100,7 +100,7 @@ const debtors = computed(() => {
     width: 14px;
     height: 4px;
     border-radius: 2px;
-    background: var(--bp-navy);
+    background: var(--bp-hero);
 }
 .hdl-count{
     font-size: 17px;
