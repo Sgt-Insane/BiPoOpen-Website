@@ -133,6 +133,7 @@ const heroMeta = computed(() => {
     justify-content: center;
     gap: 8px;
     min-height: 42px;
+    margin-bottom: 16px;
     border: 1.5px solid var(--bp-border);
     border-radius: 12px;
     background: var(--bp-surface);
