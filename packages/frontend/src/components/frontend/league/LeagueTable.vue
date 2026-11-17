@@ -22,6 +22,7 @@
             <TabPanel value="overall">
                 <LeagueStandingsTable
                     :leaguePlayers="props.leaguePlayers"
+                    :withdrawnPlayers="props.withdrawnPlayers"
                     :leagueGames="games"
                     :highlightTopSlots="props.highlightTopSlots"
                     :promotionSlots="props.promotionSlots"
@@ -71,6 +72,7 @@ import { useStickyBar } from '@/components/shared/useStickyStack';
 
 const props = defineProps({
     leaguePlayers: { type: Array as () => LeaguePlayer[], required: true },
+    withdrawnPlayers: { type: Array as () => LeaguePlayer[], default: () => [] },
     leagueGames: { type: Array as () => Match[], required: true },
     regularSeasonGameCount: { type: Number, required: true },
     highlightTopSlots: { type: Number, default: 4 },

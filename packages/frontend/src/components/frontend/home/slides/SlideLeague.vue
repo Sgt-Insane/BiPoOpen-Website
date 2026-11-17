@@ -19,7 +19,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { getLeagueList } from '@/components/frontend/league/LeagueUtilFunctions';
-import { toLeaguePlayers, type LeagueDivision } from '@/components/frontend/league/LeagueSeasonsData';
+import { getActiveTeams, toLeaguePlayers, type LeagueDivision } from '@/components/frontend/league/LeagueSeasonsData';
 import HeroSlideLayout from './HeroSlideLayout.vue';
 
 const props = defineProps<{
@@ -29,7 +29,7 @@ const props = defineProps<{
     seasonSlug: string;
 }>();
 
-const leaguePlayers = computed(() => toLeaguePlayers(props.division.teams));
+const leaguePlayers = computed(() => toLeaguePlayers(getActiveTeams(props.division)));
 const logos = computed(() => Object.fromEntries(leaguePlayers.value.map(player => [player.name, player.logo])));
 
 const topTeams = computed(() => getLeagueList(props.games, leaguePlayers.value).slice(0, 3));

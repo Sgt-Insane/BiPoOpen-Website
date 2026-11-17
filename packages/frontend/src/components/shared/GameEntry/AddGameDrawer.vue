@@ -78,7 +78,7 @@ import CupPairingSelect from '@/components/frontend/league/cup/CupPairingSelect.
 import { addOpenGame } from '@/components/frontend/openGames/OpenGamesUtilFunctions';
 import { addLeagueGame, filterLeagueGames, getAllLeagueGames, getLeagueGameSubtitle } from '@/components/frontend/league/LeagueUtilFunctions';
 import { getCupGames, getCupRoundGames, getLeagueCup, getPairingResult, getPlannedRoundNames } from '@/components/frontend/league/cup/LeagueCupUtilFunctions';
-import { CURRENT_SEASON_SLUG, LEAGUE_SEASONS, getSeason, toLeaguePlayers } from '@/components/frontend/league/LeagueSeasonsData';
+import { CURRENT_SEASON_SLUG, LEAGUE_SEASONS, getActiveTeams, getSeason, toLeaguePlayers } from '@/components/frontend/league/LeagueSeasonsData';
 import { clearPlayerCaches, getUnlockedBadges } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
 import { clearGameDataCache, getGameData } from '@/util/gameDataCache';
 import { useKnechtLaunch } from '@/components/frontend/biPoKnecht/useKnechtLaunch';
@@ -152,7 +152,7 @@ watch(addGameVisible, (isVisible) => {
 
 // â”€â”€â”€ Liga â”€â”€â”€
 const division = computed(() => season.divisions.find(entry => entry.league === league.value) ?? season.divisions[0]);
-const leagueTeams = computed(() => toLeaguePlayers(division.value.teams));
+const leagueTeams = computed(() => toLeaguePlayers(getActiveTeams(division.value)));
 
 // â”€â”€â”€ Pokal â”€â”€â”€
 // Eingetragen wird in der zuletzt angelegten Runde.

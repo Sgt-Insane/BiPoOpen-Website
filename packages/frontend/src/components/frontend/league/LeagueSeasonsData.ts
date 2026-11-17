@@ -2,6 +2,9 @@ export type LeagueTeam = {
     teamName: string;
     playerName: string;
     logo: string;
+    // Waehrend der Saison ausgestiegen: Spiele wurden geloescht, das Team spielt nicht mehr mit
+    // und steht fest auf dem letzten Tabellenplatz (zaehlt damit als Absteiger).
+    withdrawn?: boolean;
 };
 
 export type LeagueDivision = {
@@ -82,7 +85,7 @@ export const LEAGUE_SEASONS: LeagueSeason[] = [
                     { teamName: 'BPC Likör', playerName: 'Leon Rose', logo: teamLogo('BPC-Likoer.webp') },
                     { teamName: 'Schlauti Saufmann', playerName: 'Sara Schlautmann', logo: teamLogo('Schlauti-Saufmann.webp') },
                     { teamName: 'Schaufautomat', playerName: 'Jens Schauf', logo: teamLogo('BPC-Schauf.webp') },
-                    { teamName: 'Anime Dude', playerName: 'Fritz Falkenreck', logo: teamLogo('Anime-Dude.webp') },
+                    { teamName: 'Anime Dude', playerName: 'Fritz Falkenreck', logo: teamLogo('Anime-Dude.webp'), withdrawn: true },
                     { teamName: 'SallyWin All-in', playerName: 'Sally Hollenbeck', logo: teamLogo('SallyWin-All-in.webp') },
                 ],
             },
@@ -125,9 +128,17 @@ export const LEGACY_LEAGUE = 1;
 export const getSeason = (slug: string | undefined): LeagueSeason | undefined =>
     LEAGUE_SEASONS.find(season => season.slug === slug);
 
+// Teams, die noch mitspielen (ohne zurueckgezogene).
+export const getActiveTeams = (division: LeagueDivision | undefined): LeagueTeam[] =>
+    division?.teams.filter(team => !team.withdrawn) ?? [];
+
+export const getWithdrawnTeams = (division: LeagueDivision | undefined): LeagueTeam[] =>
+    division?.teams.filter(team => team.withdrawn) ?? [];
+
 // Doppelte Hin- und Rueckrunde: jedes Team spielt gegen jedes andere zweimal.
+// Zurueckgezogene Teams zaehlen nicht mit.
 export const getRegularSeasonGameCount = (division: LeagueDivision | undefined): number => {
-    const teamCount = division?.teams.length ?? 0;
+    const teamCount = getActiveTeams(division).length;
     if (teamCount < 2) return 0;
     return teamCount * (teamCount - 1);
 };

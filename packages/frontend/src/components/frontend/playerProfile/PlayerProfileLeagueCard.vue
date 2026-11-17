@@ -19,10 +19,11 @@
             <span class="pp-league-placement">
                 {{ standing.divisionLabel }} ·
                 <b v-if="standing.placement">Platz {{ standing.placement }}</b>
+                <template v-if="standing.withdrawn"> · zurückgezogen</template>
                 <template v-else>noch kein Spiel</template>
             </span>
             <span v-if="standing.champion" class="pp-league-tag pp-league-tag--champion">Meister</span>
-            <span v-else-if="standing.seasonSlug === CURRENT_SEASON_SLUG" class="pp-league-tag">läuft</span>
+            <span v-else-if="standing.seasonSlug === CURRENT_SEASON_SLUG && !standing.withdrawn" class="pp-league-tag">läuft</span>
             <i class="pi pi-chevron-right pp-league-chevron"></i>
         </router-link>
     </div>

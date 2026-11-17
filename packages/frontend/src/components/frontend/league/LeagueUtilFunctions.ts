@@ -1,6 +1,6 @@
 import axios from "axios";
 import { getDemoGames } from "@/util/demoGames";
-import { LEAGUE_SEASONS, LEGACY_LEAGUE, LEGACY_SEASON_SLUG, getRegularSeasonGameCount, toLeaguePlayers, type LeagueDivision } from "./LeagueSeasonsData";
+import { LEAGUE_SEASONS, LEGACY_LEAGUE, LEGACY_SEASON_SLUG, getActiveTeams, getRegularSeasonGameCount, getWithdrawnTeams, toLeaguePlayers, type LeagueDivision } from "./LeagueSeasonsData";
 
 /////////////
 // GENERAL //
@@ -107,7 +107,11 @@ export const getDivisionResult = (leagueGames: Match[], seasonSlug: string, divi
         .sort((match1, match2) => (match1.time ?? 0) - (match2.time ?? 0));
     const regularSeasonGames = divisionGames.slice(0, regularSeasonGameCount);
     const finalFourGames = divisionGames.slice(regularSeasonGameCount);
-    const table = getLeagueList(regularSeasonGames, toLeaguePlayers(division.teams));
+    // Zurueckgezogene Teams haengen fest am Tabellenende, ohne Spiele.
+    const table = [
+        ...getLeagueList(regularSeasonGames, toLeaguePlayers(getActiveTeams(division))),
+        ...getWithdrawnStandings(toLeaguePlayers(getWithdrawnTeams(division)), getActiveTeams(division).length),
+    ];
 
     const noResult = { table, champion: undefined as string | undefined, finalGames: [] as Match[], finalRanking: null as string[] | null };
 
@@ -151,7 +155,7 @@ export const getLeagueStandingsForPlayer = (leagueGames: Match[], playerName: st
 
         const { table, champion, finalRanking } = getDivisionResult(leagueGames, season.slug, division);
         const entry = table.find(player => player.name === team.teamName);
-        const tablePlacement = entry && entry.ammountOfMatches > 0 ? entry.placement! + 1 : null;
+        const tablePlacement = entry && (entry.ammountOfMatches > 0 || entry.withdrawn) ? entry.placement! + 1 : null;
         const finalPlacement = finalRanking ? finalRanking.indexOf(team.teamName) + 1 : 0;
 
         return [{
@@ -162,6 +166,7 @@ export const getLeagueStandingsForPlayer = (leagueGames: Match[], playerName: st
             seasonLabel: season.label,
             placement: finalPlacement || tablePlacement,
             champion: champion === team.teamName,
+            withdrawn: !!team.withdrawn,
         }];
     }));
 }
@@ -356,6 +361,14 @@ export const getLeagueList = (leagueMatches:Match[], leaguePlayers:LeaguePlayer[
     return playersWithStats;
 }
 
+// Tabellenzeilen fuer zurueckgezogene Teams: keine Spiele, Platz hinter allen aktiven Teams.
+export const getWithdrawnStandings = (withdrawnPlayers: LeaguePlayer[], activeTeamCount: number): PlayerWithStats[] =>
+    withdrawnPlayers.map((player, index) => ({
+        ...getPlayersWithStats([], [player])[0],
+        placement: activeTeamCount + index,
+        withdrawn: true,
+    }));
+
 const getLeagueMatchupKey = (match: Match) => {
     const team1Name = match.team1.players[0]?.name?.toLocaleLowerCase() ?? '';
     const team2Name = match.team2.players[0]?.name?.toLocaleLowerCase() ?? '';
@@ -402,7 +415,7 @@ export const splitLeagueGamesByRound = (leagueMatches: Match[]) => {
 // Untertitel beim Eintragen, z.B. "BiPo League · 1. Liga · Hinrunde".
 // Hinrunde, bis jede Paarung einmal gespielt ist (wie LeagueDrawDrawer), danach Rueckrunde. divisionGames: neueste zuerst.
 export const getLeagueGameSubtitle = (division: LeagueDivision, divisionGames: Match[]) => {
-    const teamCount = division.teams.length;
+    const teamCount = getActiveTeams(division).length;
     const regularSeasonGameCount = getRegularSeasonGameCount(division);
     const regularSeasonGames = divisionGames.toReversed().toSpliced(regularSeasonGameCount);
     const hinrundeGameCount = teamCount * (teamCount - 1) / 2;

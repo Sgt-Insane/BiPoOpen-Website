@@ -164,6 +164,7 @@ declare global {
         ammountOfMatches: number;
         ammountOfMatchesWithTrackedShots: number;
         ammountOfDrunkenCups: number;
+        withdrawn?: boolean;      // Team hat sich aus der Saison zurueckgezogen
     };
 
     type LeaguePlayer = {
@@ -235,6 +236,7 @@ declare global {
         seasonLabel: string;     // "2026/27"
         placement: number | null; // 1-basiert, nach dem Final Four, null = noch kein Spiel
         champion: boolean;        // Final Four gewonnen
+        withdrawn: boolean;       // aus der Saison zurueckgezogen
     };
 
     type PlayerProfileData = {

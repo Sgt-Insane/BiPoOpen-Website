@@ -20,22 +20,31 @@
             <template #body="slotProps">
                 <div class="bp-name-cell">
                     <Avatar :name="slotProps.data.name" :avatarImage="getPlayerLogo(slotProps.data.name)" shape="square"/>
-                    <span class="bp-name">{{ slotProps.data.name }}</span>
+                    <div class="min-w-0">
+                        <span class="bp-name">{{ slotProps.data.name }}</span>
+                        <div v-if="slotProps.data.withdrawn" class="league-withdrawn-hint">zurückgezogen</div>
+                    </div>
                 </div>
             </template>
         </Column>
 
         <!-- Spiele -->
-        <Column field="ammountOfMatches"><template #header><GlossaryWord term="tableColumns">{{ labels.games }}</GlossaryWord></template></Column>
+        <Column>
+            <template #header><GlossaryWord term="tableColumns">{{ labels.games }}</GlossaryWord></template>
+            <template #body="slotProps">{{ slotProps.data.withdrawn ? '–' : slotProps.data.ammountOfMatches }}</template>
+        </Column>
 
         <!-- Siege -->
-        <Column field="wins" class="bp-col-strong"><template #header><GlossaryWord term="tableColumns">{{ labels.wins }}</GlossaryWord></template></Column>
+        <Column class="bp-col-strong">
+            <template #header><GlossaryWord term="tableColumns">{{ labels.wins }}</GlossaryWord></template>
+            <template #body="slotProps">{{ slotProps.data.withdrawn ? '–' : slotProps.data.wins }}</template>
+        </Column>
 
         <!-- Niederlagen -->
         <Column>
             <template #header><GlossaryWord term="tableColumns">{{ labels.losses }}</GlossaryWord></template>
             <template #body="slotProps">
-                {{ slotProps.data.ammountOfMatches - slotProps.data.wins }}
+                {{ slotProps.data.withdrawn ? '–' : slotProps.data.ammountOfMatches - slotProps.data.wins }}
             </template>
         </Column>
 
@@ -43,7 +52,8 @@
         <Column>
             <template #header><GlossaryWord term="tableColumns">{{ labels.diff }}</GlossaryWord></template>
             <template #body="slotProps">
-                <span
+                <template v-if="slotProps.data.withdrawn">–</template>
+                <span v-else
                     v-tooltip.top.focus="`${slotProps.data.hitDifference} Treffer`"
                     tabindex="0"
                     class="bp-tooltip-target"
@@ -57,7 +67,7 @@
         <Column>
             <template #header><GlossaryWord term="tableColumns">Trend</GlossaryWord></template>
             <template #body="slotProps">
-                <div class="league-form">
+                <div v-if="!slotProps.data.withdrawn" class="league-form">
                     <span
                         v-for="(result, index) in getFormSlots(slotProps.data.name)"
                         :key="index"
@@ -85,15 +95,17 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Avatar from '@/components/shared/Avatar.vue';
 import { formatDiff, getDiffClass, useTableLabels } from '@/components/shared/table';
-import { getLeagueList, getRecentForm } from './LeagueUtilFunctions';
+import { getLeagueList, getRecentForm, getWithdrawnStandings } from './LeagueUtilFunctions';
 
 const props = withDefaults(defineProps<{
     leaguePlayers: LeaguePlayer[];
+    withdrawnPlayers?: LeaguePlayer[];   // zurueckgezogene Teams, fest am Tabellenende
     leagueGames: Match[];
     highlightTopSlots?: number;
     promotionSlots?: number;
     relegationSlots?: number;
 }>(), {
+    withdrawnPlayers: () => [],
     highlightTopSlots: 4,
     promotionSlots: 0,
     relegationSlots: 3,
@@ -103,7 +115,10 @@ const emit = defineEmits<{
     (e: 'select-player', playerName: string): void;
 }>();
 
-const sortedLeaguePlayers = computed(() => getLeagueList(props.leagueGames, props.leaguePlayers));
+const sortedLeaguePlayers = computed(() => [
+    ...getLeagueList(props.leagueGames, props.leaguePlayers),
+    ...getWithdrawnStandings(props.withdrawnPlayers, props.leaguePlayers.length),
+]);
 
 const playerOrderByName = computed(() => {
     return sortedLeaguePlayers.value.reduce<Record<string, number>>((acc, player, index) => {
@@ -136,7 +151,7 @@ const getRowClass = (row: PlayerWithStats) => {
 };
 
 const getPlayerLogo = (playerName: string) => {
-    return props.leaguePlayers.find(player => player.name === playerName)?.logo;
+    return [...props.leaguePlayers, ...props.withdrawnPlayers].find(player => player.name === playerName)?.logo;
 };
 
 // Immer FORM_LENGTH Felder, noch nicht gespielte bleiben als leere Platzhalter vorne
@@ -155,6 +170,7 @@ const getFormSlots = (playerName: string) => {
 };
 
 const onRowClick = (event: any) => {
+    if (event.data.withdrawn) return;
     emit('select-player', event.data.name);
 }
 
@@ -162,6 +178,12 @@ const labels = useTableLabels();
 </script>
 
 <style scoped>
+.league-withdrawn-hint {
+    font-size: 0.6875rem;
+    color: var(--bp-text-muted);
+    line-height: 1.2;
+}
+
 .league-form {
     display: flex;
     gap: 0.125rem;

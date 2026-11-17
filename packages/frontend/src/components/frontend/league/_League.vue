@@ -55,6 +55,7 @@
                 <TabPanel value="table">
                     <LeagueTable
                         :leaguePlayers="leaguePlayers"
+                        :withdrawnPlayers="withdrawnPlayers"
                         :leagueGames="divisionGames"
                         :regularSeasonGameCount="regularSeasonGameCount"
                         :highlightTopSlots="division.highlightTopSlots"
@@ -122,8 +123,10 @@ import { withLeagueTeamLogos } from './LeaguePlayersData';
 import {
     CURRENT_SEASON_SLUG,
     LEAGUE_SEASONS,
+    getActiveTeams,
     getRegularSeasonGameCount,
     getSeason,
+    getWithdrawnTeams,
     toLeaguePlayers,
 } from './LeagueSeasonsData';
 import { useStickyBar } from '@/components/shared/useStickyStack';
@@ -201,7 +204,9 @@ const changeLeague = (value: number | 'cup' | null) => {
 }
 
 // ─── Daten ───
-const leaguePlayers = computed(() => toLeaguePlayers(division.value.teams));
+// Zurueckgezogene Teams spielen nicht mehr mit und stehen nur noch am Tabellenende.
+const leaguePlayers = computed(() => toLeaguePlayers(getActiveTeams(division.value)));
+const withdrawnPlayers = computed(() => toLeaguePlayers(getWithdrawnTeams(division.value)));
 const regularSeasonGameCount = computed(() => getRegularSeasonGameCount(division.value));
 const divisionGames = computed(() => filterLeagueGames(allLeagueGames.value, season.value.slug, division.value.league));
 
@@ -239,7 +244,7 @@ const drawLeagueOptions = computed(() =>
         .filter(entry => entry.teams.length > 0)
         .map(entry => ({ label: entry.label, value: entry.league }))
 );
-const drawLeaguePlayers = computed(() => toLeaguePlayers(drawDivision.value.teams));
+const drawLeaguePlayers = computed(() => toLeaguePlayers(getActiveTeams(drawDivision.value)));
 const drawRegularSeasonGameCount = computed(() => getRegularSeasonGameCount(drawDivision.value));
 const drawDivisionGames = computed(() => filterLeagueGames(allLeagueGames.value, season.value.slug, drawDivision.value.league));
 
