@@ -24,6 +24,7 @@ const KnechtSessionSchema = new Schema(
         actions: { type: [Schema.Types.Mixed], default: [] },           // KnechtAction[]
         authors: { type: [String], default: [] },                       // deviceId je Aktion
         paused: { type: Boolean, default: false },
+        vote: { type: Schema.Types.Mixed, default: null },              // Speichern/Abbrechen: OK aller Handys
         savingBy: { type: String, default: null },
         result: { type: Schema.Types.Mixed, default: null },            // gespeichertes Spiel + Ziel-URL
         version: { type: Number, default: 1 },

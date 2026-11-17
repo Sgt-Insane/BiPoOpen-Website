@@ -17,17 +17,21 @@
             <div v-if="mode === 'player'" class="kn-field kn-field--player">
                 <KnechtPlayers :game="game" :teamIndex="topTeam" :rotated="!twoPhone" :compact="!isThrowing(topTeam)" />
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(topTeam) }">
-                    <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam) && !waitingForOther">
+                    <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam) && !waitingForOther" :owners="cupOwners?.racks[topTeam]">
                         <template #front><KnechtControls v-if="isTarget(topTeam) && !waitingForOther" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(bottomTeam) }">
-                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && !twoPhone ? 'up' : 'down'" :isTarget="isTarget(bottomTeam) && !waitingForOther" :rotated="isTarget(bottomTeam) && !twoPhone">
+                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && !twoPhone ? 'up' : 'down'" :isTarget="isTarget(bottomTeam) && !waitingForOther" :rotated="isTarget(bottomTeam) && !twoPhone" :owners="cupOwners?.racks[bottomTeam]" :showDrinkers="twoPhone">
                         <template #front><KnechtControls v-if="isTarget(bottomTeam) && !waitingForOther" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
                 <KnechtPlayers :game="game" :teamIndex="bottomTeam" :compact="!isThrowing(bottomTeam)" />
                 <!-- Zwei Handys, das andere Team ist dran: Feld sichtbar, aber nicht bedienbar -->
+                <!-- Getroffenes Team: wer den Becher trinken muss -->
+                <transition name="kn-drink">
+                    <div v-if="drinkNotice" :key="drinkNotice.id" class="kn-drink" :class="{ 'kn-drink--me': drinkNotice.me }">{{ drinkNotice.text }}</div>
+                </transition>
                 <div v-if="waitingForOther" class="kn-wait">
                     <div class="kn-wait-pill">{{ waitText }}</div>
                 </div>
@@ -263,6 +267,7 @@ import KnechtSheet from './KnechtSheet.vue';
 import KnechtScoreboard from './KnechtScoreboard.vue';
 import KnechtTimeline from './KnechtTimeline.vue';
 import KnechtTurnEditor from './KnechtTurnEditor.vue';
+import { getCupOwners } from './knechtCupOwners';
 import KnechtLivePanel, { type KnechtLiveInfo } from './KnechtLivePanel.vue';
 import type { LiveProgress } from './knechtLive';
 import KnechtCelebration from './KnechtCelebration.vue';
@@ -440,6 +445,26 @@ watch(() => [props.phoneSide, props.phonePlayer, freeInput.value] as const, ([te
 watch(() => perPlayer.value && isMyThrow.value && game.isStarted.value && state.value.status === 'playing', (mine, before) => {
     if (mine && !before) navigator.vibrate?.(80);
 });
+// ─── Mehrere Handys: Werfer auf den getroffenen Bechern, Trinker fuer das getroffene Team ───
+const cupOwners = computed(() => twoPhone.value ? getCupOwners(state.value) : null);
+const drinkNotice = ref<{ id: number; text: string; me: boolean } | null>(null);
+let drinkTimer: ReturnType<typeof setTimeout> | null = null;
+let knownRemovals = cupOwners.value?.removals.length ?? 0;
+watch(() => cupOwners.value?.removals, (removals) => {
+    if (!removals) return;
+    const fresh = removals.slice(knownRemovals).filter(removal => removal.rackTeam === props.phoneSide);
+    knownRemovals = removals.length;
+    if (!fresh.length || !game.isStarted.value) return;
+    const team = props.phoneSide === 0 ? game.match.team1 : game.match.team2;
+    const me = perPlayer.value && fresh.some(removal => removal.drinker === props.phonePlayer);
+    const names = [...new Set(fresh.map(removal => removal.drinker === props.phonePlayer && perPlayer.value ? 'Du' : team.players[removal.drinker]?.name ?? ''))];
+    const cups = fresh.length === 1 ? 'den Becher' : `${fresh.length} Becher`;
+    drinkNotice.value = { id: Date.now(), me, text: `🍺 ${names.join(' & ')} ${names.length === 1 && names[0] === 'Du' ? 'trinkst' : names.length > 1 ? 'trinken' : 'trinkt'} ${cups}` };
+    if (me) navigator.vibrate?.([120, 60, 120]);
+    if (drinkTimer) clearTimeout(drinkTimer);
+    drinkTimer = setTimeout(() => { drinkNotice.value = null; }, 4500);
+});
+
 const toggleFreeInput = () => {
     freeInput.value = !freeInput.value;
     sheet.value = null;
@@ -910,6 +935,31 @@ onUnmounted(() => {
 .kn-edge-leave-to{
     opacity: 0;
 }
+/* Mehrere Handys: wer trinkt */
+.kn-drink{
+    position: absolute;
+    left: 50%;
+    bottom: 22%;
+    z-index: 21;    /* ueber der grauen Sperre (kn-wait) */
+    transform: translateX(-50%);
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: #F5B82E;
+    color: #1F2328;
+    font-size: 15px;
+    font-weight: 800;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .22);
+}
+.kn-drink--me{
+    font-size: 18px;
+    animation: kn-drink-pulse .6s ease-in-out 3;
+}
+@keyframes kn-drink-pulse{ 50%{ transform: translateX(-50%) scale(1.08); } }
+.kn-drink-enter-active, .kn-drink-leave-active{ transition: opacity .25s ease, translate .25s ease; }
+.kn-drink-enter-from, .kn-drink-leave-to{ opacity: 0; translate: 0 12px; }
+
 /* Live-Hinweis auf dem Startbildschirm und im Menue */
 .kn-live-chip{
     position: absolute;

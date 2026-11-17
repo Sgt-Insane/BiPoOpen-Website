@@ -2,7 +2,7 @@
     <div class="MultiplayerPage">
         <!-- Spiel laeuft: BiPo Knecht im Vollbild, jedes Handy aus Sicht seines Spielers -->
         <BiPoKnecht
-            v-if="session && session.match && isInGame"
+            v-if="showKnecht && session && session.match"
             ref="knecht"
             :key="knechtKey"
             :match="session.match"
@@ -20,7 +20,19 @@
             @leave="onKnechtLeave"
         />
 
-        <template v-else>
+        <MpVote
+            v-if="showVote && vote"
+            :vote="vote"
+            :players="players"
+            :deviceId="deviceId"
+            :score="voteScore"
+            @approve="approveVote"
+            @decline="declineVote"
+            @dismiss="dismissVote"
+            @force="forceVote"
+        />
+
+        <template v-if="!showKnecht">
             <PageHeader title="Spiel starten" subtitle="Jeder spielt mit seinem eigenen Handy">
                 <template v-if="session" #actions>
                     <span class="mp-status" :class="{ 'mp-status--offline': offline }">
@@ -73,12 +85,13 @@ import { useGrayPage } from '@/components/shared/useGrayPage';
 import PageHeader from '@/components/shared/PageHeader.vue';
 import BiPoKnecht from '../biPoKnecht/BiPoKnecht.vue';
 import type { LiveProgress } from '../biPoKnecht/knechtLive';
-import { replay, type KnechtAction } from '../biPoKnecht/knechtEngine';
-import { formatPoints, getResultPath, getTeamName, saveKnechtGame, toRematch } from '../biPoKnecht/KnechtUtilFunctions';
+import { getTeamPoints, replay, type KnechtAction } from '../biPoKnecht/knechtEngine';
+import { buildKnechtMatch, formatPoints, getResultPath, getTeamName, saveKnechtGame, toRematch } from '../biPoKnecht/KnechtUtilFunctions';
 import { isDemoMode } from '@/util/demoGames';
 import ProfilePicker from './ProfilePicker.vue';
 import MpConnect from './MpConnect.vue';
 import MpLobby from './MpLobby.vue';
+import MpVote from './MpVote.vue';
 import { useProfile } from './useProfile';
 import { useBump } from './useBump';
 import { useMultiplayerSession } from './useMultiplayerSession';
@@ -163,8 +176,9 @@ const enterFromRoute = async () => {
 const onProfileSaved = () => { enterFromRoute(); };
 
 // ─── Lobby ───
+// Jeder wechselt nur selbst das Team
 const movePlayer = (playerId: string) => commit(current => {
-    if (current.status !== 'lobby') return null;
+    if (current.status !== 'lobby' || playerId !== deviceId) return null;
     const player = current.players.find(entry => entry.deviceId === playerId);
     if (!player || getTeamPlayers(current.players, 1 - player.team).length >= MAX_PLAYERS_PER_TEAM) return null;
     return { players: current.players.map(entry => entry.deviceId === playerId ? { ...entry, team: 1 - entry.team, joinedAt: Date.now() } : entry) };
@@ -196,6 +210,7 @@ const startGame = async (option: MpGameOption) => {
 
 // ─── Spiel ───
 const isInGame = computed(() => session.value?.status === 'playing' || session.value?.status === 'saving');
+const showKnecht = computed(() => !!session.value?.match && isInGame.value);
 const knechtKey = computed(() => `${session.value?.code}-${session.value?.result?.id ?? 0}`);
 
 const knecht = ref<{ getProgress: () => LiveProgress; applyRemote: (progress: LiveProgress) => boolean } | null>(null);
@@ -257,7 +272,10 @@ const onKnechtChange = async () => {
         if (progress.match?.cupColors && JSON.stringify(progress.match.cupColors) !== JSON.stringify(current.match?.cupColors))
             shared.match = { ...current.match!, cupColors: progress.match.cupColors };
         if (!!progress.paused !== !!current.paused) shared.paused = !!progress.paused;
-        const withShared = (patch: MpPatch | null) => patch ? { ...shared, ...patch } : Object.keys(shared).length ? shared : null;
+        // Neue Wuerfe oder Korrekturen machen eine laufende Abstimmung ungueltig (sie galt fuer den alten Stand)
+        const withShared = (patch: MpPatch | null) => patch
+            ? { ...shared, ...patch, ...(patch.actions && current.vote ? { vote: null } : {}) }
+            : Object.keys(shared).length ? shared : null;
 
         if (progress.actions.length === current.actions.length && commonPrefix(progress.actions, current.actions) === current.actions.length) return withShared(null);
 
@@ -285,8 +303,89 @@ const onKnechtChange = async () => {
     }
 };
 
+// ─── Speichern und Abbrechen: alle Handys muessen zustimmen ───
+const players = computed(() => session.value?.players ?? []);
+const vote = computed(() => session.value?.vote ?? null);
+const dismissedVote = ref(0);
+const showVote = computed(() => !!vote.value && isInGame.value && (!vote.value.declinedBy || dismissedVote.value !== vote.value.id));
+
+// Endstand aus dem gemeinsamen Verlauf (gleich auf allen Handys)
+const sharedState = computed(() => {
+    const current = session.value;
+    if (!current?.match || current.startTeamIndex === null) return null;
+    return replay({ playerCounts: [current.match.team1.players.length, current.match.team2.players.length], startTeamIndex: current.startTeamIndex }, plain(current.actions)).state;
+});
+const voteScore = computed(() => {
+    const current = session.value;
+    if (!current?.match || !sharedState.value) return '';
+    const points = getTeamPoints(sharedState.value);
+    return `${getTeamName(current.match, 0)} ${formatPoints(points[0])} : ${formatPoints(points[1])} ${getTeamName(current.match, 1)}`;
+});
+
+const isComplete = (current: MpSession, approvals: string[]) => current.players.every(player => approvals.includes(player.deviceId));
+
+// Wer die letzte Zustimmung abgibt, fuehrt aus (genau ein Handy, weil jede Zustimmung eine neue Version ist)
+const startVote = async (kind: 'save' | 'abort', rematch = false) => {
+    let completed = false;
+    const result = await commit(current => {
+        if (current.status !== 'playing') return null;
+        const open = current.vote && !current.vote.declinedBy ? current.vote : null;
+        if (open && open.kind !== kind) return null;
+        if (open?.approvals.includes(deviceId)) return null;
+        const next = open
+            ? { ...open, approvals: [...open.approvals, deviceId] }
+            : { id: Date.now(), kind, by: deviceId, rematch, approvals: [deviceId], declinedBy: null, createdAt: Date.now() };
+        completed = isComplete(current, next.approvals);
+        return { vote: completed ? null : next };
+    });
+    if (result === 'applied' && completed) await runVote(kind, vote.value?.rematch ?? rematch);
+    else if (result === 'noop' && vote.value && vote.value.kind !== kind && !vote.value.declinedBy)
+        toast.add({ severity: 'info', summary: 'Es läuft schon eine andere Abstimmung', life: 3000 });
+};
+
+const approveVote = async () => {
+    const open = vote.value;
+    if (!open) return;
+    let completed = false;
+    const result = await commit(current => {
+        if (current.vote?.id !== open.id || current.vote.declinedBy || current.vote.approvals.includes(deviceId)) return null;
+        const approvals = [...current.vote.approvals, deviceId];
+        completed = isComplete(current, approvals);
+        return { vote: completed ? null : { ...current.vote, approvals } };
+    });
+    if (result === 'applied' && completed) await runVote(open.kind, open.rematch);
+};
+
+const declineVote = () => commit(current => current.vote && !current.vote.declinedBy ? { vote: { ...current.vote, declinedBy: deviceId } } : null);
+
+const dismissVote = () => {
+    const open = vote.value;
+    if (!open) return;
+    dismissedVote.value = open.id;
+    // Wer gefragt hat, raeumt die abgelehnte Abstimmung weg
+    if (open.by === deviceId) commit(current => current.vote?.id === open.id ? { vote: null } : null);
+};
+
+// Handy ausgefallen: wer gefragt hat, fuehrt nach einer Weile ohne die fehlenden Zustimmungen aus
+const forceVote = async () => {
+    const open = vote.value;
+    if (!open || open.by !== deviceId) return;
+    const result = await commit(current => current.vote?.id === open.id && !current.vote.declinedBy ? { vote: null } : null);
+    if (result === 'applied') await runVote(open.kind, open.rematch);
+};
+
+const runVote = async (kind: 'save' | 'abort', rematch: boolean) => {
+    if (kind === 'abort') {
+        await commit(current => current.status === 'playing' ? { status: 'aborted', vote: null } : null);
+        return;
+    }
+    const current = session.value;
+    if (!current?.match || !sharedState.value) return;
+    await saveShared(buildKnechtMatch(plain(current.match), sharedState.value), rematch);
+};
+
 // Nur ein Handy traegt ein: erst die Session fuer sich beanspruchen, dann speichern
-const saveHandler = async (result: Match, rematch: boolean): Promise<boolean> => {
+const saveShared = async (result: Match, rematch: boolean): Promise<boolean> => {
     const claim = await commit(current => current.status === 'playing' ? { status: 'saving', savingBy: deviceId } : null);
     if (claim !== 'applied') {
         toast.add({ severity: 'info', summary: `${nameOf(session.value?.savingBy ?? null)} trägt das Spiel gerade ein`, life: 3000 });
@@ -307,15 +406,25 @@ const saveHandler = async (result: Match, rematch: boolean): Promise<boolean> =>
 
     const saved: MpResult = { id: Date.now(), match: result, path: getResultPath(result), rematch, savedBy: deviceId };
     await commit(() => rematch
-        ? { status: 'playing', savingBy: null, result: saved, match: toRematch(result), startTeamIndex: null, actions: [], authors: [] }
-        : { status: 'saved', savingBy: null, result: saved });
+        ? { status: 'playing', savingBy: null, vote: null, result: saved, match: toRematch(result), startTeamIndex: null, actions: [], authors: [] }
+        : { status: 'saved', savingBy: null, vote: null, result: saved });
     return true;
 };
 
-// Abbrechen: vor dem ersten Wurf zurueck in die Lobby, sonst fuer alle beenden
-const onKnechtExit = () => commit(current => current.startTeamIndex === null
-    ? { status: 'lobby', match: null, actions: [], authors: [] }
-    : { status: 'aborted' });
+// Speichern-Knopf im Knecht: fragt alle anderen (gespeichert wird erst mit allen OKs)
+const saveHandler = async (_result: Match, rematch: boolean): Promise<boolean> => {
+    await startVote('save', rematch);
+    return false;
+};
+
+// Abbrechen: vor dem ersten Wurf zurueck in die Lobby, sonst muessen alle zustimmen
+const onKnechtExit = async () => {
+    if (session.value?.startTeamIndex === null) {
+        await commit(current => current.startTeamIndex === null ? { status: 'lobby', match: null, actions: [], authors: [], vote: null } : null);
+        return;
+    }
+    await startVote('abort');
+};
 
 const onKnechtLeave = () => {
     suspend();

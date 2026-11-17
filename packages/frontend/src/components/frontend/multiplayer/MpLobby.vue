@@ -16,19 +16,19 @@
                     type="button"
                     class="ml-player"
                     :class="{ 'ml-player--me': player.deviceId === deviceId }"
-                    :disabled="!canMove(team)"
-                    :title="canMove(team) ? 'Ins andere Team' : undefined"
+                    :disabled="player.deviceId !== deviceId || !canMove(team)"
+                    :title="player.deviceId === deviceId && canMove(team) ? 'Ins andere Team wechseln' : undefined"
                     @click="$emit('move', player.deviceId)"
                 >
                     <Avatar :name="player.name" class="ml-player-avatar" :lazy="false" />
                     <span class="ml-player-name">{{ player.name }}</span>
-                    <span v-if="player.deviceId === deviceId" class="ml-player-tag">Du</span>
+                    <span v-if="player.deviceId === deviceId" class="ml-player-tag">Du<template v-if="canMove(team)"> ⇄</template></span>
                     
                 </button>
                 <div v-if="!getTeamPlayers(session.players, team).length" class="ml-empty">Wartet auf Spieler …</div>
             </div>
         </div>
-        <p class="ml-hint">Antippen, um einen Spieler ins andere Team zu schieben. Jeder trägt später auf seinem Handy nur seine eigenen Würfe ein.</p>
+        <p class="ml-hint">Tippe auf dich selbst, um das Team zu wechseln. Jeder trägt später auf seinem Handy nur seine eigenen Würfe ein.</p>
 
         <!-- Spieltyp: offen oder noch offenes Liga-/Cup-Spiel -->
         <div v-if="options && options.length > 1" class="ml-options">

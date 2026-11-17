@@ -21,6 +21,17 @@ export type MpResult = {
     savedBy: string;
 };
 
+// Speichern und Abbrechen brauchen das OK aller Handys
+export type MpVote = {
+    id: number;
+    kind: 'save' | 'abort';
+    by: string;                 // deviceId, wer gefragt hat
+    rematch: boolean;           // speichern und Revanche
+    approvals: string[];        // deviceIds mit OK
+    declinedBy: string | null;
+    createdAt: number;
+};
+
 export type MpSession = {
     code: string;
     hostId: string;
@@ -31,12 +42,13 @@ export type MpSession = {
     actions: KnechtAction[];
     authors: string[];
     paused?: boolean;
+    vote?: MpVote | null;
     savingBy: string | null;
     result: MpResult | null;
     version: number;
 };
 
-export type MpPatch = Partial<Pick<MpSession, 'status' | 'players' | 'match' | 'startTeamIndex' | 'actions' | 'authors' | 'paused' | 'savingBy' | 'result'>>;
+export type MpPatch = Partial<Pick<MpSession, 'status' | 'players' | 'match' | 'startTeamIndex' | 'actions' | 'authors' | 'paused' | 'vote' | 'savingBy' | 'result'>>;
 
 export type MpBumpResult =
     | { session: MpSession }

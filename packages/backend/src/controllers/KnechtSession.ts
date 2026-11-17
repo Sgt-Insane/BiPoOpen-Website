@@ -8,7 +8,7 @@ import KnechtBump from "../models/KnechtBump";
 const MAX_PLAYERS_PER_TEAM = 3;
 const BUMP_WINDOW = 2000;       // ms, so weit duerfen zwei Stoesse beim Server auseinander ankommen
 const BUMP_LIFETIME = 7000;     // ms, danach gilt ein Stoss als ins Leere gegangen
-const UPDATABLE = ['status', 'players', 'match', 'startTeamIndex', 'actions', 'authors', 'paused', 'savingBy', 'result'] as const;
+const UPDATABLE = ['status', 'players', 'match', 'startTeamIndex', 'actions', 'authors', 'paused', 'vote', 'savingBy', 'result'] as const;
 
 type SessionPlayer = { deviceId: string; name: string; team: number; joinedAt: number };
 
