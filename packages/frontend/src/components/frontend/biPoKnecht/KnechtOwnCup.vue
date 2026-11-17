@@ -6,7 +6,7 @@
                 type="button"
                 class="kn-own-player"
                 :class="{ 'kn-own-player--active': selected?.teamIndex === option.teamIndex && selected?.playerIndex === option.playerIndex }"
-                :style="{ '--kn-team-color': TEAM_COLORS[option.teamIndex] }"
+                :style="{ '--kn-team-color': getTeamColor(game.match, option.teamIndex) }"
                 @click="select(option)"
             >{{ option.name }}</button>
         </div>
@@ -19,7 +19,7 @@
                         type="button"
                         class="kn-own-cup"
                         :class="{ 'kn-own-cup--active': cups.includes(cup) }"
-                        :style="{ '--kn-team-color': TEAM_COLORS[selected.teamIndex] }"
+                        :style="{ '--kn-team-color': getTeamColor(game.match, selected.teamIndex) }"
                         :disabled="!standing.includes(cup)"
                         @click="toggle(cup)"
                     ></button>
@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { CUP_ROWS, getStandingCups } from './knechtEngine';
-import { TEAM_COLORS, getTeamName } from './KnechtUtilFunctions';
+import { getTeamColor, getTeamName } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
 const props = defineProps<{ game: BiPoKnechtGame }>();

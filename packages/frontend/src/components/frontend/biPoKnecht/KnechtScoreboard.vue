@@ -3,7 +3,7 @@
         <div v-for="teamIndex in [0, 1]" :key="teamIndex"
             class="kn-score-team"
             :class="{ 'kn-score-team--winner': state.winnerTeamIndex === teamIndex }"
-            :style="{ '--kn-team-color': TEAM_COLORS[teamIndex] }"
+            :style="{ '--kn-team-color': getTeamColor(match, teamIndex) }"
         >
             <div class="kn-score-header">
                 <Avatar :name="getTeamName(match, teamIndex)" :avatarImage="getTeam(match, teamIndex).logo" :shape="getTeam(match, teamIndex).logo ? 'square' : 'circle'" class="kn-score-logo" />
@@ -18,7 +18,7 @@
                     <span class="kn-score-player-points">{{ formatPoints(stats.points) }} <small>Becher</small></span>
                 </div>
                 <div class="kn-score-line">
-                    {{ stats.hits }}/{{ stats.throws }} Treffer · {{ getAccuracy(stats) }} % · beste Serie {{ stats.bestStreak }}
+                    {{ stats.hits }} Treffer bei {{ stats.throws }} Würfen · {{ getAccuracy(stats) }} % · beste Serie {{ stats.bestStreak }}
                 </div>
                 <div v-if="getSpecials(stats).length" class="kn-score-specials">
                     <span v-for="special in getSpecials(stats)" :key="special.text" class="kn-score-special"><KnechtIcon :name="special.icon" /> {{ special.text }}</span>
@@ -42,7 +42,7 @@ import Avatar from '@/components/shared/Avatar.vue';
 import KnechtIcon from './KnechtIcon.vue';
 import type { KnechtIconName } from './knechtIcons';
 import { getTeamPoints, type KnechtState } from './knechtEngine';
-import { TEAM_COLORS, formatPoints, getAccuracy, getPlayerStats, getTeam, getTeamName, type KnechtPlayerStats } from './KnechtUtilFunctions';
+import { getTeamColor, formatPoints, getAccuracy, getPlayerStats, getTeam, getTeamName, type KnechtPlayerStats } from './KnechtUtilFunctions';
 
 const props = defineProps<{ match: Match; state: KnechtState }>();
 

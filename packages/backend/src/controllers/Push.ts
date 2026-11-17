@@ -1,7 +1,33 @@
 import { NextFunction, Request, Response } from "express";
 import { config } from "../config/config";
 import PushSubscription, { FOLLOW_MODES, NOTIFICATION_CATEGORIES } from "../models/PushSubscription";
-import { cardTeam, describeResult, normalizePlayerName, playerProfilePath, resultImageUrl, sendToSubscription } from "../util/notify";
+import { cardTeam, describeResult, normalizePlayerName, notifyAll, playerProfilePath, resultImageUrl, sendToSubscription } from "../util/notify";
+import Release from "../models/Release";
+
+// Nach dem Deploy (GitHub Action, siehe .github/workflows/release-push.yml): neue Version einmal ankuendigen.
+// Geschuetzt per Bearer-Token RELEASE_PUSH_SECRET; dieselbe Version wird nie zweimal verschickt.
+const releasePush = async (req: Request, res: Response) => {
+    const token = (req.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    if (!config.releaseSecret || token !== config.releaseSecret) return res.status(401).json({ message: 'unauthorized' });
+
+    const { version, title, notes } = req.body ?? {};
+    if (typeof version !== 'string' || !version.trim()) return res.status(400).json({ message: 'version missing' });
+    const cleanNotes = Array.isArray(notes) ? notes.filter((note: unknown) => typeof note === 'string').slice(0, 10) : [];
+
+    try {
+        if (await Release.exists({ version })) return res.status(200).json({ skipped: true, message: 'already announced' });
+        await Release.create({ version, title, notes: cleanNotes, announcedAt: Date.now() });
+        const sent = await notifyAll('appUpdates', {
+            title: `🎉 Update ${version}${typeof title === 'string' && title ? ` · ${title}` : ''}`,
+            body: cleanNotes.slice(0, 3).join(' · ') || 'Neue Version der BiPo-Open-Seite',
+            url: '/Neuigkeiten',
+            tag: `release-${version}`,
+        });
+        res.status(201).json({ sent });
+    } catch (error) {
+        res.status(500).json({ error });
+    }
+};
 
 // Baut ein $set-Update aus den erlaubten Feldern im Body
 const buildUpdate = (preferences: any, followModes: any, followedPlayers: any) => {
@@ -125,4 +151,4 @@ const sendTest = async (req: Request, res: Response, next: NextFunction) => {
     }
 };
 
-export default { getVapidPublicKey, subscribe, updatePreferences, getStatus, unsubscribe, sendTest };
+export default { getVapidPublicKey, subscribe, updatePreferences, getStatus, unsubscribe, sendTest, releasePush };

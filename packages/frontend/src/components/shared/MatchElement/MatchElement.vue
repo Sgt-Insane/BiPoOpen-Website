@@ -4,7 +4,7 @@
 
          <!-- Kopfzeile: Spielart-Chip, Datum und optionale Extras (z.B. Sieg/Niederlage) -->
          <div v-if="showHeader" class="mt-header">
-            <span v-if="showChip" class="mt-chip" :class="`mt-chip--${resolvedGameType}`">{{ chipLabel ?? GAME_TYPE_LABELS[resolvedGameType] }}</span>
+            <span v-if="showChip" class="mt-chip" :class="`mt-chip--${resolvedGameType}`"><GlossaryWord :text="chipLabel ?? GAME_TYPE_LABELS[resolvedGameType]" /></span>
             <span v-if="showDate && match.time" class="mt-date">{{ formatGameTime(match.time) }}</span>
             <slot name="meta"/>
          </div>
@@ -16,11 +16,11 @@
          <!-- Spielverlauf Timeline -->
          <MatchTimeline v-if="hasTurns && playersVisible" :match="match" />
 
-         <!-- Fusszeile: Eintragen-Button (Backend) und Wuerfe auf-/zuklappen -->
+         <!-- Fusszeile: Eintragen-Button (Backend) und Spielverlauf/Wuerfe auf-/zuklappen -->
          <div v-if="hasDetails || showEditButton" class="mt-footer">
             <div v-if="showEditButton" class="bp-button mt-button" @click="emit('edit', match)">{{ checkIfMatchFinished(match) ? 'Bearbeiten' : 'Eintragen'}}</div>
             <button v-if="hasDetails" type="button" class="mt-toggle" @click="togglePlayersVisible()">
-               {{ playersVisible ? 'Würfe ausblenden' : 'Würfe anzeigen' }}
+               {{ toggleLabel }}
                <i class="pi" :class="playersVisible ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
             </button>
          </div>
@@ -30,6 +30,7 @@
 <script setup lang="ts">
 import { PropType, computed, ref, useSlots } from "vue"
 import MatchElementTeam from '@/components/shared/MatchElement/MatchElementTeam.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import MatchTimeline from '@/components/shared/MatchElement/MatchTimeline.vue';
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import { createFitTextGroup } from '@/components/shared/fitText';
@@ -92,6 +93,8 @@ const hasDetails = computed(() => {
 });
 
 let playersVisible = ref(false);
+// Knecht-Spiele haben einen Spielverlauf, sonst gibt es nur die Wuerfe je Spieler
+const toggleLabel = computed(() => `${hasTurns.value ? 'Spielverlauf' : 'Würfe'} ${playersVisible.value ? 'ausblenden' : 'anzeigen'}`);
 let togglePlayersVisible = () => {
    playersVisible.value = !playersVisible.value;
 }

@@ -8,7 +8,7 @@
 					<!-- Laufendes BiPo-Knecht-Spiel -->
 					<span v-if="runningGameTitle" class="bn-add-badge" aria-label="Laufendes Knecht-Spiel">🎯</span>
 				</span>
-				<span class="bn-label">Eintragen</span>
+				<span class="bn-label">Spiel</span>
 			</button>
 
 			<component

@@ -6,13 +6,15 @@
 
 		<div class="tp-list">
 			<!-- Next tournament -->
-			<div v-if="daysUntilNext > 0" class="tp-row" @click="goTo('/')">
+			<div v-if="daysUntilNext > 0" class="tp-row tp-row-next">
 				<div>
 					<div class="tp-year">{{ NEXT_BIPO_OPEN.year }}</div>
-					<div class="tp-sub">Nächstes Turnier · {{ nextDateLabel }}</div>
+					<div class="tp-sub">Nächstes Turnier · {{ nextDateLabel }} · Teams folgen</div>
 				</div>
 				<span class="tp-badge">in {{ daysUntilNext }} {{ daysUntilNext == 1 ? 'Tag' : 'Tagen' }}</span>
 			</div>
+
+			<div class="tp-hint">Frühere Turniere: Teams, Spielplan, Fotos</div>
 
 			<!-- Past tournaments -->
 			<div
@@ -20,13 +22,26 @@
 				:key="year"
 				class="tp-row"
 				:class="{ 'tp-row-active': isActive(year) }"
+				role="button"
+				tabindex="0"
 				@click="goTo('/' + year)"
+				@keydown.enter="goTo('/' + year)"
 			>
 				<div>
 					<div class="tp-year">{{ year }}</div>
 					<div v-if="getWinner(year)" class="tp-sub">Sieger: {{ getWinner(year) }}</div>
 				</div>
 				<i v-if="isActive(year)" class="pi pi-check tp-check"></i>
+				<i v-else class="pi pi-angle-right tp-chevron" aria-hidden="true"></i>
+			</div>
+
+			<!-- Alle Sieger auf einen Blick -->
+			<div class="tp-row" role="button" tabindex="0" @click="goTo('/Hall-of-Fame')" @keydown.enter="goTo('/Hall-of-Fame')">
+				<div>
+					<div class="tp-year">🏆 Hall of Fame</div>
+					<div class="tp-sub">Alle Sieger und Rekorde</div>
+				</div>
+				<i class="pi pi-angle-right tp-chevron" aria-hidden="true"></i>
 			</div>
 		</div>
 	</BottomSheet>
@@ -85,6 +100,21 @@ const goTo = (path: string) => {
 	border-bottom: 1px solid var(--bp-border);
 	cursor: pointer;
 	transition: background .2s ease;
+}
+.tp-row-next {
+	cursor: default;
+}
+.tp-hint {
+	padding: 14px 20px 6px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: var(--bp-text-muted);
+}
+.tp-chevron {
+	font-size: 14px;
+	color: var(--bp-text-muted);
 }
 .tp-row:hover {
 	background: var(--bp-surface-soft);

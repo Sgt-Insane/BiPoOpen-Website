@@ -1,46 +1,75 @@
 <template>
-    <nav class="KnechtSideBar" :class="`kn-sidebar--${side}`" aria-label="BiPo Knecht">
-        <button type="button" class="kn-side-button" :disabled="!canUndo" title="Letzten Wurf rückgängig machen" aria-label="Rückgängig" @click="$emit('undo')">
-            <i class="pi pi-undo"></i>
-        </button>
-        <button type="button" class="kn-side-button" title="Punktestand" aria-label="Punktestand" @click="$emit('scoreboard')">
-            <i class="pi pi-trophy"></i>
-        </button>
-        <button type="button" class="kn-side-button" title="Spielverlauf" aria-label="Spielverlauf" @click="$emit('timeline')">
-            <i class="pi pi-clock"></i>
-        </button>
-        <button type="button" class="kn-side-button" title="Menü" aria-label="Menü" @click="$emit('menu')">
-            <i class="pi pi-bars"></i>
-        </button>
-        <span class="kn-side-spacer"></span>
-        <button type="button" class="kn-side-button kn-side-button--small" :title="`Leiste nach ${side === 'right' ? 'links' : 'rechts'}`" :aria-label="`Leiste nach ${side === 'right' ? 'links' : 'rechts'}`" @click="$emit('move')">
-            <i :class="side === 'right' ? 'pi pi-angle-double-left' : 'pi pi-angle-double-right'"></i>
-        </button>
-    </nav>
+    <!-- Schwebende Knoepfe am Rand, das Spielfeld bleibt in voller Breite. Immer sichtbar: Rueckgaengig,
+         drei Punkte (mittig) und Spielverlauf. Die drei Punkte klappen Punktestand und Einstellungen dazu auf. -->
+    <div class="KnechtSideBar" :class="{ 'kn-fab--open': open }">
+        <div v-if="open" class="kn-fab-backdrop" @click="open = false"></div>
+
+        <nav class="kn-fab-menu" aria-label="BiPo Knecht">
+            <transition-group name="kn-fab-item">
+                <button v-if="open" key="scoreboard" type="button" class="kn-side-button" title="Punktestand" aria-label="Punktestand" @click="pick('scoreboard')">
+                    <i class="pi pi-trophy"></i>
+                </button>
+            </transition-group>
+
+            <button type="button" class="kn-side-button" :disabled="!canUndo" title="Letzten Wurf rückgängig machen" aria-label="Rückgängig" @click="pick('undo')">
+                <i class="pi pi-undo"></i>
+            </button>
+
+            <button type="button" class="kn-side-button kn-fab" :title="open ? 'Schließen' : 'Mehr'" :aria-expanded="open" aria-label="Aktionen" @click="open = !open">
+                <i :class="open ? 'pi pi-times' : 'pi pi-ellipsis-v'"></i>
+            </button>
+
+            <button type="button" class="kn-side-button" title="Spielverlauf" aria-label="Spielverlauf" @click="pick('timeline')">
+                <i class="pi pi-clock"></i>
+            </button>
+
+            <transition-group name="kn-fab-item">
+                <button v-if="open" key="menu" type="button" class="kn-side-button" title="Einstellungen, Sonderfälle & Pause" aria-label="Einstellungen & Sonderfälle" @click="pick('menu')">
+                    <i class="pi pi-cog"></i>
+                </button>
+            </transition-group>
+        </nav>
+    </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{ side: 'left' | 'right'; canUndo: boolean }>();
-defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: []; move: [] }>();
+import { ref } from 'vue';
+
+defineProps<{ canUndo: boolean }>();
+const emit = defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: [] }>();
+
+const open = ref(false);
+
+const pick = (action: 'undo' | 'scoreboard' | 'timeline' | 'menu') => {
+    open.value = false;
+    if (action === 'undo') emit('undo');
+    else if (action === 'scoreboard') emit('scoreboard');
+    else if (action === 'timeline') emit('timeline');
+    else emit('menu');
+};
 </script>
 
 <style scoped>
 .KnechtSideBar{
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    z-index: 25;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+.kn-fab-backdrop{
+    position: fixed;
+    inset: -100vmax;
+    pointer-events: auto;
+}
+.kn-fab-menu{
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     gap: 10px;
-    width: 56px;
-    min-width: 56px;
-    padding: 10px 0;
-    background: var(--bp-surface);
-}
-.kn-sidebar--left{ border-right: 1px solid var(--bp-border); }
-.kn-sidebar--right{ border-left: 1px solid var(--bp-border); }
-
-.kn-side-spacer{
-    height: 12px;
+    pointer-events: auto;
 }
 .kn-side-button{
     display: flex;
@@ -53,8 +82,8 @@ defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: []; move: [] }>();
     background: var(--bp-surface);
     color: var(--bp-text);
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
-    transition: background .15s ease, transform .1s ease;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+    transition: background .15s ease, transform .1s ease, opacity .2s ease;
 }
 .kn-side-button .pi{
     font-size: 17px;
@@ -67,13 +96,25 @@ defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: []; move: [] }>();
     opacity: .35;
     cursor: default;
 }
-.kn-side-button--small{
-    width: 34px;
-    height: 34px;
-    box-shadow: none;
-    color: var(--bp-text-subtle);
+/* Geschlossen dezent, damit die Knoepfe nicht vom Spiel ablenken */
+.kn-side-button:not(:disabled){
+    opacity: .9;
 }
-.kn-side-button--small .pi{
-    font-size: 13px;
+.kn-fab--open .kn-side-button:not(:disabled){
+    opacity: 1;
+}
+.kn-fab--open .kn-fab{
+    opacity: 1;
+    background: var(--bp-text-strong);
+    color: var(--bp-surface);
+}
+.kn-fab-item-enter-active,
+.kn-fab-item-leave-active{
+    transition: opacity .15s ease, transform .15s ease;
+}
+.kn-fab-item-enter-from,
+.kn-fab-item-leave-to{
+    opacity: 0;
+    transform: scale(.6);
 }
 </style>

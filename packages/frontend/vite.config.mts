@@ -5,6 +5,7 @@ import vue from '@vitejs/plugin-vue'
 import mkcert from 'vite-plugin-mkcert';
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { devLiveServer } from './devLiveServer'
 
 export default defineConfig(({ command }) => {
   return {
@@ -12,6 +13,8 @@ export default defineConfig(({ command }) => {
       vue(),
       mkcert(),
       tailwindcss(),
+      // Live-Spiele im Demo-Modus (nur lokaler Dev-Server, siehe devLiveServer.ts)
+      devLiveServer(),
 
       // PWA plugin configuration
       VitePWA({

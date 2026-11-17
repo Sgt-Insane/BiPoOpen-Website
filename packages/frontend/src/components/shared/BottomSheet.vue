@@ -42,6 +42,7 @@
 				ref="contentEl"
 				class="bs-content"
 				:class="{ 'bs-content-flush': flush }"
+				@focusin="onFocusIn"
 				@touchstart="onTouchStart"
 				@touchmove="onTouchMove"
 				@touchend="onTouchEnd"
@@ -134,6 +135,13 @@ const getDetents = () => {
 const snapTo = (index: number) => {
 	detentIndex.value = index;
 	offset.value = getDetents()[index];
+};
+
+// Eingabefeld angetippt: ganz aufziehen, damit Feld und Vorschlaege ueber der Tastatur Platz haben
+const onFocusIn = (event: FocusEvent) => {
+	const target = event.target;
+	const isTextField = target instanceof HTMLTextAreaElement || (target instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'range'].includes(target.type));
+	if (isTextField && detentIndex.value > 0) snapTo(0);
 };
 
 const close = () => {
@@ -295,7 +303,11 @@ const onTouchMove = (event: TouchEvent) => {
 		if (Math.max(Math.abs(dx), Math.abs(dy)) < DRAG_SLOP) return;
 
 		let atTop = (contentEl.value?.scrollTop ?? 0) <= 0;
-		let dragsSheet = Math.abs(dy) > Math.abs(dx) && event.cancelable && (
+		// Beim Tippen (Tastatur offen) nie das Sheet ziehen: man wischt, um die Vorschlaege unter dem Feld
+		// zu sehen, und das Sheet klappte dabei zu (Nutzertest, Samsung)
+		let active = document.activeElement;
+		let typing = (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) && !!contentEl.value?.contains(active);
+		let dragsSheet = !typing && Math.abs(dy) > Math.abs(dx) && event.cancelable && (
 			(dy > 0 && atTop) ||             // pull down at the top of the content
 			(dy < 0 && detentIndex.value > 0) // pull up while half open
 		);

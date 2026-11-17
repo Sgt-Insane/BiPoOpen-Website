@@ -16,6 +16,16 @@ registerSW({ immediate: true });
 const app = createApp(App);
 
 app.use(PrimeVue, {
+    // Deutsche Texte fuer Suchfelder, Listen und Screenreader-Ansagen (sonst Englisch)
+    locale: {
+        emptyMessage: 'Keine Einträge',
+        emptyFilterMessage: 'Nichts gefunden',
+        emptySearchMessage: 'Kein Spieler gefunden',
+        emptySelectionMessage: 'Nichts ausgewählt',
+        searchMessage: '{0} Treffer',
+        selectionMessage: '{0} ausgewählt',
+        noFileChosenMessage: 'Keine Datei ausgewählt'
+    },
     theme: {
         preset: BiPoPreset,
         options: {

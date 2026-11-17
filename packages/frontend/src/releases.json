@@ -1,0 +1,40 @@
+[
+    {
+        "version": "1.2.0",
+        "date": "2026-11-07",
+        "title": "Stand vor dem Knecht-Update",
+        "notes": [
+            "Turniere, BiPo League mit Pokal, offene Spiele und Weltrangliste mit Elo",
+            "Spielerprofile, Hall of Fame und Push-Benachrichtigungen",
+            "BiPo Knecht zum Mitzählen der Würfe"
+        ]
+    },
+    {
+        "version": "2.0.0",
+        "date": "2026-11-15",
+        "title": "Strike! Das Knecht-Update",
+        "notes": [
+            "Bowling-Animationen für Bombe, On Fire, Re-Rack, letzten Becher und benannte Formationen",
+            "Becher-Nummern, Farbwahl vor dem Spiel und Seitentausch durch Drehen des Handys",
+            "Kanten-Erkennung, Ellenbogen-Call und Knecht Pro mit Wurfzeiten im Schiri-Modus",
+            "Spielverlauf mit allen Würfen, Minuten, Highlights, Elo je Spieler und Auszeichnungen",
+            "Offene Shots: nach 3 Airballs „Später“ trinken und auf der Webseite abhaken",
+            "Gentleman's Rule mit abwechselnden Bällen, On Fire zählt je Spieler über die Züge",
+            "Würfe nachträglich ändern – auch während des Spiels, mit Vorschau der Folgen",
+            "Begriffe wie Meile, Heaten Up oder Elo antippen für eine kurze Erklärung",
+            "Spielerprofil aufgeräumt: Elo-Verlauf, Rekorde und Auszeichnungen"
+        ]
+    },
+    {
+        "version": "2.1.0",
+        "date": "2026-11-15",
+        "title": "Live-Ticker & Story-Overlay",
+        "draft": true,
+        "notes": [
+            "Laufende Knecht-Spiele live auf der Startseite mitverfolgen",
+            "Zwei Handys zählen ein Spiel – beitreten per Code oder Link",
+            "Spielverlauf live: jeder Wurf erscheint sofort",
+            "Story-Overlay: Endstand, Spielverlauf und eigene Stats als durchsichtiges Bild über dein Foto legen"
+        ]
+    }
+]

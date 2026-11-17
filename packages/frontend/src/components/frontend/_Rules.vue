@@ -65,7 +65,8 @@ const RULE_SETS = [
 ];
 
 // /Regeln?Liga oeffnet direkt die Liga-Regeln
-const ruleSet = ref<'general' | 'league'>('Liga' in useRoute().query ? 'league' : 'general');
+const route = useRoute();
+const ruleSet = ref<'general' | 'league'>('Liga' in route.query ? 'league' : 'general');
 
 // Alle Regeln starten eingeklappt
 const openRules = reactive(new Set<string>());
@@ -156,7 +157,7 @@ const sections: Section[] = [
                     'Ein Spieler wirft beide Bälle des Zugs.',
                     'Trifft er mit beiden, gilt Balls-Back, im selben Becher ist es eine Bombe.',
                     'Beim Trickshot fängt und wirft der Spieler selbst.',
-                    'Kein Heating Up und kein On-Fire.',
+                    'Kein Heaten Up und kein On-Fire.',
                     'Alle anderen Regeln gelten unverändert.',
                 ],
             },
@@ -231,7 +232,7 @@ const sections: Section[] = [
                     'Jeder Treffer zählt zur Serie, auch Bouncer, Bombe, gefangene Bälle und umgekippte Becher.',
                     'Trickshot setzt die Serie nicht fort, startet aber eine neue: nach 2 weiteren Treffern On-Fire.',
                     'Mit Balls-Back: erst On-Fire, danach je ein Extra-Wurf.',
-                    'Die Serie endet, sobald das andere Team wirft, und mit Beginn der Verlängerung. Balls-Back setzt sie fort.',
+                    'Die Serie zählt je Spieler und läuft über die Züge weiter, auch wenn das andere Team dazwischen wirft. Sie endet mit einem eigenen Fehlwurf und mit Beginn der Verlängerung.',
                     'Gilt nicht im 1 gegen 1.',
                 ],
             },
@@ -307,9 +308,10 @@ const sections: Section[] = [
                 key: 'Nachwerfen',
                 summary: 'nach dem letzten Becher des Gegners',
                 points: [
-                    'Jeder Spieler wirft für sich: Wer trifft, bekommt den Ball zurück, bis er verfehlt oder den letzten Becher trifft. Danach ist der Mitspieler dran, im 1 gegen 1 der zweite Ball.',
+                    'Beide Bälle werden abwechselnd geworfen (im 1 gegen 1 beide vom selben Spieler). Wer trifft, wirft in der nächsten Runde wieder, wer verfehlt, ist raus – dann wirft nur noch der andere.',
+                    'Getroffene Becher werden abgeräumt, sobald beide Bälle der Runde geworfen sind (ist nur noch ein Ball übrig, nach jedem Wurf).',
+                    'Bombe, Bouncer und Trickshot zählen weiter. Kein Balls-Back, kein Heaten Up und kein On-Fire.',
                     'Beide Bälle im letzten Becher beim Nachwerfen = Sieg.',
-                    'Trickshot und Bombe gelten weiter, On-Fire und Balls-Back bringen im Nachwurf keine Extra-Würfe.',
                     'Fallen alle Becher, geht es in die Verlängerung.',
                 ],
             },
@@ -341,7 +343,7 @@ const leagueSections: Section[] = [
                 summary: 'mit 10 Bechern nach den allgemeinen Regeln',
                 points: [
                     'In der BiPo League und im League Cup hat jedes Team genau einen Spieler.',
-                    'Es gelten die allgemeinen Regeln für 1 gegen 1: beide Bälle pro Zug, kein Heating Up und kein On-Fire.',
+                    'Es gelten die allgemeinen Regeln für 1 gegen 1: beide Bälle pro Zug, kein Heaten Up und kein On-Fire.',
                 ],
             },
             {
@@ -400,7 +402,7 @@ const leagueSections: Section[] = [
                 icon: 'pencil',
                 title: 'Spiele eintragen',
                 key: 'Ergebnis oder BiPo Knecht',
-                summary: 'über „Eintragen“',
+                summary: 'über „Spiel“ (Plus unten)',
                 points: [
                     'Liga- und Cup-Spiele direkt mit dem Ergebnis eintragen.',
                     'Oder live mit dem BiPo Knecht zählen: er kennt die Regeln und trägt das Ergebnis automatisch ein.',

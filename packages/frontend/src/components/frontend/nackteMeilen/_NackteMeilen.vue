@@ -8,7 +8,7 @@
                     <button type="button" class="nm-back" aria-label="Zurück" @click="goBack()">
                         <i class="pi pi-chevron-left"></i>
                     </button>
-                    <h1 class="nm-hero-title">Nackte Meilen</h1>
+                    <h1 class="nm-hero-title">Nackte Meilen <InfoButton term="nackteMeilenSeite" /></h1>
                 </div>
 
                 <div class="nm-stats">
@@ -23,8 +23,9 @@
                 </div>
 
                 <div class="nm-hero-hint">
-                    Wann gibt es eine Meile?
+                    Wer ein Spiel mit 0 Treffern beendet, schuldet eine nackte Meile.
                     <router-link to="/Regeln" class="nm-hero-link">Regeln <i class="pi pi-angle-right"></i></router-link>
+                    · <router-link to="/Offene-Shots" class="nm-hero-link">Offene Shots 🥃 <i class="pi pi-angle-right"></i></router-link>
                 </div>
             </div>
 
@@ -105,9 +106,11 @@
 import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 import Avatar from '@/components/shared/Avatar.vue';
+import InfoButton from '@/components/shared/InfoButton.vue';
 import SkeletonList from '@/components/shared/SkeletonList.vue';
 import { onGameSaved } from '@/components/shared/GameEntry/useAddGame';
 import { getAllOpenGames } from '@/components/frontend/openGames/OpenGamesUtilFunctions';
+import { getAllLeagueGames } from '@/components/frontend/league/LeagueUtilFunctions';
 import { formatPlayerName } from '@/components/frontend/home/homeUtil';
 import { getMatchScore } from '@/util/tournamentMatchFunctions';
 import { getNackteMeilen, type OffeneMeile } from './nackteMeilen';
@@ -118,18 +121,19 @@ const RECENT_RUN_COUNT = 3;
 
 const router = useRouter();
 
-// shallowRef: Spiele werden nur komplett ersetzt
-const openGames = shallowRef<Match[]>([]);
+// shallowRef: Spiele werden nur komplett ersetzt. Offene Spiele und Liga (inkl. Cup) zaehlen.
+const games = shallowRef<Match[]>([]);
 const isLoading = ref(true);
 
-const loadOpenGames = async () => {
-    openGames.value = await getAllOpenGames();
+const loadGames = async () => {
+    const [openGames, leagueGames] = await Promise.all([getAllOpenGames(), getAllLeagueGames().catch(() => [] as Match[])]);
+    games.value = [...openGames, ...leagueGames];
     isLoading.value = false;
 };
-loadOpenGames();
-onGameSaved(loadOpenGames);
+loadGames();
+onGameSaved(loadGames);
 
-const nackteMeilen = computed(() => getNackteMeilen(openGames.value));
+const nackteMeilen = computed(() => getNackteMeilen(games.value));
 const offen = computed(() => nackteMeilen.value.offen);
 const absolviert = computed(() => nackteMeilen.value.absolviert);
 
@@ -377,7 +381,7 @@ const goBack = () => {
     width: 14px;
     height: 4px;
     border-radius: 2px;
-    background: var(--bp-navy);
+    background: var(--bp-hero);
 }
 .nm-count{
     font-size: 17px;

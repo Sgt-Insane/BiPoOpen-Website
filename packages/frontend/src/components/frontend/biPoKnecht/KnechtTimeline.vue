@@ -10,7 +10,7 @@
                 type="button"
                 class="kn-tl-turn"
                 :class="{ 'kn-tl-turn--editable': editable, 'kn-tl-turn--zero': entry.points === 0 }"
-                :style="{ '--kn-team-color': TEAM_COLORS[entry.teamIndex] }"
+                :style="{ '--kn-team-color': getTeamColor(match, entry.teamIndex) }"
                 :disabled="!editable"
                 @click="$emit('edit', entry.turnIndex)"
             >
@@ -34,7 +34,7 @@ import { computed } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
 import { getTurnPoints, type KnechtState } from './knechtEngine';
 import { TURN_ICONS, type KnechtIconName } from './knechtIcons';
-import { TEAM_COLORS, formatPoints, getPlayerName, getTeamName, getTurnLabel } from './KnechtUtilFunctions';
+import { getTeamColor, formatPoints, getPlayerName, getTeamName, getTurnLabel } from './KnechtUtilFunctions';
 
 const props = defineProps<{
     match: Match;
@@ -62,8 +62,9 @@ const getMinute = (time: number) => {
 const entries = computed<Entry[]>(() => {
     const list: Entry[] = [];
     const markers = props.state.markers;
+    // "Zug starten" (Knecht Pro) ist nur Zeitmessung und erscheint nicht im Verlauf
     const addMarkers = (afterTurnIndex: number) => markers
-        .filter(marker => marker.afterTurnIndex === afterTurnIndex)
+        .filter((marker): marker is typeof marker & { kind: keyof typeof MARKERS } => marker.afterTurnIndex === afterTurnIndex && marker.kind in MARKERS)
         .forEach((marker, index) => list.push({
             kind: 'marker',
             key: `m-${afterTurnIndex}-${index}`,

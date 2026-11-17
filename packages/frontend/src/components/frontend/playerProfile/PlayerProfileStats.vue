@@ -40,7 +40,7 @@
 
         <!-- Form, aeltestes links -->
         <div v-if="recentForm.length" class="pp-stats-form">
-            <span class="pp-stats-form-label">Letzte {{ recentForm.length }}</span>
+            <span class="pp-stats-form-label">Letzte {{ recentForm.length }} <small>· neueste rechts</small></span>
             <span class="pp-stats-form-results">
                 <span
                     v-for="(result, index) in recentForm"
@@ -110,6 +110,7 @@ const bestTime = computed(() => props.data.extraStats.timeOfDayStats.find(block 
 const CATEGORY_STYLES: Record<string, { label: string; color: string; order: number }> = {
     'Offene Spiele 1v1': { label: 'Offene Spiele 1v1', color: 'var(--bp-text)', order: 0 },
     'Offene Spiele 2v2': { label: 'Offene Spiele 2v2', color: 'var(--bp-text)', order: 0 },
+    'Offene Spiele sonstige': { label: 'Offene Spiele (ungleiche Teams)', color: 'var(--bp-text)', order: 0 },
     'BiPo League': { label: 'BiPo League', color: 'var(--main-color)', order: 1 },
     'BiPo League Cup': { label: 'League Cup', color: 'var(--secondary-color)', order: 2 },
     'BiPo Open Turniere': { label: 'BiPo Open', color: '#e3a92b', order: 1 },

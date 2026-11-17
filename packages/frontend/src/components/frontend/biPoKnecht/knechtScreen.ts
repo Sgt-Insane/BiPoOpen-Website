@@ -1,10 +1,15 @@
 // Bildschirm-Helfer fuer den BiPo Knecht: Vollbild, Bildschirm wach halten, Querformat (Schiedsrichter).
 // Alles wird still ignoriert, wo der Browser es nicht unterstuetzt.
 
-export const enterFullscreen = () => {
-    if (import.meta.env.DEV || document.fullscreenElement) return;
+// force: auch im Entwicklungsmodus (Knopf im Menue); automatisch nur auf der echten Seite
+export const enterFullscreen = (force = false) => {
+    if ((import.meta.env.DEV && !force) || document.fullscreenElement) return;
     document.documentElement.requestFullscreen?.().catch(() => {});
 };
+
+// iPhones kennen kein Vollbild fuer Webseiten: dort gibt es den Knopf nicht
+export const isFullscreenSupported = () => !!document.fullscreenEnabled;
+export const isFullscreen = () => !!document.fullscreenElement;
 
 export const exitFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});

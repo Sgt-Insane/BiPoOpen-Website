@@ -29,9 +29,12 @@ export type KnechtConfig = {
 export type ThrowOutcome = 'hit' | 'miss' | 'airball';
 
 export type KnechtAction =
-    | { type: 'throw'; player: number; outcome: ThrowOutcome; cup?: number; bouncer?: boolean; extraCups?: number[]; time: number }
+    | { type: 'throw'; player: number; outcome: ThrowOutcome; cup?: number; bouncer?: boolean; extraCups?: number[]; time: number; spot?: { x: number; y: number }; edge?: EdgeHit }
     | { type: 'trickshot'; player: number; catcher: number; time: number }   // player hat verfehlt, catcher wirft den Trickshot
     | { type: 'reRack'; time: number }
+    | { type: 'turnStart'; time: number }
+    // Ellenbogen ueber der Tischkante (Schiedsrichter): 1. Call je Person gelb, ab dem 2. rot mit Strafbecher
+    | { type: 'elbow'; team: number; player: number; cups: number[]; time: number }           // Knecht Pro: Werfer haben die Baelle, die Zeit fuer den Zug laeuft
     | { type: 'deathcup'; player: number; time: number }
     | { type: 'ownCup'; team: number; player: number; cups: number[]; time: number };
 
@@ -40,7 +43,7 @@ export type Rack = { hit: number[]; pending: number[] };
 export type Credit = { teamIndex: number; playerIndex: number; points: number };
 
 export type KnechtMarker = {
-    kind: 'reRack' | 'nachwurf' | 'overtime';
+    kind: 'reRack' | 'nachwurf' | 'overtime' | 'turnStart';
     teamIndex: number;
     afterTurnIndex: number;     // Marker steht zwischen Turn afterTurnIndex-1 und afterTurnIndex
     time: number;
@@ -66,6 +69,8 @@ type Round = {
     landings: Landing[];
     ballsBack: boolean;             // Runde entstand durch Balls Back (kein Re-Rack)
     throwCount: number;
+    ballCount: number;              // Baelle dieser Runde (im Nachwurf nur die noch lebenden)
+    fixedOwners: number[] | null;   // Nachwurf ab Runde 2: wer welchen Ball wirft
 };
 
 export type KnechtState = {
@@ -86,7 +91,9 @@ export type KnechtState = {
     winnerTeamIndex: number | null;
     endReason: EndReason | null;
     victoryBonus: number;                       // Siegpunkt(e) bei sonst punktgleichem Ende
-    banner: BannerEvent;
+    banner: BannerEvent;                        // wichtigstes Ereignis der letzten Aktion (Banner)
+    events: NonNullable<BannerEvent>[];         // alle Ereignisse der letzten Aktion in zeitlicher Reihenfolge (Animationen)
+    elbowCalls: number[][];                     // Ellenbogen-Calls je Team und Spieler
 };
 
 export class KnechtRuleError extends Error {}
@@ -99,7 +106,7 @@ export const CUP_ROWS = [1, 2, 3, 4].map(row => Array.from({ length: row }, (_, 
 export const isHitTurnType = (type: Turn['type']) =>
     type === 'hit' || type === 'bouncer' || type === 'bomb' || type === 'ballsback' || type === 'lastCup' || type === 'onfire';
 
-// On Fire / Heating Up nur, wenn ein Team mehr als einen Spieler hat (nicht im 1 gegen 1 / Liga)
+// On Fire / Heaten Up nur, wenn ein Team mehr als einen Spieler hat (nicht im 1 gegen 1 / Liga)
 export const isOnFireEnabled = (state: KnechtState, teamIndex: number) => state.config.playerCounts[teamIndex] > 1;
 
 export const getStandingCups = (rack: Rack) => {
@@ -116,8 +123,9 @@ const rackFromStanding = (standing: number[]): Rack => ({
 
 const enemyOf = (teamIndex: number) => 1 - teamIndex;
 
-const newRound = (ballsBack = false): Round => ({
+const newRound = (ballsBack = false, fixedOwners: number[] | null = null): Round => ({
     ballsDone: 0, owners: [], current: null, ballHits: [], landings: [], ballsBack, throwCount: 0,
+    ballCount: fixedOwners?.length ?? BALLS_PER_ROUND, fixedOwners,
 });
 
 export const createInitialState = (config: KnechtConfig): KnechtState => ({
@@ -134,11 +142,13 @@ export const createInitialState = (config: KnechtConfig): KnechtState => ({
     reRacksLeft: [RE_RACKS_PER_TEAM, RE_RACKS_PER_TEAM],
     overtimeCount: 0,
     streaks: config.playerCounts.map(count => Array.from({ length: count }, () => 0)),
+    elbowCalls: config.playerCounts.map(count => Array.from({ length: count }, () => 0)),
     status: 'playing',
     winnerTeamIndex: null,
     endReason: null,
     victoryBonus: 0,
     banner: null,
+    events: [],
 });
 
 export const cloneState = (state: KnechtState): KnechtState => structuredClone(state);
@@ -154,6 +164,8 @@ export const getAllowedThrowers = (state: KnechtState): number[] => {
         return [round.current.lockedPlayer];
     if (round.current)
         return [round.current.owner];
+    // Nachwurf: jeder noch lebende Ball gehoert fest seinem Werfer
+    if (round.fixedOwners) return [round.fixedOwners[round.ballsDone]];
 
     const playerCount = state.config.playerCounts[state.activeTeamIndex];
     const all = Array.from({ length: playerCount }, (_, i) => i);
@@ -235,7 +247,7 @@ export const canReRack = (state: KnechtState): boolean => {
     return formation.join() !== standing.join();
 };
 
-export const getBallNumber = (state: KnechtState) => Math.min(state.round.ballsDone + 1, BALLS_PER_ROUND);
+export const getBallNumber = (state: KnechtState) => Math.min(state.round.ballsDone + 1, state.round.ballCount);
 
 // ─── Punkte ───
 export const getPlayerPoints = (state: KnechtState): number[][] => {
@@ -300,12 +312,12 @@ const resetStreaks = (state: KnechtState) => {
     state.streaks = state.streaks.map(team => team.map(() => 0));
 };
 
-const startRound = (state: KnechtState, teamIndex: number, ballsBack = false) => {
+const startRound = (state: KnechtState, teamIndex: number, ballsBack = false, fixedOwners: number[] | null = null) => {
     commitPending(state);
-    // Eine Serie endet mit dem Zug des Teams (Balls Back setzt sie fort)
-    if (teamIndex !== state.activeTeamIndex) resetStreaks(state);
+    // Serien laufen je Spieler ueber die Zuege weiter: sie enden erst mit einem eigenen Fehlwurf
+    // (oder mit der Verlaengerung), nicht wenn das andere Team wirft
     state.activeTeamIndex = teamIndex;
-    state.round = newRound(ballsBack);
+    state.round = newRound(ballsBack, fixedOwners);
     state.decider = null;
     moveLastCupToTip(state.racks[enemyOf(teamIndex)]);
 };
@@ -318,6 +330,7 @@ const finish = (state: KnechtState, winnerTeamIndex: number, reason: EndReason) 
     state.round.current = null;
     state.decider = null;
     if (!state.banner || state.banner === 'heating-up' || state.banner === 'on-fire') state.banner = reason === 'deathcup' ? 'deathcup' : 'win';
+    if (reason !== 'deathcup') state.events.push('win');
     addVictoryBonus(state);
 };
 
@@ -350,6 +363,7 @@ const startOvertime = (state: KnechtState, startTeamIndex: number, time: number)
     state.markers.push({ kind: 'overtime', teamIndex: startTeamIndex, afterTurnIndex: state.turns.length, time });
     startRound(state, startTeamIndex);
     state.banner = 'overtime';
+    state.events.push('overtime');
 };
 
 const startNachwurf = (state: KnechtState, nachwurfTeam: number, time: number) => {
@@ -357,6 +371,7 @@ const startNachwurf = (state: KnechtState, nachwurfTeam: number, time: number) =
     state.nachwurfTeamIndex = nachwurfTeam;
     state.markers.push({ kind: 'nachwurf', teamIndex: nachwurfTeam, afterTurnIndex: state.turns.length, time });
     state.banner = 'nachwurf';
+    state.events.push('nachwurf');
 };
 
 const endNachwurf = (state: KnechtState, time: number) => {
@@ -368,13 +383,21 @@ const endNachwurf = (state: KnechtState, time: number) => {
 const endRound = (state: KnechtState, time: number) => {
     const team = state.activeTeamIndex;
 
-    if (state.nachwurfTeamIndex !== null) return endNachwurf(state, time);
+    // Gentleman's Rule: wer getroffen hat, wirft in der naechsten Runde wieder (Becher werden dazwischen
+    // abgeraeumt), wer verfehlt hat, ist raus. Ohne lebenden Ball oder nach dem letzten Becher ist Schluss.
+    if (state.nachwurfTeamIndex !== null) {
+        const alive = state.round.owners.filter((_, ball) => state.round.ballHits[ball]);
+        if (state.cleared[team] || !alive.length) return endNachwurf(state, time);
+        startRound(state, team, false, alive);
+        return;
+    }
 
     // Alle Gegnerbecher getroffen -> Gentleman's Rule fuer den Gegner
     if (state.cleared[team]) return startNachwurf(state, enemyOf(team), time);
 
     if (state.round.ballHits.length === BALLS_PER_ROUND && state.round.ballHits.every(hit => hit)) {
         if (state.banner !== 'bomb') state.banner = 'ballsback';
+        state.events.push('ballsback');
         startRound(state, team, true);
         return;
     }
@@ -385,7 +408,7 @@ const endRound = (state: KnechtState, time: number) => {
 const endBall = (state: KnechtState, time: number) => {
     state.round.current = null;
     state.round.ballsDone++;
-    if (state.round.ballsDone >= BALLS_PER_ROUND) endRound(state, time);
+    if (state.round.ballsDone >= state.round.ballCount) endRound(state, time);
 };
 
 const openBall = (state: KnechtState, player: number) => {
@@ -429,7 +452,9 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
 
     if (!preview) {
         state.streaks[team][action.player] = 0;
-        pushTurn(state, { playerIndex: action.player, teamIndex: team, type: action.outcome, data: {} }, action.time, []);
+        // Nullwurf: Landestelle und Kante (nur Statistik, aendert nichts am Spielstand)
+        const data = action.outcome === 'miss' ? { ...(action.spot && { spot: action.spot }), ...(action.edge && { edge: action.edge }) } : {};
+        pushTurn(state, { playerIndex: action.player, teamIndex: team, type: action.outcome, data }, action.time, []);
         return endBall(state, action.time);
     }
 
@@ -465,11 +490,7 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
             },
         }, action.time, [credit(base / 2 + bomberBonus)]);
         state.banner = 'bomb';
-        // Im Nachwurf wirft der Bomber weiter, bis er verfehlt
-        if (state.nachwurfTeamIndex === team) {
-            ball.lockedPlayer = action.player;
-            return;
-        }
+        state.events.push('bomb');
         return endBall(state, action.time);
     }
 
@@ -485,12 +506,12 @@ const applyThrow = (state: KnechtState, action: Extract<KnechtAction, { type: 't
     if (onFireEnabled && state.nachwurfTeamIndex === null) {
         if (streakBefore + 1 === 2) state.banner = 'heating-up';
         if (streakBefore + 1 >= 3) state.banner = 'on-fire';
+        if (streakBefore + 1 >= 2) state.events.push(state.banner as 'heating-up' | 'on-fire');
     }
 
-    // Weiterwerfen: im Nachwurf bis zum Fehlwurf, sonst nur On Fire.
+    // Weiterwerfen nur bei On Fire (im Nachwurf kommt der Ball stattdessen in der naechsten Runde zurueck).
     // Nach dem letzten Becher endet der Ball immer: den Doppeltreffer darf nur ein anderer Ball werfen.
-    const keepsThrowing = preview.type !== 'lastCup'
-        && (state.nachwurfTeamIndex === team || (onFireEnabled && streakBefore + 1 >= 3));
+    const keepsThrowing = preview.type !== 'lastCup' && state.nachwurfTeamIndex === null && onFireEnabled && streakBefore + 1 >= 3;
     if (keepsThrowing && state.status === 'playing') {
         ball.lockedPlayer = action.player;
         return;
@@ -539,6 +560,7 @@ const applyDeathcup = (state: KnechtState, action: Extract<KnechtAction, { type:
     pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'deathcup', data: { cups: remaining } },
         action.time, [{ teamIndex: team, playerIndex: action.player, points: remaining.length }]);
     state.banner = 'deathcup';
+    state.events.push('deathcup');
     finish(state, team, 'deathcup');
 };
 
@@ -564,6 +586,34 @@ const applyOwnCup = (state: KnechtState, action: Extract<KnechtAction, { type: '
     else moveLastCupToTip(rack);
 };
 
+// Ellenbogen-Call: der erste je Person ist eine Verwarnung (gelb), ab dem zweiten rot mit Strafbecher.
+// Der Strafbecher kommt vom eigenen Tisch und zaehlt fuer den Gegner (wie ein eigener Becher).
+export const isNextElbowRed = (state: KnechtState, team: number, player: number) => (state.elbowCalls[team]?.[player] ?? 0) >= 1;
+
+const applyElbow = (state: KnechtState, action: Extract<KnechtAction, { type: 'elbow' }>) => {
+    const team = action.team;
+    if (team !== 0 && team !== 1) fail('Unbekanntes Team');
+    if (action.player < 0 || action.player >= state.config.playerCounts[team]) fail('Unbekannter Spieler');
+    const red = isNextElbowRed(state, team, action.player);
+    const rack = state.racks[team];
+    const standing = getStandingCups(rack);
+    if (!red && action.cups.length) fail('Die erste Verwarnung kostet keinen Becher');
+    if (red && (action.cups.length !== 1 || !standing.includes(action.cups[0]))) fail('Fuer die rote Karte einen stehenden eigenen Becher waehlen');
+    state.elbowCalls[team][action.player]++;
+
+    if (!red) {
+        pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'yellow', cups: [] } }, action.time, []);
+        return;
+    }
+    const opponent = enemyOf(team);
+    const opponentCount = state.config.playerCounts[opponent];
+    const credits = Array.from({ length: opponentCount }, (_, playerIndex) => ({ teamIndex: opponent, playerIndex, points: 1 / opponentCount }));
+    rack.hit = sorted([...rack.hit, ...action.cups]);
+    pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'red', cups: [...action.cups] } }, action.time, credits);
+    if (getStandingCups(rack).length === 0) ownRackCleared(state, team, action.time);
+    else moveLastCupToTip(rack);
+};
+
 // Letzter eigener Becher runtergeworfen: zaehlt als letzter Becher des Gegners, es folgt die Gentleman's Rule.
 // Hatten beide Teams damit abgeraeumt, geht es in die Verlaengerung.
 const ownRackCleared = (state: KnechtState, team: number, time: number) => {
@@ -577,12 +627,17 @@ const ownRackCleared = (state: KnechtState, team: number, time: number) => {
 const applyActionInPlace = (state: KnechtState, action: KnechtAction) => {
     if (state.status !== 'playing') fail('Das Spiel ist bereits vorbei');
     state.banner = null;
+    state.events = [];
     switch (action.type) {
         case 'throw': applyThrow(state, action); break;
         case 'trickshot': applyTrickshot(state, action); break;
         case 'reRack': applyReRack(state, action); break;
+        case 'turnStart':
+            state.markers.push({ kind: 'turnStart', teamIndex: state.activeTeamIndex, afterTurnIndex: state.turns.length, time: action.time });
+            break;
         case 'deathcup': applyDeathcup(state, action); break;
         case 'ownCup': applyOwnCup(state, action); break;
+        case 'elbow': applyElbow(state, action); break;
         default: fail('Unbekannte Aktion');
     }
 };
@@ -625,7 +680,7 @@ export const replay = (config: KnechtConfig, actions: KnechtAction[]): ReplayRes
 export const getActionIndexOfTurn = (actions: KnechtAction[], turnIndex: number) => {
     let turn = -1;
     for (let index = 0; index < actions.length; index++) {
-        if (actions[index].type !== 'reRack') turn++;
+        if (actions[index].type !== 'reRack' && actions[index].type !== 'turnStart') turn++;
         if (turn === turnIndex) return index;
     }
     return -1;

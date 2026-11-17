@@ -3,6 +3,8 @@
         :kicker="`BiPo Open ${NEXT_BIPO_OPEN.year}`"
         title="Countdown läuft"
         :subtitle="`${startDate} · 14:00 Uhr`"
+        :ctaLabel="`Rückblick ${lastYear}`"
+        :ctaTo="`/${lastYear}`"
     >
         <div class="sc-timer">
             <div v-for="unit in countdown" :key="unit.label" class="sc-unit">
@@ -15,7 +17,10 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { NEXT_BIPO_OPEN } from '@/util/bipoOpenTournamentMeta';
+import { BIPO_OPEN_TOURNAMENT_YEARS, NEXT_BIPO_OPEN } from '@/util/bipoOpenTournamentMeta';
+
+// Bis zum naechsten Turnier: das letzte Turnier mit Teams, Spielplan und Fotos ansehen
+const lastYear = BIPO_OPEN_TOURNAMENT_YEARS[BIPO_OPEN_TOURNAMENT_YEARS.length - 1];
 import { NEXT_BIPO_OPEN_START } from '../homeUtil';
 import HeroSlideLayout from './HeroSlideLayout.vue';
 

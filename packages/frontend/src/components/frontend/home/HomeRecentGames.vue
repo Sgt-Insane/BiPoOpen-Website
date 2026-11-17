@@ -1,14 +1,17 @@
 <template>
     <section class="HomeRecentGames">
-        <h2 class="hr-title">Zuletzt gespielt</h2>
+        <h2 class="hr-title">{{ title }}</h2>
 
         <Tabs v-model:value="activeFilter" class="p-tabs-chips">
             <TabList class="hr-filter">
-                <Tab v-for="filter in GAME_FILTERS" :key="filter.value" :value="filter.value">{{ filter.label }}</Tab>
+                <Tab v-for="filter in FILTERS" :key="filter.value" :value="filter.value">{{ filter.label }}</Tab>
             </TabList>
         </Tabs>
 
-        <div class="hr-list">
+        <!-- Nackte Meilen / Offene Shots: Kurzliste statt Spielen -->
+        <HomeDebtList v-if="activeFilter === 'miles' || activeFilter === 'shots'" :kind="activeFilter" :openGames="openGames" :leagueGames="leagueGames" :gamesLoading="loading" />
+
+        <div v-else class="hr-list">
             <template v-if="loading">
                 <Skeleton v-for="i in 4" :key="i" width="100%" height="116px" borderRadius="12px" />
             </template>
@@ -19,7 +22,7 @@
         </div>
 
         <!-- Gewaehlter Filter wird auf die Ergebnisse-Seite mitgenommen -->
-        <router-link v-if="!loading" :to="resultsLink" class="bp-more-button">
+        <router-link v-if="!loading && !isDebtFilter" :to="resultsLink" class="bp-more-button">
             Alle Ergebnisse <i class="pi pi-chevron-right"></i>
         </router-link>
     </section>
@@ -32,6 +35,7 @@ import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
+import HomeDebtList from './HomeDebtList.vue';
 import { GAME_FILTERS, combineResults, matchesFilter, type GameFilter } from '@/components/frontend/results/resultsUtil';
 
 const props = defineProps<{
@@ -40,14 +44,27 @@ const props = defineProps<{
     loading: boolean;
 }>();
 
+// Spiel-Filter wie auf der Ergebnisse-Seite, dazu Nackte Meilen und Offene Shots als Kurzliste
+type Filter = GameFilter | 'miles' | 'shots';
+
 const GAME_COUNT = 6;
 
-const activeFilter = ref<GameFilter>('all');
+const FILTERS: { label: string; value: Filter }[] = [
+    ...GAME_FILTERS,
+    { label: 'Meilen', value: 'miles' },
+    { label: 'Shots', value: 'shots' },
+];
+
+const TITLES: Partial<Record<Filter, string>> = { miles: 'Nackte Meilen', shots: 'Offene Shots' };
+
+const activeFilter = ref<Filter>('all');
+const title = computed(() => TITLES[activeFilter.value] ?? 'Zuletzt gespielt');
+const isDebtFilter = computed(() => activeFilter.value === 'miles' || activeFilter.value === 'shots');
 
 const allGames = computed(() => combineResults(props.openGames, props.leagueGames));
 
-const visibleGames = computed(() => allGames.value
-    .filter(entry => matchesFilter(entry, activeFilter.value))
+const visibleGames = computed(() => isDebtFilter.value ? [] : allGames.value
+    .filter(entry => matchesFilter(entry, activeFilter.value as GameFilter))
     .slice(0, GAME_COUNT));
 
 const resultsLink = computed(() => activeFilter.value === 'all'
@@ -70,6 +87,17 @@ const resultsLink = computed(() => activeFilter.value === 'all'
 :deep(.hr-filter){
     padding: 0;
 }
+/* Alle Chips sichtbar und gleich aussehend: lieber umbrechen als seitlich scrollen (kein Ausblend-Verlauf) */
+:deep(.hr-filter .p-tablist-content){
+    overflow: visible;
+}
+:deep(.hr-filter .p-tablist-tab-list){
+    flex-wrap: wrap;
+    gap: 6px;
+}
+:deep(.hr-filter .p-tablist-nav-button){
+    display: none;
+}
 
 .hr-list{
     display: grid;
@@ -91,6 +119,9 @@ const resultsLink = computed(() => activeFilter.value === 'all'
 @media (width <= 900px){
     .hr-title{
         font-size: 20px;
+    }
+    :deep(.hr-filter .p-tab){
+        padding-inline: 0.7rem;
     }
     .hr-list{
         grid-template-columns: minmax(0, 1fr);

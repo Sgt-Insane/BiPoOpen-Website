@@ -2,13 +2,13 @@
     <div class="KnechtGameOver">
         <div class="kn-over-scroll">
             <!-- Kopf: Sieger und Ergebnis -->
-            <div class="kn-over-head" :style="{ '--kn-team-color': TEAM_COLORS[winner] }">
+            <div class="kn-over-head" :style="{ '--kn-team-color': getTeamColor(match, winner) }">
                 <div class="kn-over-trophy">🏆</div>
                 <div class="kn-over-winner">{{ getTeamName(match, winner) }} gewinnt!</div>
                 <div class="kn-over-score">
-                    <span :style="{ color: TEAM_COLORS[0] }">{{ formatPoints(teamPoints[0]) }}</span>
+                    <span :style="{ color: getTeamColor(match, 0) }">{{ formatPoints(teamPoints[0]) }}</span>
                     <span class="kn-over-colon">:</span>
-                    <span :style="{ color: TEAM_COLORS[1] }">{{ formatPoints(teamPoints[1]) }}</span>
+                    <span :style="{ color: getTeamColor(match, 1) }">{{ formatPoints(teamPoints[1]) }}</span>
                 </div>
                 <div class="kn-over-teams">{{ getTeamName(match, 0) }} gegen {{ getTeamName(match, 1) }}</div>
                 <div class="kn-over-reason">{{ reasonText }}<template v-if="duration"> · {{ duration }}</template></div>
@@ -18,7 +18,7 @@
             <template v-if="step === 'awards'">
                 <div class="kn-over-section-title">Auszeichnungen</div>
                 <div class="kn-awards">
-                    <div v-for="(award, index) in awards" :key="index" class="kn-award" :style="{ '--kn-team-color': TEAM_COLORS[stats[index].teamIndex] }">
+                    <div v-for="(award, index) in awards" :key="index" class="kn-award" :style="{ '--kn-team-color': getTeamColor(match, stats[index].teamIndex) }">
                         <span class="kn-award-icon">{{ award.icon }}</span>
                         <span class="kn-award-text">
                             <span class="kn-award-title">{{ award.title }}</span>
@@ -27,10 +27,29 @@
                         </span>
                     </div>
                 </div>
+                <button v-if="isFeatureOn('shareOverlay')" type="button" class="kn-over-share" @click="shareOpen = true">
+                    <i class="pi pi-share-alt"></i> Story-Overlay teilen
+                </button>
             </template>
 
             <!-- Schritt 2: Zusammenfassung, Verlauf bearbeiten, Schiedsrichter -->
             <template v-else>
+                <!-- Schiedsrichter zuerst: wird sonst unter dem langen Spielverlauf leicht uebersehen -->
+                <template v-if="refereeUsed">
+                    <label class="kn-over-section-title" for="kn-referee">Schiedsrichter</label>
+                    <input id="kn-referee" v-model="referee" class="kn-referee" type="text" maxlength="40" placeholder="Name (optional)" autocomplete="off" />
+                </template>
+
+                <template v-if="throwTimes">
+                    <div class="kn-over-section-title">Wurfzeit <span class="kn-over-section-hint">netto {{ formatSeconds(throwTimes.netSeconds) }}</span></div>
+                    <div class="kn-over-times">
+                        <div v-for="entry in throwTimes.players" :key="`${entry.teamIndex}-${entry.playerIndex}`" class="kn-over-time" :style="{ '--kn-team-color': getTeamColor(match, entry.teamIndex) }">
+                            <span>{{ getPlayerName(match, entry.teamIndex, entry.playerIndex) }}</span>
+                            <strong>Ø {{ formatSeconds(entry.average) }}</strong>
+                        </div>
+                    </div>
+                </template>
+
                 <div class="kn-over-section-title">Punktestand</div>
                 <KnechtScoreboard :match="match" :state="game.state.value" />
 
@@ -39,11 +58,6 @@
                     <span class="kn-over-section-hint">Antippen zum Korrigieren</span>
                 </div>
                 <KnechtTimeline :match="match" :state="game.state.value" editable @edit="editTurn = $event" />
-
-                <template v-if="refereeUsed">
-                    <label class="kn-over-section-title" for="kn-referee">Schiedsrichter</label>
-                    <input id="kn-referee" v-model="referee" class="kn-referee" type="text" maxlength="40" placeholder="Name (optional)" autocomplete="off" />
-                </template>
 
                 <div v-if="isDemoMode" class="kn-over-dev">Demo-Modus: das Spiel erscheint auf der Webseite, wird aber nur lokal im Browser gespeichert.</div>
             </template>
@@ -59,17 +73,23 @@
                 </button>
             </template>
             <template v-else>
-                <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving" title="Speichern und Revanche" @click="save(true)">
-                    <i class="pi pi-replay"></i>
-                </button>
-                <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving" @click="save(false)">
-                    <i v-if="saving" class="pi pi-spin pi-spinner"></i>
-                    <span v-else>{{ saveLabel }}</span>
-                </button>
+                <template v-if="canSave">
+                    <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving" title="Speichern und Revanche" @click="save(true)">
+                        <i class="pi pi-replay"></i>
+                    </button>
+                    <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving" @click="save(false)">
+                        <i v-if="saving" class="pi pi-spin pi-spinner"></i>
+                        <span v-else>{{ saveLabel }}</span>
+                    </button>
+                </template>
+                <div v-else class="kn-over-guest">Das andere Handy (hat das Spiel gestartet) trägt es ein.</div>
             </template>
         </div>
 
-        <KnechtSheet :visible="editTurn !== null" title="Eintrag korrigieren" subtitle="Der Rest des Spiels wird neu berechnet" @update:visible="editTurn = null">
+        <KnechtSheet :visible="shareOpen" title="Story-Overlay" subtitle="Durchwischen, dann teilen oder speichern" @update:visible="shareOpen = false">
+            <ShareStickerPanel v-if="shareOpen" :match="shareMatch" />
+        </KnechtSheet>
+        <KnechtSheet :visible="editTurn !== null" title="Eintrag korrigieren" subtitle="Spätere Würfe werden wenn nötig angepasst" @update:visible="editTurn = null">
             <KnechtTurnEditor v-if="editTurn !== null" :game="game" :turnIndex="editTurn" @done="editTurn = null" />
         </KnechtSheet>
     </div>
@@ -84,16 +104,23 @@ import KnechtTimeline from './KnechtTimeline.vue';
 import KnechtSheet from './KnechtSheet.vue';
 import KnechtTurnEditor from './KnechtTurnEditor.vue';
 import { getTeamPoints } from './knechtEngine';
+import { formatSeconds, getThrowTimes } from './knechtThrowTimes';
 import {
-    TEAM_COLORS, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getSaveLabel, getTeamName, saveKnechtGame,
+    getTeamColor, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getPlayerName, getSaveLabel, getTeamName, saveKnechtGame,
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
+import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
+import { isFeatureOn } from '@/util/featureFlags';
 
-const props = defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean }>();
+const props = withDefaults(defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean; canSave?: boolean }>(), { canSave: true });
 const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
 
 const toast = useToast();
 const match = props.game.match;
+
+// Story-Overlay (noch im Entwicklermodus): das fertige Spiel (mit Verlauf und Punkten) als Bild teilen
+const shareOpen = ref(false);
+const shareMatch = computed(() => buildKnechtMatch(match, props.game.state.value));
 
 const step = ref<'awards' | 'summary'>('awards');
 const editTurn = ref<number | null>(null);
@@ -108,6 +135,8 @@ const stats = computed(() => getPlayerStats(match, state.value));
 const awards = computed(() => getAwards(stats.value));
 const duration = computed(() => formatDuration(match.time, state.value.turns.at(-1)?.time));
 const saveLabel = getSaveLabel(match.time ?? 0);
+// Knecht Pro: Wurfzeiten, falls "Zug starten" genutzt wurde
+const throwTimes = computed(() => getThrowTimes(state.value.turns, state.value.markers));
 
 const reasonText = computed(() => {
     const overtime = state.value.overtimeCount ? ` (nach ${state.value.overtimeCount}. Verlängerung)` : '';
@@ -201,6 +230,21 @@ const save = async (rematch: boolean) => {
     color: var(--bp-text-muted);
 }
 
+.kn-over-share{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    margin-top: 4px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 12px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
 .kn-over-section-title{
     display: flex;
     align-items: baseline;
@@ -266,6 +310,21 @@ const save = async (rematch: boolean) => {
     to{ opacity: 1; transform: none; }
 }
 
+.kn-over-times{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+.kn-over-time{
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--kn-team-color);
+    border-radius: 10px;
+    background: var(--bp-surface);
+    font-size: 13px;
+}
 .kn-referee{
     width: 100%;
     height: 48px;
@@ -296,6 +355,14 @@ const save = async (rematch: boolean) => {
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--bp-border);
     background: var(--bp-surface);
+}
+.kn-over-guest{
+    flex: 1;
+    align-self: center;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--bp-text-muted);
 }
 .kn-over-button{
     display: flex;

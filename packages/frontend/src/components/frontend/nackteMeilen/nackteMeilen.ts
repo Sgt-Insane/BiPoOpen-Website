@@ -1,4 +1,4 @@
-// Wer in einem offenen Spiel 0 Treffer hat, schuldet eine nackte Meile.
+// Wer in einem Spiel (offen oder Liga/Cup) 0 Treffer hat, schuldet eine nackte Meile.
 
 // completedAt: Datum wann die nackte Meile absolviert wurde
 const REMOVED_MATCHES = [
@@ -18,10 +18,10 @@ const MANUAL_ABSOLVIERT: { name: string; completedAt: Date }[] = [
 export type OffeneMeile = Player & { time: number; match: Match };
 export type AbsolvierteMeile = { name: string; time: number; match: Match | null; completedAt: Date };
 
-export const getNackteMeilen = (openGames: Match[]) => {
+export const getNackteMeilen = (games: Match[]) => {
     const allPlayersWith0Hits: OffeneMeile[] = [];
 
-    openGames.forEach(match => {
+    games.forEach(match => {
         [...match.team1.players, ...match.team2.players].forEach(player => {
             if(player.score == 0) allPlayersWith0Hits.push({...player, time: match.time!, match});
         });

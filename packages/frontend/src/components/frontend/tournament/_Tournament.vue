@@ -3,7 +3,10 @@
     <div class="Tournament">
 
         <!-- Skelett, bis das Turnier geladen ist: Name steht schon in der URL -->
-        <div v-if="!tournament" aria-busy="true">
+        <!-- Unbekannter Name (z. B. vertippte Adresse): klare 404 statt ewigem Skelett -->
+        <NotFound404 v-if="notFound" />
+
+        <div v-else-if="!tournament" aria-busy="true">
             <h1 class="bp-title bp-white-band bp-white-band--top">{{ route.params.TournamentName }}</h1>
             <div class="to-skeleton-tabs bp-white-band">
                 <div class="bp-skeleton" style="width: 110px"></div>
@@ -68,6 +71,7 @@ import ScheduleGroups from '@/components/frontend/tournament/ScheduleGroups.vue'
 import KOSchedule from '@/components/frontend/tournament/KOSchedule.vue';
 import MVP from '@/components/frontend/tournament/MVP.vue';
 import Photos from '@/components/frontend/tournament/photos/_Photos.vue';
+import NotFound404 from '@/components/frontend/_NotFound404.vue';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
@@ -87,6 +91,7 @@ const stickyBar = ref<HTMLElement | null>(null);
 const stickyBarTop = useStickyBar(stickyBar);
 
 let tournament = ref<Tournament|undefined>();
+const notFound = ref(false);
 
 // Turniertag: Finale noch offen und Turnier aus diesem Jahr (alte, nie beendete Turniere nicht)
 const isLive = computed(() =>
@@ -109,7 +114,16 @@ else if(name == "Fotos")
    place.value = "Fotos";
 
 const getTournament = async () => {
-   tournament.value = await getTournamentByName(route.params.TournamentName as string);
+   try {
+      tournament.value = await getTournamentByName(route.params.TournamentName as string);
+   } catch (error) {
+      // Nur beim ersten Laden: spaetere Aktualisierungen duerfen kurz scheitern
+      if(!tournament.value && (error as { response?: { status?: number } }).response?.status === 404) {
+         notFound.value = true;
+         clearInterval(updateInterval);
+      }
+      return;
+   }
 
    // Beendete Turniere (Finale entschieden) aendern sich nicht mehr
    if(tournament.value && getTournamentPodium(tournament.value).length)

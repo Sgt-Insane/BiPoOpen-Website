@@ -1,12 +1,31 @@
 <template>
     <div class="KnechtStartTeam">
+        <!-- Schritt 1: Becherfarben wie auf dem echten Tisch -->
+        <template v-if="step === 'colors'">
+            <div class="kn-start-title">Welche Becher hat wer?</div>
+            <div class="kn-start-subtitle">Tippe auf „Farben tauschen“, bis es zu euren Bechern passt.</div>
+            <div class="kn-colors">
+                <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="kn-color-card" :style="{ '--kn-team-color': getTeamColor(match, teamIndex) }">
+                    <span class="kn-color-cups" aria-hidden="true"><span></span></span>
+                    <span class="kn-color-team">{{ getTeamName(match, teamIndex) }}</span>
+                    <span class="kn-color-name">{{ colorName(teamIndex) }}</span>
+                </div>
+            </div>
+            <button type="button" class="kn-start-rps" @click="swapCupColors(match)">⇄ Farben tauschen</button>
+            <div class="kn-start-footer">
+                <button type="button" class="kn-start-button kn-start-button-cancel" @click="$emit('cancel')">Abbrechen</button>
+                <button type="button" class="kn-start-button kn-start-button-start" @click="step = 'start'">Passt, weiter</button>
+            </div>
+        </template>
+
+        <template v-else>
         <div class="kn-start-title">{{ rps.playing ? 'Schnick-Schnack-Schnuck!' : 'Wer fängt an?' }}</div>
 
         <!-- Schnick-Schnack-Schnuck -->
         <div v-if="rps.playing" class="kn-rps">
             <div class="kn-rps-status">{{ rps.status }}</div>
             <div class="kn-rps-hands">
-                <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="kn-rps-team" :style="{ '--kn-team-color': TEAM_COLORS[teamIndex] }">
+                <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="kn-rps-team" :style="{ '--kn-team-color': getTeamColor(match, teamIndex) }">
                     <span class="kn-rps-name">{{ getTeamName(match, teamIndex) }}</span>
                     <span class="kn-rps-hand" :class="{ 'kn-rps-hand--shaking': rps.shaking, 'kn-rps-hand--winner': rps.winner === teamIndex }">
                         {{ rps.hands[teamIndex] }}
@@ -22,7 +41,8 @@
                 type="button"
                 class="kn-start-option"
                 :class="{ 'kn-start-option--active': selected === teamIndex }"
-                :style="{ '--kn-team-color': TEAM_COLORS[teamIndex] }"
+                :aria-pressed="selected === teamIndex"
+                :style="{ '--kn-team-color': getTeamColor(match, teamIndex) }"
                 @click="selected = teamIndex"
             >
                 <Avatar :name="getTeamName(match, teamIndex)" :avatarImage="getTeam(match, teamIndex).logo" :shape="getTeam(match, teamIndex).logo ? 'square' : 'circle'" class="kn-start-avatar" />
@@ -36,26 +56,31 @@
             <button type="button" class="kn-start-rps" @click="playRps">✊ Schnick-Schnack-Schnuck (Zufall) ✌️</button>
         </template>
 
+        <div v-if="!rps.playing" class="kn-start-hint">📱 Seite falsch? Einfach das Handy auf dem Tisch umdrehen.</div>
+
         <div class="kn-start-footer">
-            <button type="button" class="kn-start-button kn-start-button-cancel" @click="rps.playing ? stopRps() : $emit('cancel')">
-                {{ rps.playing ? 'Zurück' : 'Abbrechen' }}
+            <button type="button" class="kn-start-button kn-start-button-cancel" @click="rps.playing ? stopRps() : step = 'colors'">
+                Zurück
             </button>
             <button type="button" class="kn-start-button kn-start-button-start" :disabled="rps.playing" @click="$emit('start', selected)">
                 Spiel starten
             </button>
         </div>
+        </template>
     </div>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, reactive, ref } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
-import { TEAM_COLORS, getTeam, getTeamName } from './KnechtUtilFunctions';
+import { TEAM_COLORS, getTeamColor, getTeam, getTeamName, swapCupColors } from './KnechtUtilFunctions';
 
 const props = defineProps<{ match: Match }>();
 const emit = defineEmits<{ start: [teamIndex: number]; cancel: [] }>();
 
 const selected = ref(0);
+const step = ref<'colors' | 'start'>('colors');
+const colorName = (teamIndex: number) => getTeamColor(props.match, teamIndex) === TEAM_COLORS[0] ? 'Rote Becher' : 'Blaue Becher';
 
 const getPlayerLine = (teamIndex: number) => getTeam(props.match, teamIndex).players.map(player => player.name).join(' & ');
 
@@ -116,6 +141,62 @@ onBeforeUnmount(stopRps);
     font-size: 22px;
     font-weight: 700;
     color: var(--bp-text-strong);
+}
+.kn-start-subtitle{
+    margin-top: -6px;
+    font-size: 13px;
+    color: var(--bp-text-muted);
+}
+.kn-start-hint{
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: var(--bp-fill-soft);
+    font-size: 12px;
+    color: var(--bp-text-muted);
+    text-align: center;
+}
+.kn-colors{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.kn-color-card{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 14px 8px 12px;
+    border: 2px solid var(--kn-team-color);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--kn-team-color) 8%, var(--bp-surface));
+    transition: border-color .3s ease, background .3s ease;
+}
+.kn-color-cups{
+    display: flex;
+    gap: 4px;
+}
+.kn-color-cups span{
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--kn-team-color) 22%, var(--bp-surface));
+    box-shadow: inset 0 0 0 5px var(--kn-team-color);
+    transition: box-shadow .3s ease, background .3s ease;
+}
+.kn-color-team{
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--bp-text-strong);
+}
+.kn-color-name{
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--kn-team-color);
 }
 .kn-start-option{
     display: flex;

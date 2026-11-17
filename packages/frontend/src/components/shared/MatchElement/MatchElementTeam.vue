@@ -4,6 +4,7 @@
             'mt-team-win': isWinner,
             'mt-team-loose': isLoser
         }"
+        :style="knechtColor ? { '--mt-win-color': knechtColor } : undefined"
     >
         <!-- Team Header -->
         <div class="mt-team">
@@ -48,7 +49,7 @@
                 </div>
                 <!-- Elo nach dem Spiel und optional die Veraenderung, im Doppel jeweils der Durchschnitt -->
                 <div v-if="elo" class="mt-team-elo">
-                    {{ elo.players > 1 ? 'Ø ' : '' }}{{ elo.rating.toLocaleString('de-DE') }} Elo
+                    <GlossaryWord :term="elo.players > 1 ? 'eloAverage' : 'elo'">{{ elo.players > 1 ? 'Ø ' : '' }}{{ elo.rating.toLocaleString('de-DE') }} Elo</GlossaryWord>
                     <span v-if="showEloChange" class="mt-team-elo-delta" :class="{ 'is-up': elo.delta > 0, 'is-down': elo.delta < 0 }">{{ eloDeltaLabel }}</span>
                 </div>
             </div>
@@ -76,6 +77,8 @@
 import { PropType, computed, inject } from 'vue';
 import { getMatchScore } from "@/util/tournamentMatchFunctions";
 import Avatar from '@/components/shared/Avatar.vue';
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
+import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import { vFitText, type FitTextGroup } from '@/components/shared/fitText';
 import type { EloMatchSide } from '@/components/frontend/worldRanking/eloRating';
 
@@ -93,6 +96,8 @@ const props = defineProps({
 });
 
 const team = computed(() => props.isTeam2 ? props.match.team2 : props.match.team1);
+// Mit dem BiPo Knecht gezaehlte Spiele haben Becherfarben je Team (rot/blau, ggf. getauscht)
+const knechtColor = computed(() => props.match.turns?.length ? getTeamColor(props.match, props.isTeam2 ? 1 : 0) : null);
 
 const eloDeltaLabel = computed(() => {
     const delta = props.elo?.delta ?? 0;
@@ -236,7 +241,8 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     flex-shrink: 0;
 }
 .mt-team-win .mt-team-score{
-    background: var(--main-color);
+    /* Knecht-Spiele: Becherfarbe des Siegers (passt zum Spielverlauf), sonst Rot */
+    background: var(--mt-win-color, var(--main-color));
     color: white;
     font-weight: 700;
 }

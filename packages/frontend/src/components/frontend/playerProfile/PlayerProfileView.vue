@@ -15,16 +15,25 @@
             </div>
             <PlayerProfileFollowButton :playerName="profileData.name"/>
         </div>
+        <router-link :to="{ path: '/Vergleich', query: { a: profileData.name } }" class="pp-compare-link">
+            <i class="pi pi-arrow-right-arrow-left"></i> Mit anderem Spieler vergleichen
+        </router-link>
 
-        <PlayerProfileEloCard v-if="profileData.elo" :elo="profileData.elo"/>
+        <!-- Highlight: Rang, Elo und Verlauf in einer Karte -->
+        <PlayerProfileEloCard v-if="profileData.elo" :elo="profileData.elo" :playerName="profileData.name"/>
+
+        <!-- Danach gleich die Schulden: offene Nackte Meilen und Shots -->
+        <PlayerProfileDebtCard :playerName="profileData.name"/>
 
         <PlayerProfileLeagueCard v-if="profileData.leagueStandings.length" :standings="profileData.leagueStandings"/>
 
-        <PlayerProfileAchievements v-if="profileData.badges.length" :badges="profileData.badges" :playerName="profileData.name"/>
+        <PlayerProfileAchievements v-if="profileData.badges.some(badge => badge.group !== 'record')" :badges="profileData.badges" :playerName="profileData.name"/>
+
+        <PlayerProfileRecords :badges="profileData.badges"/>
 
         <PlayerProfileActivity v-if="profileData.firstGameTime" :matchHistory="profileData.allMatchHistory"/>
 
-        <PlayerProfileKnechtCard v-if="profileData.knecht" :stats="profileData.knecht"/>
+        <PlayerProfileKnechtCard v-if="profileData.knecht" :stats="profileData.knecht" :heatmap="profileData.knechtHeatmap"/>
 
         <!-- Statistik je Spielart -->
         <section class="pp-section">
@@ -74,8 +83,10 @@ import { computed, ref } from 'vue';
 import Select from 'primevue/select';
 import Avatar from '@/components/shared/Avatar.vue';
 import PlayerProfileEloCard from './PlayerProfileEloCard.vue';
+import PlayerProfileDebtCard from './PlayerProfileDebtCard.vue';
 import PlayerProfileLeagueCard from './PlayerProfileLeagueCard.vue';
 import PlayerProfileAchievements from './PlayerProfileAchievements.vue';
+import PlayerProfileRecords from './PlayerProfileRecords.vue';
 import PlayerProfileActivity from './PlayerProfileActivity.vue';
 import PlayerProfileKnechtCard from './PlayerProfileKnechtCard.vue';
 import PlayerProfileStats from './PlayerProfileStats.vue';
@@ -116,6 +127,20 @@ const heroMeta = computed(() => {
 </script>
 
 <style scoped>
+.pp-compare-link{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 12px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+}
 .pp-avatar-button {
     position: relative;
     flex-shrink: 0;

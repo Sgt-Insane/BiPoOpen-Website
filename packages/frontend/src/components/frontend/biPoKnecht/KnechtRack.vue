@@ -1,9 +1,11 @@
 <template>
     <div
+        ref="root"
         class="KnechtRack"
         :class="[`kn-rack--${direction}`, { 'kn-rack--target': isTarget, 'kn-rack--waiting': !isTarget, 'kn-rack--rotated': rotated, 'kn-rack--picking': !!game.pick.value }]"
-        :style="{ '--kn-team-color': TEAM_COLORS[teamIndex] }"
+        :style="{ '--kn-team-color': getTeamColor(game.match, teamIndex) }"
         @click="onTableClick"
+        @pointerdown.capture="rememberPointer"
     >
         <!-- Hinter den Bechern: Airball (Ball ueber den Tisch) -->
         <div v-if="isTarget" class="kn-zone kn-zone-airball" @click.stop="onAirballClick">
@@ -19,11 +21,17 @@
                     class="kn-cup"
                     :class="getCupClass(cup)"
                     :disabled="!isTarget"
+                    :data-cup="cup"
                     :aria-label="`Becher ${cup + 1}`"
                     @click.stop="onCupClick(cup, $event)"
                 >
                     <KnechtIcon v-if="getCupMark(cup)" :name="getCupMark(cup)!" class="kn-cup-mark" />
-                    <span v-else-if="pending.has(cup)" class="kn-cup-ball"></span>
+                    <!-- In dieser Runde getroffen: der Ball liegt im Becher; kleines Abzeichen, falls ein Treffer hier eine Bombe waere -->
+                    <template v-else-if="pending.has(cup)">
+                        <span class="kn-cup-ball"></span>
+                        <span v-if="isBombTarget(cup)" class="kn-cup-bomb-badge" title="Treffer hier = Bombe"><KnechtIcon name="bomb" /></span>
+                    </template>
+                    <span v-else class="kn-cup-number">{{ cup + 1 }}</span>
                 </button>
             </div>
         </div>
@@ -44,11 +52,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
+import { classifyMiss, type RackGeometry } from './knechtEdges';
+import { vibrate } from './knechtHaptics';
 import { CUP_ROWS, getStandingCups } from './knechtEngine';
 import type { KnechtIconName } from './knechtIcons';
-import { TEAM_COLORS } from './KnechtUtilFunctions';
+import { getTeamColor } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
 const props = defineProps<{
@@ -83,9 +93,10 @@ const pickIcon = computed<KnechtIconName>(() => props.game.pick.value?.type === 
 const getCupMark = (cup: number): KnechtIconName | null => {
     const pick = props.game.pick.value;
     if (pick && props.isTarget && (pick.chosen.includes(cup) || pick.cup === cup)) return pickIcon.value;
-    if (pending.value.has(cup) && props.isTarget && props.game.hittableCups.value.has(cup) && !pick) return 'bomb';
     return null;
 };
+
+const isBombTarget = (cup: number) => props.isTarget && !props.game.pick.value && props.game.hittableCups.value.has(cup);
 
 const pickText = computed(() => {
     const pick = props.game.pick.value;
@@ -96,15 +107,63 @@ const pickText = computed(() => {
 });
 
 // ─── Eingaben (Ball-Anzeige in Bildschirmkoordinaten, siehe useBiPoKnecht.markBall) ───
+// Ball (40 mm) zu Becheroeffnung (ca. 95 mm): der Ball wird immer im echten Verhaeltnis zum Becher gezeichnet
+const BALL_TO_CUP = 0.42;
+const root = ref<HTMLElement | null>(null);
+const getBallSize = () => (root.value?.querySelector('.kn-cup')?.getBoundingClientRect().width ?? 44) * BALL_TO_CUP;
+
+// Wo der Finger wirklich war: Chrome rueckt Tipps auf dem Handy auf nahe Schaltflaechen (Touch-Korrektur),
+// das Klick-Ereignis landet dann auf dem Becher, obwohl knapp daneben (= Kante) getippt wurde.
+// pointerdown kommt unkorrigiert, daher zaehlt diese Position.
+const lastPointer = ref<{ x: number; y: number; time: number } | null>(null);
+const rememberPointer = (event: PointerEvent) => { lastPointer.value = { x: event.clientX, y: event.clientY, time: event.timeStamp }; };
+const getTapPoint = (event: MouseEvent) => {
+    const pointer = lastPointer.value;
+    return pointer && event.timeStamp - pointer.time < 1000 ? pointer : { x: event.clientX, y: event.clientY };
+};
+
 const onCupClick = (cup: number, event: MouseEvent) => {
+    // Tipp ausserhalb des runden Bechers (Touch-Korrektur): ist ein Wurf auf den Tisch bzw. an die Kante.
+    // Tastatur (detail 0) hat keine Position und trifft immer.
+    const cupRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const tap = getTapPoint(event);
+    if (!props.game.pick.value && event.detail > 0 && Math.hypot(tap.x - (cupRect.left + cupRect.width / 2), tap.y - (cupRect.top + cupRect.height / 2)) > cupRect.width / 2) return onTableClick(event);
+    // Platz eines abgeraeumten Bechers (oder sonst nicht treffbar): zaehlt wie ein Tipp auf den Tisch
+    const pick = props.game.pick.value;
+    const tappable = pick ? pick.candidates.includes(cup) || pick.cup === cup : props.game.hittableCups.value.has(cup);
+    if (!tappable) return onTableClick(event);
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    if (props.game.tapCup(cup)) props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2);
+    if (props.game.tapCup(cup)) {
+        props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width * BALL_TO_CUP);
+        vibrate('hit');
+    }
+};
+
+// Lage der Becher auf dem Bildschirm (nach allen Drehungen), fuer die Kanten-Erkennung
+const getGeometry = (): RackGeometry | null => {
+    const cups = [...(root.value?.querySelectorAll<HTMLElement>('.kn-cup[data-cup]') ?? [])];
+    if (cups.length !== 10) return null;
+    const centers: { x: number; y: number }[] = [];
+    let radius = 0;
+    cups.forEach(element => {
+        const rect = element.getBoundingClientRect();
+        centers[Number(element.dataset.cup)] = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        radius = Math.min(rect.width, rect.height) / 2;
+    });
+    const hit = new Set(rack.value.hit);
+    return { centers, radius, standing: centers.map((_, cup) => cup).filter(cup => !hit.has(cup)) };
 };
 
 // Tippen auf den freien Tisch = Nullwurf, nur auf dem Feld, auf das geworfen wird
 const onTableClick = (event: MouseEvent) => {
     if (!props.isTarget || props.game.pick.value) return;
-    if (props.game.throwMiss('miss')) props.game.markBall('miss', event.clientX, event.clientY);
+    const geometry = getGeometry();
+    const tap = getTapPoint(event);
+    const detail: { spot?: { x: number; y: number }; edge?: EdgeHit } = geometry ? classifyMiss(tap, geometry) : {};
+    if (props.game.throwMiss('miss', detail)) {
+        props.game.markBall('miss', tap.x, tap.y, getBallSize());
+        vibrate(detail.edge ? 'edge' : 'table');
+    }
 };
 
 // Airball: der Ball landet irgendwo hinter dem Tisch
@@ -112,7 +171,8 @@ const onAirballClick = (event: MouseEvent) => {
     if (props.game.pick.value) return;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (props.game.throwMiss('airball')) {
-        props.game.markBall('airball', rect.left + rect.width * (.15 + Math.random() * .7), rect.top + rect.height * (.2 + Math.random() * .6));
+        vibrate('airball');
+        props.game.markBall('airball', rect.left + rect.width * (.15 + Math.random() * .7), rect.top + rect.height * (.2 + Math.random() * .6), getBallSize());
     }
 };
 </script>
@@ -214,10 +274,11 @@ const onAirballClick = (event: MouseEvent) => {
     justify-content: center;
     gap: calc(var(--kn-cup) * .14);
 }
-.kn-rack--left .kn-row,
-.kn-rack--right .kn-row{
-    flex-direction: column;
-}
+/* Becher 1 jeder Reihe liegt aus Sicht des Werfers links (siehe knechtFormations.ts).
+   Wartendes Team unten und linker Tisch im Schiedsrichter-Modus sind dafuer gespiegelt. */
+.kn-rack--down .kn-row{ flex-direction: row-reverse; }
+.kn-rack--left .kn-row{ flex-direction: column-reverse; }
+.kn-rack--right .kn-row{ flex-direction: column; }
 
 .kn-cup{
     position: relative;
@@ -238,12 +299,23 @@ const onAirballClick = (event: MouseEvent) => {
 .kn-cup-mark{
     font-size: calc(var(--kn-cup) * .4);
 }
+.kn-cup-number{
+    font-size: calc(var(--kn-cup) * .3);
+    font-weight: 800;
+    line-height: 1;
+    opacity: .55;
+    pointer-events: none;
+}
+.kn-cup--hit .kn-cup-number{
+    color: var(--bp-text-subtle);
+    opacity: .6;
+}
 .kn-cup-ball{
-    width: 34%;
-    height: 34%;
+    width: 42%;
+    height: 42%;
     border-radius: 50%;
-    background: var(--bp-surface);
-    box-shadow: 0 0 0 1px rgba(31, 35, 40, .15);
+    background: radial-gradient(circle at 35% 35%, #FFFFFF 0%, #EFEFEF 55%, #CFCFCF 100%);
+    box-shadow: 0 1px 3px rgba(31, 35, 40, .3);
 }
 
 .kn-cup--hittable{
@@ -257,11 +329,29 @@ const onAirballClick = (event: MouseEvent) => {
     box-shadow: inset 0 0 0 1.5px var(--bp-border-strong);
 }
 .kn-cup--pending{
-    background: var(--bp-gold-weak);
-    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) #F5A524;
-    color: var(--bp-gold);
+    background: color-mix(in srgb, var(--kn-team-color) 10%, var(--bp-surface));
+    box-shadow: inset 0 0 0 calc(var(--kn-cup) * .11) color-mix(in srgb, var(--kn-team-color) 55%, var(--bp-surface));
 }
-.kn-cup--bomb,
+.kn-cup--bomb{
+    cursor: pointer;
+}
+/* Kleines Abzeichen am Rand statt grossem Symbol: hier waere ein Treffer eine Bombe */
+.kn-cup-bomb-badge{
+    position: absolute;
+    top: -6%;
+    right: -6%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38%;
+    height: 38%;
+    border-radius: 50%;
+    background: var(--bp-surface);
+    box-shadow: 0 0 0 1.5px #F5A524, 0 2px 4px rgba(0, 0, 0, .15);
+    color: #C77700;
+    font-size: calc(var(--kn-cup) * .22);
+    pointer-events: none;
+}
 .kn-cup--candidate{
     cursor: pointer;
     animation: kn-glow 1.2s ease-in-out infinite;

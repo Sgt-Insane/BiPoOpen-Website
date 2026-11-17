@@ -1,7 +1,7 @@
 <template>
     <section class="pp-section">
         <div class="pp-section-head">
-            <h2 class="pp-section-title">Erfolge</h2>
+            <h2 class="pp-section-title">Auszeichnungen</h2>
             <button type="button" class="pp-ach-all" @click="sheetVisible = true">
                 Alle {{ unlockedCount }} <i class="pi pi-angle-right"></i>
             </button>
@@ -17,7 +17,7 @@
             </button>
         </div>
 
-        <!-- Rekorde, Leistung und Meilensteine zum Durchwischen -->
+        <!-- Leistung und Meilensteine zum Durchwischen (Rekorde haben einen eigenen Abschnitt) -->
         <div class="pp-ach-scroller">
             <button
                 v-for="badge in scrollerBadges"
@@ -39,7 +39,7 @@
         <!-- Alle Erfolge -->
         <BottomSheet v-model:visible="sheetVisible">
             <template #header>
-                <div class="pp-ach-sheet-title">Erfolge</div>
+                <div class="pp-ach-sheet-title">Auszeichnungen</div>
             </template>
 
             <template v-for="group in GROUPS" :key="group.key">
@@ -121,13 +121,12 @@ const props = defineProps<{
 
 const GROUPS: { key: PlayerBadgeGroup; label: string }[] = [
     { key: 'title', label: 'Titel' },
-    { key: 'record', label: 'Rekorde' },
     { key: 'performance', label: 'Leistung' },
     { key: 'milestone', label: 'Meilensteine' },
 ];
 
 // Stufen-Reihen: nur die hoechste erreichte und die naechste offene Stufe
-const visibleBadges = computed(() => props.badges.filter(badge => {
+const visibleBadges = computed(() => props.badges.filter(badge => badge.group !== 'record').filter(badge => {
     if (!badge.tier || badge.locked) return true;
     const higherUnlocked = props.badges.some(other =>
         other.tier === badge.tier && !other.locked && props.badges.indexOf(other) > props.badges.indexOf(badge));
@@ -144,7 +143,7 @@ const groupedBadges = computed(() => Object.fromEntries(GROUPS.map(({ key }) => 
     .sort((a, b) => key === 'title' ? b.time - a.time : getStateOrder(a) - getStateOrder(b))
 ])) as Record<PlayerBadgeGroup, PlayerBadge[]>);
 
-const scrollerBadges = computed(() => [...groupedBadges.value.record, ...groupedBadges.value.performance, ...groupedBadges.value.milestone]);
+const scrollerBadges = computed(() => [...groupedBadges.value.performance, ...groupedBadges.value.milestone]);
 
 const getIcon = (badge: PlayerBadge) => badge.locked && !badge.former ? 'lock' : badge.icon;
 const getIconClass = (badge: PlayerBadge) => badge.locked ? 'is-locked' : `pp-ach-icon--${badge.group}`;

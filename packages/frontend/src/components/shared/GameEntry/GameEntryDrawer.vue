@@ -28,6 +28,8 @@
                     <span class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
                 </div>
 
+                <div v-if="side.players.length > 1" class="ge-side-hint">Treffer je Spieler · das Team-Ergebnis ist die Summe</div>
+
                 <div v-for="(player, playerIndex) in side.players" :key="playerIndex" class="ge-player">
                     <!-- Feste Namen: bei mehreren Spielern pro Seite steht der Name ueber den Treffern -->
                     <div v-if="lockedNames && side.players.length > 1" class="ge-player-name">
@@ -49,6 +51,7 @@
                                 :modelValue="player.name"
                                 :excludedNames="getExcludedNames(player)"
                                 :removable="playerIndex > 0"
+                                :placeholder="playerIndex > 0 ? `Mitspieler für ${sideLabels[sideIndex]} suchen …` : `Spieler für ${sideLabels[sideIndex]} suchen …`"
                                 @update:modelValue="name => setPlayerName(side, playerIndex, name)"
                                 @clear="clearPlayer(side, playerIndex)"
                             />
@@ -64,14 +67,38 @@
                     />
                 </div>
 
-                <button v-if="canAddPlayer(side)" type="button" class="ge-add-player" @click="addPlayer(side)">
+                <button v-if="canAddPlayer(side)" type="button" class="ge-add-player" :aria-label="`Mitspieler für ${sideLabels[sideIndex]} hinzufügen`" @click="addPlayer(side)">
                     <i class="pi pi-plus"></i>
-                    Mitspieler ({{ side.players.length + 1 }} gegen {{ side.players.length + 1 }})
+                    Mitspieler hinzufügen
                 </button>
+                <!-- Optionaler Teamname, sobald eine Seite mehrere Spieler hat. Unter den Spielern, damit er beim
+                     Hinzufuegen eines Mitspielers nicht ueber den Suchfeldern auftaucht (Nutzertest: Name landete als Teamname) -->
+                <input
+                    v-if="allowTeamName && !lockedNames && side.players.length > 1"
+                    v-model="side.name"
+                    class="ge-team-name-input"
+                    type="text"
+                    maxlength="30"
+                    placeholder="Teamname (optional)"
+                    autocomplete="off"
+                    :aria-label="`Teamname ${sideLabels[sideIndex]}`"
+                />
+            </div>
+
+            <!-- Offene Spiele: gewaehlte Spieler zufaellig auf die Teams verteilen -->
+            <button v-if="canShuffle" type="button" class="ge-add-player ge-shuffle" @click="shuffleTeams()">
+                <i class="pi pi-sync"></i>
+                Teams auslosen
+            </button>
+
+            <!-- Unmoeglicher Spielstand (z.B. 2 gegen 2 mit je 10 Treffern): Warnung, Speichern gesperrt -->
+            <div v-if="isImpossible" class="ge-warning" role="alert">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span><b>Unmöglicher Spielstand.</b> Bis 10 gespielt, mehr nur in der Verlängerung (je 3 Becher). Bei mehreren Spielern zählen die Treffer zusammen.</span>
             </div>
 
             <!-- Elo-Vorschau, sobald das Ergebnis feststeht -->
-            <div v-if="eloChanges.length" class="ge-elo">
+            <div v-if="eloChanges.length && !isImpossible" class="ge-elo">
                 <div class="ge-elo-header">
                     <span class="ge-elo-title">Elo nach diesem Spiel</span>
                     <button type="button" class="ge-elo-info" aria-label="Elo erklärt" @click="eloExplainedVisible = true">
@@ -91,9 +118,13 @@
                 <span class="ge-launch-icon">🎯</span>
                 <span class="ge-launch-text">
                     <span class="ge-launch-title">Mit BiPo Knecht spielen</span>
-                    <span class="ge-launch-subtitle">{{ canLaunch ? 'Jeden Wurf live zählen, Ergebnis wird automatisch eingetragen' : incompleteLabel }}</span>
+                    <span class="ge-launch-subtitle">{{ canLaunch ? 'Jeden Wurf live zählen, Ergebnis wird automatisch eingetragen' : missingLabel }}</span>
                 </span>
                 <i class="pi pi-angle-right"></i>
+            </button>
+            <!-- Zweites Handy: einem laufenden Knecht-Spiel mit Code beitreten -->
+            <button v-if="launch && isFeatureOn('live')" type="button" class="ge-join" @click="onJoin()">
+                <i class="pi pi-mobile"></i> Spiel läuft schon auf einem anderen Handy? <b>Mit Code beitreten</b>
             </button>
 
             <div class="ge-footer">
@@ -121,6 +152,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import router from '@/router.js';
 import BottomSheet from '@/components/shared/BottomSheet.vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import EloChip from '@/components/shared/EloChip.vue';
@@ -130,8 +162,9 @@ import { ELO_START, getEloDeltas } from '@/components/frontend/worldRanking/eloR
 import { getPlayerForLeagueTeam } from '@/components/frontend/league/LeaguePlayersData';
 import GameEntryPlayerSearch from './GameEntryPlayerSearch.vue';
 import GameEntryScorePicker from './GameEntryScorePicker.vue';
-import { createEmptySides, getScoreChances, getSideName, getSideScore, type GameEntrySide } from './gameEntry';
+import { createEmptySides, getScoreChances, getSideName, getSideScore, isImpossibleScore, type GameEntrySide } from './gameEntry';
 import { PUSH_SETTINGS_PATH, usePushNotifications } from '@/components/shared/usePushNotifications';
+import { isFeatureOn } from '@/util/featureFlags';
 
 const MAX_PLAYERS_PER_SIDE = 4;
 
@@ -144,6 +177,7 @@ const props = withDefaults(defineProps<{
     sideLabels?: [string, string];
     lockedNames?: boolean;
     allowExtraPlayers?: boolean;        // "+ Mitspieler" (2 gegen 2 ...)
+    allowTeamName?: boolean;            // optionaler Teamname bei mehreren Spielern pro Seite (offene Spiele)
     allowDraw?: boolean;
     maxScore?: number;
     incompleteLabel?: string;           // Button-Text, solange Namen fehlen
@@ -154,7 +188,7 @@ const props = withDefaults(defineProps<{
     launch?: (sides: GameEntrySide[]) => void;
 }>(), {
     title: 'Spiel eintragen',
-    sideLabels: () => ['Seite 1', 'Seite 2'],
+    sideLabels: () => ['Team 1', 'Team 2'],
     allowDraw: true,
     maxScore: 21,
     incompleteLabel: 'Spieler wählen',
@@ -180,6 +214,27 @@ const allNames = computed(() => sides.value.flatMap(side => side.players.map(pla
 
 const getExcludedNames = (player: { name: string }) => allNames.value.filter(name => name !== player.name.trim());
 
+// Teams auslosen: ab drei gewaehlten Spielern und solange noch keine Treffer eingetragen sind.
+// Die Platzzahl je Team bleibt, nur die Namen werden gemischt.
+const canShuffle = computed(() => !props.lockedNames
+    && sides.value.flatMap(side => side.players).filter(player => player.name.trim()).length >= 3
+    && sides.value.every(side => side.players.every(player => player.score === null)));
+const shuffleTeams = () => {
+    const names = sides.value.flatMap(side => side.players.map(player => player.name.trim())).filter(Boolean);
+    for (let index = names.length - 1; index > 0; index--) {
+        const swap = Math.floor(Math.random() * (index + 1));
+        [names[index], names[swap]] = [names[swap], names[index]];
+    }
+    // abwechselnd verteilen, damit beide Teams gleich viele bekommen
+    const slots = [0, 1].flatMap(sideIndex => sides.value[sideIndex].players.map((_, playerIndex) => ({ sideIndex, playerIndex })))
+        .sort((first, second) => first.playerIndex - second.playerIndex || first.sideIndex - second.sideIndex);
+    sides.value.forEach(side => { side.name = ''; side.players.forEach(player => { player.name = ''; }); });
+    names.forEach((name, index) => {
+        const slot = slots[index];
+        if (slot) sides.value[slot.sideIndex].players[slot.playerIndex].name = name;
+    });
+};
+
 const setPlayerName = (side: GameEntrySide, playerIndex: number, name: string) => {
     side.players[playerIndex].name = name;
 }
@@ -190,6 +245,8 @@ const clearPlayer = (side: GameEntrySide, playerIndex: number) => {
         side.players.splice(playerIndex, 1);
     else
         side.players[0] = { name: '', score: null };
+    // Teamname gibt es nur bei mehreren Spielern: im 1 gegen 1 heisst die Seite wie der Spieler
+    if (props.allowTeamName && side.players.length === 1) side.name = '';
 }
 
 const canAddPlayer = (side: GameEntrySide) =>
@@ -204,8 +261,15 @@ const setTeams = (teams: { name: string; logo?: string }[]) => {
     sides.value = teams.map(team => ({ logo: team.logo, players: [{ name: team.name, score: null }] }));
 }
 
+// Leere Plaetze (z.B. aus Versehen "Mitspieler hinzufuegen") zaehlen nicht, egal an welcher Stelle:
+// weder als fehlender Spieler noch beim Speichern. Nur ein ganz leeres Team behaelt seinen einen Platz.
+const filledSides = computed(() => sides.value.map(side => {
+    const players = side.players.filter(player => player.name.trim() || player.score !== null);
+    return { ...side, players: players.length ? players : side.players.slice(0, 1) };
+}));
+
 // ─── Ergebnis ───
-const totals = computed(() => sides.value.map(getSideScore));
+const totals = computed(() => filledSides.value.map(getSideScore));
 
 const winnerIndex = computed(() => {
     const [score1, score2] = totals.value;
@@ -213,21 +277,28 @@ const winnerIndex = computed(() => {
     return score1 > score2 ? 0 : 1;
 });
 
-const hasAllNames = computed(() => sides.value.every(side => side.players.every(player => player.name.trim())));
+const hasAllNames = computed(() => filledSides.value.every(side => side.players.every(player => player.name.trim())));
 const hasDuplicateNames = computed(() =>
     new Set(allNames.value.map(name => name.toLowerCase())).size !== allNames.value.length
 );
 const hasAllScores = computed(() => totals.value.every(total => total !== null));
 const isDraw = computed(() => hasAllScores.value && totals.value[0] === totals.value[1]);
 
+const isImpossible = computed(() => hasAllScores.value && isImpossibleScore(totals.value[0]!, totals.value[1]!));
+
 const canSave = computed(() =>
-    hasAllNames.value && !hasDuplicateNames.value && hasAllScores.value && (props.allowDraw || !isDraw.value)
+    hasAllNames.value && !hasDuplicateNames.value && hasAllScores.value && !isImpossible.value && (props.allowDraw || !isDraw.value)
 );
 
 const saveLabel = computed(() => {
     if (!hasAllNames.value) return props.incompleteLabel;
     if (hasDuplicateNames.value) return 'Doppelt gewählt';
-    if (!hasAllScores.value) return 'Treffer wählen';
+    if (!hasAllScores.value) {
+        // Bei mehreren Spielern pro Team zaehlt jeder einzeln: sagen, wer noch fehlt
+        const missing = filledSides.value.flatMap(side => side.players).find(player => player.score === null);
+        return missing?.name.trim() ? `Treffer für ${missing.name.trim()} wählen` : 'Treffer wählen';
+    }
+    if (isImpossible.value) return `Unmöglicher Spielstand · ${totals.value[0]} : ${totals.value[1]}`;
     if (isDraw.value && !props.allowDraw) return 'Kein Unentschieden möglich';
     return `Ergebnis speichern · ${totals.value[0]} : ${totals.value[1]}`;
 });
@@ -240,13 +311,13 @@ const eloExplainedVisible = ref(false);
 const eloChanges = computed(() => {
     if (!props.eloPreview || !isEloLoaded.value || winnerIndex.value === -1 || !hasAllNames.value || hasDuplicateNames.value) return [];
 
-    const states = sides.value.map(side => side.players.map(player => getEloState(player.name) ?? { rating: ELO_START, games: 0 }));
+    const states = filledSides.value.map(side => side.players.map(player => getEloState(player.name) ?? { rating: ELO_START, games: 0 }));
     const deltas = getEloDeltas(states, {
         winner: winnerIndex.value as 0 | 1,
         scores: totals.value as [number, number],
-        hits: sides.value.map(side => side.players.map(player => player.score ?? 0)),
+        hits: filledSides.value.map(side => side.players.map(player => player.score ?? 0)),
     });
-    return sides.value.flatMap((side, sideIndex) => side.players.map((player, playerIndex) => {
+    return filledSides.value.flatMap((side, sideIndex) => side.players.map((player, playerIndex) => {
         const before = states[sideIndex][playerIndex].rating;
         const delta = deltas[sideIndex][playerIndex];
         const name = player.name.trim();
@@ -278,7 +349,7 @@ const runAction = async (action: () => Promise<boolean | void>, successSummary: 
 
 const onSave = () => {
     if (!canSave.value) return;
-    const result: GameEntrySide[] = JSON.parse(JSON.stringify(sides.value));
+    const result: GameEntrySide[] = JSON.parse(JSON.stringify(filledSides.value));
     const [name1, name2] = result.map(getSideName);
     const playerNames = allNames.value.map(name => getPlayerForLeagueTeam(name) ?? name);
     runAction(() => props.save(result), `${name1} ${totals.value[0]} : ${totals.value[1]} ${name2}`, 'Spiel nicht gespeichert', () => takePushHint(playerNames));
@@ -311,9 +382,29 @@ const onDelete = () => {
 // ─── BiPo Knecht ───
 const canLaunch = computed(() => hasAllNames.value && !hasDuplicateNames.value);
 
+// Was fehlt noch fuer den Knecht? z.B. "Noch 1 Spieler für Team 2"
+const missingLabel = computed(() => {
+    if (hasDuplicateNames.value) return 'Ein Spieler ist doppelt gewählt';
+    const missing = filledSides.value.map(side => side.players.filter(player => !player.name.trim()).length);
+    const parts = missing.flatMap((count, index) => count ? [`${count} Spieler für ${props.sideLabels[index]}`] : []);
+    return parts.length ? `Noch ${parts.join(' und ')} wählen` : props.incompleteLabel;
+});
+
+const onJoin = () => {
+    const answer = window.prompt('Code vom anderen Handy (steht dort im Knecht-Menü unter „Live“):');
+    if (answer === null) return;
+    const code = answer.trim();
+    if (!code) {
+        toast.add({ severity: 'warn', summary: 'Kein Code eingegeben', detail: 'Den Code zeigt das andere Handy im Knecht-Menü unter „Live“.', life: 4000 });
+        return;
+    }
+    visible.value = false;
+    router.push({ path: '/Knecht', query: { join: code.toUpperCase() } });
+};
+
 const onLaunch = () => {
     if (!canLaunch.value || !props.launch) return;
-    const result: GameEntrySide[] = JSON.parse(JSON.stringify(sides.value));
+    const result: GameEntrySide[] = JSON.parse(JSON.stringify(filledSides.value));
     visible.value = false;
     props.launch(result);
 }
@@ -355,6 +446,27 @@ const onLaunch = () => {
     box-shadow: 0 0 0 1px var(--main-color);
 }
 
+.ge-team-name-input{
+    width: 100%;
+    margin-top: 8px;
+    height: 38px;
+    padding: 0 12px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 10px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+}
+.ge-team-name-input::placeholder{
+    font-weight: 500;
+    color: var(--bp-text-subtle);
+}
+.ge-team-name-input:focus{
+    outline: none;
+    border-color: var(--main-color);
+}
 .ge-side-header{
     display: flex;
     align-items: center;
@@ -415,6 +527,11 @@ const onLaunch = () => {
     font-weight: 800;
     color: var(--bp-text-strong);
 }
+.ge-side-hint{
+    font-size: 12px;
+    color: var(--bp-text-faint);
+    margin: -2px 0 6px;
+}
 .ge-side-score--empty{
     color: var(--bp-text-faint);
     font-weight: 600;
@@ -468,6 +585,21 @@ const onLaunch = () => {
 }
 
 /* ─── Elo-Vorschau ─── */
+.ge-warning{
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: color-mix(in srgb, #E5484D 12%, transparent);
+    color: var(--bp-text, inherit);
+    font-size: 14px;
+    line-height: 1.4;
+}
+.ge-warning .pi{
+    margin-top: 2px;
+    color: #E5484D;
+}
 .ge-elo{
     display: flex;
     flex-direction: column;
@@ -542,6 +674,23 @@ const onLaunch = () => {
 .ge-elo-down{ color: var(--bp-danger); }
 
 /* ─── BiPo Knecht ─── */
+.ge-join{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: -4px;
+    padding: 6px 8px;
+    border: none;
+    background: none;
+    color: var(--bp-text-muted);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+
+    b { color: var(--main-color); }
+}
 .ge-launch{
     display: flex;
     align-items: center;

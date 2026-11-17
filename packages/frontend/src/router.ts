@@ -29,6 +29,16 @@ const routes = [
 	},
 
 	{
+		path: '/Offene-Shots',
+		name: 'Offene Shots',
+		component: () => import('@/components/frontend/shots/_OffeneShots.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Offene Shots',
+			description: 'Offene Shots aus dem BiPo Knecht'
+		}
+	},
+
+	{
 		path: '/Nackte-Meilen',
 		name: 'Nackte Meilen',
 		component: () => import('@/components/frontend/nackteMeilen/_NackteMeilen.vue'),
@@ -119,6 +129,53 @@ const routes = [
 		meta: {
 			title: 'Weck BiPo Open - Benachrichtigungen',
 			description: 'Benachrichtigungen',
+			detailPage: true
+		}
+	},
+
+	{
+		path: '/Neuigkeiten',
+		name: 'Neuigkeiten',
+		component: () => import('@/components/frontend/news/_Neuigkeiten.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Neuigkeiten',
+			description: 'Was ist neu auf der Seite und im BiPo Knecht',
+			detailPage: true
+		}
+	},
+
+	// Spieler-Vergleich: /Vergleich?a=Name&b=Name
+	{
+		path: '/Vergleich',
+		name: 'Vergleich',
+		component: () => import('@/components/frontend/playerProfile/_PlayerCompare.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Spieler-Vergleich',
+			description: 'Zwei Spieler direkt vergleichen',
+			detailPage: true
+		}
+	},
+
+	// Entwicklermodus: Features in Arbeit auf diesem Geraet einschalten (versteckt: 7x auf "Neuigkeiten" tippen)
+	{
+		path: '/Entwickler',
+		name: 'Entwickler',
+		component: () => import('@/components/frontend/developer/_Developer.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Entwickler',
+			description: 'Entwicklermodus',
+			detailPage: true
+		}
+	},
+
+	// Live-Ticker eines laufenden Knecht-Spiels
+	{
+		path: '/Live/:LiveId',
+		name: 'Live',
+		component: () => import('@/components/frontend/live/_LiveGame.vue'),
+		meta: {
+			title: 'Weck BiPo Open - Live',
+			description: 'BiPo Knecht live: Spielstand und Spielverlauf',
 			detailPage: true
 		}
 	},
@@ -293,7 +350,9 @@ const routes = [
 const router = createRouter({
 	history: createWebHistory(),
 	routes: routes,
-	scrollBehavior() {
+	scrollBehavior(to) {
+		// Anker wie /Regeln#begriffe: nach dem Rendern der Seite dorthin springen (unter der festen App-Leiste)
+		if (to.hash) return new Promise(resolve => setTimeout(() => resolve({ el: to.hash, top: 70 }), 300));
 		return { top: 0 }
 	}
 });

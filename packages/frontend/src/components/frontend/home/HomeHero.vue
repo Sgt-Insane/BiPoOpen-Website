@@ -119,7 +119,7 @@ const buildSlides = (): HeroSlide[] => {
     if (openGamesMonth)
         slides.push({ key: 'open-games', component: SlideOpenGames, props: openGamesMonth });
 
-    const nackteMeilen = getNackteMeilen(props.openGames);
+    const nackteMeilen = getNackteMeilen([...props.openGames, ...props.leagueGames]);
     if (nackteMeilen.offen.length || nackteMeilen.absolviert.length)
         slides.push({ key: 'nackte-meilen', component: SlideNackteMeilen, props: nackteMeilen });
 

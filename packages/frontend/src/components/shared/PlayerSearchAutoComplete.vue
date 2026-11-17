@@ -15,6 +15,7 @@
         v-bind="$attrs"
         class="p-0"
         inputClass="!p-[5px]"
+        :pt="{ list: { onClick: stopListClick } }"
     >
         <template #option="{ option }">
             <div class="flex items-center gap-[8px]">
@@ -30,6 +31,7 @@ import { nextTick, ref } from 'vue';
 import AutoComplete from 'primevue/autocomplete';
 import Avatar from '@/components/shared/Avatar.vue';
 import { getAllPlayerNames, getPlayerMatchCounts } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
+import { rankPlayerNames } from '@/components/shared/playerNameSearch';
 
 defineOptions({ inheritAttrs: false });
 
@@ -56,6 +58,10 @@ let namesLoaded = false;
 let namesLoading = false;
 const suggestions = ref<string[]>([]);
 
+// Klick auf einen Vorschlag nicht bis zum Rahmen des Feldes durchreichen: PrimeVue will dort das Eingabefeld
+// fokussieren, das nach der Auswahl schon weg ist (Fehler "reading '$el'")
+const stopListClick = (event: MouseEvent) => event.stopPropagation();
+
 const scrollSuggestionsToBottom = async () => {
     await nextTick();
     const panel = document.querySelector<HTMLElement>('.bipo-player-autocomplete-panel');
@@ -80,12 +86,8 @@ const onSearch = async (event: { query: string }) => {
         return;
     }
     if (!namesLoaded) await loadNames();
-    suggestions.value = names
-        .filter(n => n.toLowerCase().includes(query))
-        .sort((firstName, secondName) => {
-            const matchDifference = (matchCounts[secondName] ?? 0) - (matchCounts[firstName] ?? 0);
-            return matchDifference || firstName.localeCompare(secondName, 'de', { sensitivity: 'base' });
-        })
+    // Beste Treffer unten, direkt ueber dem Eingabefeld (die Liste oeffnet nach oben)
+    suggestions.value = rankPlayerNames(names, query, matchCounts)
         .slice(0, props.maxResults)
         .reverse();
     await scrollSuggestionsToBottom();

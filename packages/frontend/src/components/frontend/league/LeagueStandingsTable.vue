@@ -26,20 +26,22 @@
         </Column>
 
         <!-- Spiele -->
-        <Column :header="labels.games" field="ammountOfMatches" />
+        <Column field="ammountOfMatches"><template #header><GlossaryWord term="tableColumns">{{ labels.games }}</GlossaryWord></template></Column>
 
         <!-- Siege -->
-        <Column :header="labels.wins" field="wins" class="bp-col-strong" />
+        <Column field="wins" class="bp-col-strong"><template #header><GlossaryWord term="tableColumns">{{ labels.wins }}</GlossaryWord></template></Column>
 
         <!-- Niederlagen -->
-        <Column :header="labels.losses">
+        <Column>
+            <template #header><GlossaryWord term="tableColumns">{{ labels.losses }}</GlossaryWord></template>
             <template #body="slotProps">
                 {{ slotProps.data.ammountOfMatches - slotProps.data.wins }}
             </template>
         </Column>
 
         <!-- Trefferdifferenz, Antippen zeigt die Treffer (öffnet nicht das Team) -->
-        <Column :header="labels.diff">
+        <Column>
+            <template #header><GlossaryWord term="tableColumns">{{ labels.diff }}</GlossaryWord></template>
             <template #body="slotProps">
                 <span
                     v-tooltip.top.focus="`${slotProps.data.hitDifference} Treffer`"
@@ -52,7 +54,8 @@
         </Column>
 
         <!-- Trend: letzte 5 Spiele, neuestes rechts -->
-        <Column header="Trend">
+        <Column>
+            <template #header><GlossaryWord term="tableColumns">Trend</GlossaryWord></template>
             <template #body="slotProps">
                 <div class="league-form">
                     <span
@@ -76,6 +79,7 @@
 </template>
 
 <script setup lang="ts">
+import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import { computed } from 'vue';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';

@@ -11,6 +11,7 @@
             :class="{ 'gs-selected': score === modelValue }"
             :style="{ '--gs-weight': weights[score] }"
             :aria-checked="score === modelValue"
+            :aria-label="`${score} ${label}`"
             :disabled="disabled"
             @click="emit('update:modelValue', score)"
         >{{ score }}</button>
@@ -85,7 +86,7 @@ const gridStyle = computed(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 34px;
+    height: 44px;           /* gut treffbar mit dem Daumen */
     padding: 0;
     border: 1px solid var(--bp-border);
     border-radius: 8px;

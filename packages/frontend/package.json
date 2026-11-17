@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "version:next": "node scripts/next-version.mjs",
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",

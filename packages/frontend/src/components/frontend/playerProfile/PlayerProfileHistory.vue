@@ -48,6 +48,7 @@ const props = defineProps<{ matchHistory: MatchHistoryEntry[] }>();
 const SOURCE_LABELS: Record<string, string> = {
     'Offene Spiele 1v1': 'Offenes Spiel',
     'Offene Spiele 2v2': 'Offenes Spiel',
+    'Offene Spiele sonstige': 'Offenes Spiel',
     'BiPo League': 'Liga',
     'BiPo League Cup': 'Cup',
     'BiPo Open Turniere': 'BiPo Open',

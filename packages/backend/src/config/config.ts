@@ -16,6 +16,8 @@ export const config = {
     server: {
         port: Server_PORT,
     },
+    // Geheimnis fuer den Release-Push (GitHub Action nach dem Deploy), siehe controllers/Push.ts releasePush
+    releaseSecret: process.env.RELEASE_PUSH_SECRET || '',
     vapid: {
         publicKey: process.env.VAPID_PUBLIC_KEY || '',
         privateKey: process.env.VAPID_PRIVATE_KEY || '',

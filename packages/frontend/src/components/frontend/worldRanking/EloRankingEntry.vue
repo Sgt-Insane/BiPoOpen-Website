@@ -1,6 +1,8 @@
 <template>
     <div class="elo-entry" :class="{ 'elo-entry-top': entry.rank !== null && entry.rank <= 3 }">
-        <button type="button" class="elo-row" :aria-expanded="expanded" @click="emit('toggle')">
+        <!-- Spieler: Tipp auf die Zeile oeffnet das Profil, der Pfeil rechts klappt die Details auf -->
+        <div class="elo-row-wrap">
+        <button type="button" class="elo-row" :aria-expanded="mode === 'players' ? undefined : expanded" @click="mode === 'players' ? openPlayerProfile(entry.name) : emit('toggle')">
             <div class="elo-col-rank">
                 <div class="elo-rank">{{ entry.rank ?? '–' }}</div>
                 <div v-if="entry.rank !== null" class="elo-trend" :class="getTrendClass(entry.trend)">{{ getTrendLabel(entry.trend) }}</div>
@@ -20,6 +22,10 @@
                 <div class="elo-delta" :class="getDeltaClass(entry.ratingChange)">{{ formatDelta(entry.ratingChange) }}</div>
             </div>
         </button>
+        <button type="button" class="elo-expand" :class="{ 'is-open': expanded }" :aria-expanded="expanded" :aria-label="expanded ? 'Details schließen' : 'Details anzeigen'" @click="emit('toggle')">
+            <i class="pi pi-chevron-down"></i>
+        </button>
+        </div>
 
         <div v-if="expanded" class="elo-details">
             <div class="elo-stats">
@@ -116,12 +122,34 @@ const getTrendClass = (trend: number | null) => {
     background: var(--bp-gold-faint);
 }
 
+.elo-row-wrap {
+    display: flex;
+    align-items: stretch;
+}
+.elo-expand {
+    flex-shrink: 0;
+    width: 44px;
+    border: none;
+    background: none;
+    color: var(--bp-text-muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    i {
+        font-size: 12px;
+        transition: transform .2s ease;
+    }
+}
+.elo-expand.is-open i {
+    transform: rotate(180deg);
+}
 .elo-row {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 12px;
-    width: 100%;
-    padding: 12px 14px;
+    padding: 12px 0 12px 14px;
     border: none;
     background: none;
     color: inherit;

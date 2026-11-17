@@ -5,7 +5,7 @@
             <Avatar :name="modelValue" shape="circle" class="gp-avatar" />
             <span class="gp-chip-name">{{ modelValue }}</span>
             <EloChip :rating="getElo(modelValue)" />
-            <button type="button" class="gp-icon-button" aria-label="Spieler entfernen" @click="emit('clear')">
+            <button type="button" class="gp-icon-button" :aria-label="`${modelValue} entfernen`" @click="emit('clear')">
                 <i class="pi pi-times"></i>
             </button>
         </div>
@@ -14,9 +14,12 @@
         <template v-else>
             <div class="gp-input-wrap" :class="{ 'gp-input-wrap--open': showResults }">
                 <i class="pi pi-search gp-search-icon"></i>
+                <!-- :value + @input statt v-model: v-model wartet bei Tastaturen mit Wortvorschlaegen (Samsung, Gboard)
+                     bis das Wort fertig ist, die Vorschlaege aktualisierten sich dann nicht beim Tippen -->
                 <input
                     ref="inputEl"
-                    v-model="query"
+                    :value="query"
+                    @input="query = ($event.target as HTMLInputElement).value"
                     class="gp-input"
                     type="text"
                     :placeholder="placeholder"
@@ -55,11 +58,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import EloChip from '@/components/shared/EloChip.vue';
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import { getAllPlayerNames, getPlayerMatchCounts } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
+import { rankPlayerNames } from '@/components/shared/playerNameSearch';
 
 const MAX_RESULTS = 6;
 
@@ -95,15 +99,11 @@ const onFocus = async () => {
     [names.value, matchCounts.value] = await Promise.all([getAllPlayerNames(), getPlayerMatchCounts()]);
 }
 
-// Leere Suche: die aktivsten Spieler zur schnellen Auswahl.
+// Leere Suche: die aktivsten Spieler zur schnellen Auswahl. Sonst: Namensanfang zuerst (playerNameSearch).
 const suggestions = computed(() => {
     const search = normalize(query.value);
     const excluded = props.excludedNames.map(normalize);
-    return names.value
-        .filter(name => !excluded.includes(normalize(name)) && normalize(name).includes(search))
-        .sort((name1, name2) =>
-            (matchCounts.value[name2] ?? 0) - (matchCounts.value[name1] ?? 0) || name1.localeCompare(name2, 'de', { sensitivity: 'base' })
-        )
+    return rankPlayerNames(names.value.filter(name => !excluded.includes(normalize(name))), search, matchCounts.value)
         .slice(0, MAX_RESULTS);
 });
 
@@ -123,6 +123,19 @@ watch(showResults, async (visible) => {
     await nextTick();
     resultsEl.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 });
+
+// Handy-Tastatur geht auf (sichtbarer Bereich wird kleiner): Feld nach oben holen, damit die
+// Vorschlaege darunter nicht hinter der Tastatur liegen
+const keepAboveKeyboard = () => {
+    if (isFocused.value) inputEl.value?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+};
+watch(isFocused, focused => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    if (focused) viewport.addEventListener('resize', keepAboveKeyboard);
+    else viewport.removeEventListener('resize', keepAboveKeyboard);
+});
+onBeforeUnmount(() => window.visualViewport?.removeEventListener('resize', keepAboveKeyboard));
 
 const select = (name: string) => {
     query.value = '';

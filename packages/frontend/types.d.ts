@@ -50,6 +50,17 @@ declare global {
         cupRound?: number;
         // Schiedsrichter, falls das Spiel im BiPo Knecht von einer dritten Person eingetragen wurde
         referee?: string;
+        // BiPo Knecht: Ereignisse ohne eigenen Wurf (Re-Rack, Nachwurf, Verlaengerung)
+        events?: MatchEvent[];
+        // BiPo Knecht: Becherfarbe je Team, falls getauscht (Standard rot / blau)
+        cupColors?: string[];
+    };
+
+    type MatchEvent = {
+        kind: 'reRack' | 'nachwurf' | 'overtime' | 'turnStart';
+        teamIndex: number;          // Re-Rack: Team, das es verlangt hat; Nachwurf/Verlaengerung: Team, das beginnt
+        afterTurnIndex: number;     // steht vor dem Turn mit diesem Index
+        time?: number;
     };
 
     type LeagueCupParticipant = {
@@ -96,15 +107,21 @@ declare global {
     type Turn = {
         playerIndex: number;
         teamIndex: number;
-        type: 'hit' | 'miss' | 'airball' | 'bomb' | 'bouncer' | 'trickshot' | 'onfire' | 'ballsback' | 'lastCup' | 'deathcup' | 'owncup';
-        data: HitTurn | MissTurn | AirballTurn | BombTurn | BouncerTurn | TrickshotTurn | OnFireTurn | BallsBackTurn | LastCupTurn | DeathcupTurn | OwnCupTurn;
+        type: 'hit' | 'miss' | 'airball' | 'bomb' | 'bouncer' | 'trickshot' | 'onfire' | 'ballsback' | 'lastCup' | 'deathcup' | 'owncup' | 'penalty';
+        data: HitTurn | MissTurn | AirballTurn | BombTurn | BouncerTurn | TrickshotTurn | OnFireTurn | BallsBackTurn | LastCupTurn | DeathcupTurn | OwnCupTurn | PenaltyTurn;
         time: number; 
     };
 
     // Zusatzbecher (Bouncer, Bombe) fehlen, wenn sonst der letzte Becher gefallen waere.
     // bouncer: Treffer war zusaetzlich ein Bouncer (z.B. Balls Back per Bouncer).
     type HitTurn = { cupIndex: number };
-    type MissTurn = { };
+    // Nullwurf: spot = wo der Ball gelandet ist (Becherdurchmesser, Ursprung Becher 1, x nach rechts, y nach hinten,
+    // aus Sicht des Werfers), edge = Ball hat die Kante eines Bechers getroffen
+    type MissTurn = { spot?: { x: number; y: number }; edge?: EdgeHit };
+    type EdgeSide = 'vorne' | 'vorne-rechts' | 'rechts' | 'hinten-rechts' | 'hinten' | 'hinten-links' | 'links' | 'vorne-links';
+    // cup: Becher-Index (0-9), side: grobe Seite aus dem Tipp. Knecht Pro: angle = genaue Stelle am Rand in Grad
+    // (0 = vorne zum Werfer, positiv = rechts), second = zweite Kontaktstelle bei einer Doppelkante
+    type EdgeHit = { cup: number; side: EdgeSide; angle?: number; double?: boolean; second?: { cup: number; angle: number } };
     type AirballTurn = { };
     type BombTurn = { cupIndex1: number, cupIndex2?: number, cupIndex3?: number, cupIndex4?: number, bouncer?: boolean };   // cupIndex4 / bouncer: Bombe per Bouncer (4 Becher)
     type BouncerTurn = { cupIndex1: number, cupIndex2?: number };
@@ -113,7 +130,9 @@ declare global {
     type BallsBackTurn = { cupIndex1: number, cupIndex2?: number, bouncer?: boolean };
     type LastCupTurn = { cupIndex: number, double?: boolean };   // double: weiterer Ball in den letzten Becher (Sofortsieg)
     type DeathcupTurn = { cups: number[] };             // alle uebrigen Becher des Gegners
-    type OwnCupTurn = { cups: number[] };               // eigene Becher runtergeworfen, zaehlen fuer den Gegner
+    type OwnCupTurn = { cups: number[] };
+    // Ellenbogen-Call: gelb = Verwarnung, rot = Strafbecher (eigener Becher, zaehlt fuer den Gegner)
+    type PenaltyTurn = { card: 'yellow' | 'red'; cups: number[] };               // eigene Becher runtergeworfen, zaehlen fuer den Gegner
 
     // Stats
     type GroupWithStats = {  
@@ -242,6 +261,7 @@ declare global {
         extraStats: ExtraStats;
         badges: PlayerBadge[];
         knecht: import('./src/components/frontend/biPoKnecht/knechtStats').KnechtCareerStats | null; // nur Spiele, die mit dem BiPo Knecht gezaehlt wurden
+        knechtHeatmap: import('./src/components/frontend/playerProfile/playerHeatmap').CupHeatmap | null; // Treffer/Kanten je Becherposition
     };
 
     type PlayerEloSummary = {
@@ -271,6 +291,8 @@ declare global {
         // Rekorde: frueher gehalten, inzwischen von jemand anderem uebertroffen
         former?: boolean;
         progress?: { current: number; target: number };
+        // Rekorde: eigener Bestwert im Vergleich zum Rekord (Abschnitt "Rekorde" im Profil)
+        record?: { own: number; best: number; holder: string; unit: string; until: number | null };
         // Hinweis nach dem Eintragen eines Spiels (nur freigeschaltete Badges), highlight wird im Text fett
         award?: { title: string; text: string; highlight?: string };
     };

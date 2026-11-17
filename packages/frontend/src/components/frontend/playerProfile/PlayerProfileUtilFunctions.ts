@@ -3,9 +3,10 @@ import { checkIfMatchFinished, checkIfTeam1WonVsTeam2, getMatchScore } from "@/u
 import { getBiPoOpenTournamentFallbackTime } from "@/util/bipoOpenTournamentMeta";
 import { GameData, getGameData } from "@/util/gameDataCache";
 import { calculateBadges, type RecordKey, type RecordStanding } from "./BadgeRegistry";
-import { getLeagueTeamForPlayer, getPlayerForLeagueTeam } from "@/components/frontend/league/LeaguePlayersData";
-import { ELO_START, buildEloGames, computeElo, getEloMatchChanges, getEloPlayerKey, getEloRanking, type EloPlayerState } from "@/components/frontend/worldRanking/eloRating";
+import { getLeagueTeamForPlayer, getLeagueTeamsForPlayer, getPlayerForLeagueTeam } from "@/components/frontend/league/LeaguePlayersData";
+import { ELO_START, buildEloGames, computeElo, getEloHistory, getEloMatchChanges, getEloPlayerKey, getEloRanking, type EloPlayerState } from "@/components/frontend/worldRanking/eloRating";
 import { getKnechtCareerStats } from "@/components/frontend/biPoKnecht/knechtStats";
+import { getPlayerCupHeatmap } from "./playerHeatmap";
 
 const TREND_PERIOD_DAYS: Record<Exclude<TrendPeriod, 'all'>, number> = {
     '1m': 30,
@@ -151,7 +152,7 @@ export const getPlayerMatchCounts = async (): Promise<Record<string, number>> =>
 // SPIELE JE SPIELER  //
 ////////////////////////
 // Einmal alle Spiele nach Spielernamen sortieren, statt fuer jeden Spieler alle Spiele zu durchsuchen.
-// Offene Spiele und Liga: Name klein geschrieben. Turniere: exakter Name, nur beendete Spiele.
+// Name klein geschrieben (offene Spiele, Liga, Turniere). Turniere: nur beendete Spiele.
 type PlayerMatchIndex = {
     open: Map<string, Match[]>;
     league: Map<string, Match[]>;
@@ -181,7 +182,8 @@ const getPlayerMatchIndex = memoize((data: GameData): PlayerMatchIndex => {
         [...tournament.groupPhase.matches, ...tournament.koPhase.matches]
             .flat()
             .filter(checkIfMatchFinished)
-            .forEach(match => addToIndex(byName, match, name => name));
+            // klein geschrieben wie bei offenen Spielen: "Fritz falkenreck" (2026) ist derselbe Spieler
+            .forEach(match => addToIndex(byName, match, toLower));
         return { year, hitsTracked: tournament.settings.trackPlayerShots, byName };
     });
 
@@ -241,18 +243,23 @@ const buildPlayerHistory = (data: GameData, playerName: string) => {
     const openMatches = index.open.get(playerNameLower) ?? [];
     addMatches(openMatches.filter(match => isSize(match, 1)), "Offene Spiele 1v1", playerName);
     addMatches(openMatches.filter(match => isSize(match, 2)), "Offene Spiele 2v2", playerName);
+    // Ungleiche Teams (z.B. 2 gegen 1, 3 gegen 3): zaehlen wie in der Weltrangliste mit, aber in keinem 1v1/2v2-Reiter
+    addMatches(openMatches.filter(match => !isSize(match, 1) && !isSize(match, 2)), "Offene Spiele sonstige", playerName);
 
-    // 2. Liga (ueber das Team des Spielers) - Pokalspiele laufen als eigene Kategorie
+    // 2. Liga (ueber alle Teams des Spielers, auch fruehere Teamnamen) - Pokalspiele laufen als eigene Kategorie.
+    // Der Teamname bestimmt in createHistoryEntry die Seite des Spielers, deshalb je Team einzeln.
     const leagueTeam = getLeagueTeamForPlayer(playerName);
-    const leagueName = leagueTeam ?? playerName;
-    const leagueMatches = (index.league.get(leagueName.toLowerCase()) ?? []).filter(match => isSize(match, 1));
-    addMatches(leagueMatches.filter(match => !isCupGame(match)), "BiPo League", leagueName);
-    addMatches(leagueMatches.filter(isCupGame), "BiPo League Cup", leagueName);
+    const leagueNames = leagueTeam ? getLeagueTeamsForPlayer(playerName) : [playerName];
+    leagueNames.forEach(leagueName => {
+        const leagueMatches = (index.league.get(leagueName.toLowerCase()) ?? []).filter(match => isSize(match, 1));
+        addMatches(leagueMatches.filter(match => !isCupGame(match)), "BiPo League", leagueName);
+        addMatches(leagueMatches.filter(isCupGame), "BiPo League Cup", leagueName);
+    });
 
     // 3. Turniere - alle BiPo Open Turniere in einer Kategorie
     index.tournaments.forEach(({ year, hitsTracked, byName }) => {
         const fallbackTime = getBiPoOpenTournamentFallbackTime(year);
-        (byName.get(playerName) ?? []).forEach(match => matchHistory.push(
+        (byName.get(playerNameLower) ?? []).forEach(match => matchHistory.push(
             createHistoryEntry(match, "BiPo Open Turniere", playerName, match.time && match.time > 0 ? match.time : fallbackTime, hitsTracked)
         ));
     });
@@ -543,6 +550,9 @@ export const getPlayerEloState = (data: GameData, playerName: string): EloPlayer
     return record ? { rating: record.rating, games: record.games } : null;
 };
 
+// Elo nach jedem gewerteten Spiel des Spielers (fuer die Verlaufskurve im Profil)
+export const getPlayerEloHistory = (data: GameData, playerName: string) => getEloHistory(getEloGames(data), getEloPlayerKey(playerName));
+
 // Elo je Seite nach jedem Spiel, Schluessel = Match-_id
 export const getMatchEloChanges = memoize((data: GameData) => getEloMatchChanges(getEloGames(data)));
 
@@ -592,6 +602,7 @@ export const buildPlayerProfileData = (data: GameData, playerName: string, trend
         ...summarizeHistory(filteredHistory, playerName, leagueTeam),
         badges: matchHistory.length ? getPlayerBadges(data, playerName, matchHistory) : [],
         knecht: getKnechtCareerStats([...data.openGames, ...data.leagueGames], playerName),
+        knechtHeatmap: getPlayerCupHeatmap([...data.openGames, ...data.leagueGames], playerName),
     };
 };
 

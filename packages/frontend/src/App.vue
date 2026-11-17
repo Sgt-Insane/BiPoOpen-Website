@@ -5,6 +5,7 @@ import AppBottomNav from '@/components/shared/AppBottomNav.vue';
 import TournamentPickerDrawer from '@/components/shared/TournamentPickerDrawer.vue';
 import AddGameDrawer from '@/components/shared/GameEntry/AddGameDrawer.vue';
 import PlayerSearchDrawer from '@/components/shared/PlayerSearchDrawer.vue';
+import GlossaryPopover from '@/components/shared/GlossaryPopover.vue';
 import Toast from 'primevue/toast';
 import { Analytics } from '@vercel/analytics/vue';
 import { SpeedInsights } from '@vercel/speed-insights/vue';
@@ -52,12 +53,12 @@ onBeforeMount(async() => {
 				<div class="app-toast-text">
 					<div class="app-toast-summary">{{ message.summary }}</div>
 					<div v-if="message.detail" class="app-toast-detail">{{ message.detail }}</div>
-					<!-- Optionaler Link im Toast: toast.add({ ..., action: { label, to } }) -->
+					<!-- Optionaler Link im Toast: toast.add({ ..., action: { label, to } }) oder Aktion: action: { label, run } -->
 					<button
 						v-if="message.action"
 						type="button"
 						class="app-toast-action"
-						@click="closeCallback(); router.push(message.action.to)"
+						@click="closeCallback(); message.action.run ? message.action.run() : router.push(message.action.to)"
 					>{{ message.action.label }}</button>
 				</div>
 				<!-- Restlaufzeit, schrumpft ueber die Lebensdauer des Toasts -->
@@ -88,6 +89,8 @@ onBeforeMount(async() => {
 	<AddGameDrawer/>
 	<!-- Spielersuche (Lupe im Header) -->
 	<PlayerSearchDrawer/>
+	<!-- Erklaerblase fuer antippbare Fachbegriffe -->
+	<GlossaryPopover/>
 </template>
 
 <style>
@@ -142,6 +145,7 @@ onBeforeMount(async() => {
   --bp-info: #2F6FE4;
   --bp-info-weak: #E8F0FE;
   --bp-navy: #1E3A6B;
+  --bp-hero: #1E3A6B;            /* Kopf-Kacheln mit weisser Schrift */
   --bp-navy-weak: #EAF0F8;
   --bp-violet: #5B3CC4;
   --bp-violet-weak: #EDE8FB;
@@ -195,6 +199,7 @@ html.bp-dark {
   --bp-info: #7FA8F5;
   --bp-info-weak: rgba(127, 168, 245, 0.16);
   --bp-navy: #A9C2EE;
+  --bp-hero: #1D2940;            /* dunkel: --bp-navy ist hier Hellblau (Textfarbe), weisse Schrift waere darauf unlesbar */
   --bp-navy-weak: rgba(127, 168, 245, 0.14);
   --bp-violet: #A48DF0;
   --bp-violet-weak: rgba(164, 141, 240, 0.16);

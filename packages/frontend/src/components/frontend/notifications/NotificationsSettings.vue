@@ -51,7 +51,7 @@
                 </div>
 
                 <!-- Alle Spiele oder nur gefolgte Spieler -->
-                <div v-if="preferences[category.key]" class="ns-segmented" role="radiogroup" :aria-label="`${category.title}: von welchen Spielen?`">
+                <div v-if="preferences[category.key] && !CATEGORIES_WITHOUT_PLAYERS.includes(category.key)" class="ns-segmented" role="radiogroup" :aria-label="`${category.title}: von welchen Spielen?`">
                     <button
                         v-for="option in followModeOptions"
                         :key="option.value"
@@ -65,13 +65,20 @@
             </div>
         </div>
 
-        <template v-if="usesFollowedPlayers">
-            <h2 class="nt-section-title">Meine Spieler</h2>
+        <!-- Auch sichtbar, wenn noch nichts auf "Nur meine Spieler" steht, sobald man jemandem folgt:
+             sonst verschwanden gefolgte Spieler scheinbar (Nutzertest) -->
+        <template v-if="usesFollowedPlayers || followedPlayers.length">
+            <h2 class="nt-section-title">Gefolgte Spieler</h2>
+            <div v-if="!usesFollowedPlayers" class="ns-follow-hint">
+                Gerade bekommst du alle Spiele, also auch die deiner gefolgten Spieler.
+                <button type="button" class="ns-follow-only" @click="followOnlyMyPlayers()">Nur noch gefolgte Spieler</button>
+            </div>
             <div class="nt-card ns-follow">
                 <div class="ns-search">
                     <i class="pi pi-search ns-search-icon"></i>
                     <input
-                        v-model="query"
+                        :value="query"
+                        @input="query = ($event.target as HTMLInputElement).value"
                         class="ns-search-input"
                         type="search"
                         placeholder="Spieler hinzufügen …"
@@ -114,7 +121,7 @@ import { computed, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Avatar from '@/components/shared/Avatar.vue';
 import BellIcon from '@/components/shared/BellIcon.vue';
-import { usePushNotifications, type PushCategory, type PushFollowMode } from '@/components/shared/usePushNotifications';
+import { usePushNotifications, type PushCategory, type PushFollowMode, CATEGORIES_WITHOUT_PLAYERS } from '@/components/shared/usePushNotifications';
 import { getAllPlayerNames, getPlayerMatchCounts } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
 import NotificationsPopupGuide from './NotificationsPopupGuide.vue';
 
@@ -123,18 +130,19 @@ const MAX_RESULTS = 6;
 defineProps<{ highlightCategory?: PushCategory }>();
 
 const toast = useToast();
-const { preferences, followModes, usesFollowedPlayers, followedPlayers, setPreference, setFollowMode, isFollowing, followPlayer, unfollowPlayer, sendTest, deactivate } = usePushNotifications();
+const { preferences, followModes, usesFollowedPlayers, followedPlayers, setPreference, setFollowMode, isFollowing, followPlayer, followOnlyMyPlayers, unfollowPlayer, sendTest, deactivate } = usePushNotifications();
 
 // Farben wie die Texte je Kategorie im Push-Design
 const categories: { key: PushCategory, title: string, text: string, icon: string, background: string, color: string }[] = [
     { key: 'openGames', title: 'Offene Spiele', text: 'Wenn jemand ein offenes Spiel einträgt', icon: 'pi-arrow-up-right', background: 'var(--bp-fill)', color: 'var(--bp-text)' },
     { key: 'leagueGames', title: 'BiPo League & Cup', text: 'Neue Liga- und Cup-Spiele', icon: 'pi-trophy', background: 'var(--secondary-color-weak)', color: 'var(--bp-secondary-text)' },
     { key: 'tournamentResults', title: 'Turnier-Ergebnisse', text: 'Gruppen- und K.o.-Phase beim BiPo Open', icon: 'pi-sitemap', background: 'var(--bp-primary-weak)', color: 'var(--main-color)' },
+    { key: 'appUpdates', title: 'Updates', text: 'Neue Version der Seite und des BiPo Knecht', icon: 'pi-sparkles', background: 'var(--bp-gold-weak)', color: 'var(--bp-gold)' },
 ];
 
 const followModeOptions: { value: PushFollowMode, label: string }[] = [
     { value: 'all', label: 'Alle Spiele' },
-    { value: 'followed', label: 'Nur meine Spieler' },
+    { value: 'followed', label: 'Nur gefolgte Spieler' },
 ];
 
 // ─── Pop-up-Anleitung ───
@@ -147,7 +155,9 @@ const onTest = async () => {
     testing.value = true;
     const sent = await sendTest();
     testing.value = false;
-    if (!sent) toast.add({ severity: 'error', summary: 'Test nicht gesendet', life: 3000 });
+    toast.add(sent
+        ? { severity: 'success', summary: 'Test-Push gesendet', detail: 'Er sollte gleich oben auf dem Handy erscheinen.', life: 3500 }
+        : { severity: 'error', summary: 'Test nicht gesendet', life: 3000 });
 };
 
 // ─── Spielersuche ───
@@ -189,6 +199,11 @@ const onDeactivate = async () => {
 </script>
 
 <style scoped>
+.ns-follow-hint {
+	margin: -4px 4px 8px;
+	font-size: 13px;
+	color: var(--bp-text-muted);
+}
 /* ─── Status ─── */
 .ns-active {
     display: flex;
@@ -447,5 +462,15 @@ const onDeactivate = async () => {
 }
 .ns-deactivate:hover {
     color: var(--bp-text-strong);
+}
+.ns-follow-only{
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--main-color);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
 }
 </style>
