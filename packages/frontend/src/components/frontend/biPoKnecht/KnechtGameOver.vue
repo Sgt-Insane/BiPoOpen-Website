@@ -74,12 +74,13 @@
             </template>
             <template v-else>
                 <template v-if="canSave">
-                    <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving" title="Speichern und Revanche" @click="save(true)">
+                    <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving || !!lockedText" title="Speichern und Revanche" @click="save(true)">
                         <i class="pi pi-replay"></i>
                     </button>
-                    <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving" @click="save(false)">
-                        <i v-if="saving" class="pi pi-spin pi-spinner"></i>
-                        <span v-else>{{ saveLabel }}</span>
+                    <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving || !!lockedText" @click="save(false)">
+                        <i v-if="saving || lockedText" class="pi pi-spin pi-spinner"></i>
+                        <span v-if="lockedText">{{ lockedText }}</span>
+                        <span v-else-if="!saving">{{ saveLabel }}</span>
                     </button>
                 </template>
                 <div v-else class="kn-over-guest">Das andere Handy (hat das Spiel gestartet) trägt es ein.</div>
@@ -112,7 +113,14 @@ import type { BiPoKnechtGame } from './useBiPoKnecht';
 import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
 import { isFeatureOn } from '@/util/featureFlags';
 
-const props = withDefaults(defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean; canSave?: boolean }>(), { canSave: true });
+const props = withDefaults(defineProps<{
+    game: BiPoKnechtGame;
+    refereeUsed: boolean;
+    canSave?: boolean;
+    // Mehrspieler: Speichern ueber die Session, damit nur ein Handy eintraegt
+    saveHandler?: (result: Match, rematch: boolean) => Promise<boolean>;
+    lockedText?: string;    // anderes Handy traegt gerade ein
+}>(), { canSave: true });
 const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
 
 const toast = useToast();
@@ -156,13 +164,14 @@ const save = async (rematch: boolean) => {
     const result = buildKnechtMatch(match, state.value, props.refereeUsed ? referee.value : undefined);
     let success = false;
     try {
-        success = await saveKnechtGame(result);
+        success = props.saveHandler ? await props.saveHandler(result, rematch) : await saveKnechtGame(result);
     } catch {
         success = false;
     }
     saving.value = false;
 
     if (!success) {
+        if (props.saveHandler) return;     // Hinweis kommt aus dem Mehrspieler-Knecht
         toast.add({ severity: 'error', summary: 'Spiel nicht gespeichert – bitte nochmal versuchen', life: 4000 });
         return;
     }

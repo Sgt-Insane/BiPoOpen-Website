@@ -145,10 +145,14 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     const allowedThrowers = computed(() => getAllowedThrowers(state.value));
     const playersDone = computed(() => getPlayersDone(state.value));
     const chosenPlayer = ref(0);
+    // Mehrspieler: dieses Handy gehoert einem Spieler, der wirft immer selbst
+    const lockedPlayer = ref<{ team: number; player: number } | null>(null);
+    const isLockedTeamActive = () => lockedPlayer.value !== null && lockedPlayer.value.team === state.value.activeTeamIndex;
 
     // Gewaehlter Spieler, solange er werfen darf, sonst der erste freie (synchron, ohne auf einen Watcher zu warten)
     const selectedPlayer = computed(() => {
         const allowed = allowedThrowers.value;
+        if (isLockedTeamActive() && allowed.includes(lockedPlayer.value!.player)) return lockedPlayer.value!.player;
         return allowed.includes(chosenPlayer.value) ? chosenPlayer.value : allowed[0] ?? 0;
     });
 
@@ -161,8 +165,11 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     });
 
     const selectPlayer = (player: number) => {
+        if (isLockedTeamActive()) return;
         if (allowedThrowers.value.includes(player) && !pick.value) chosenPlayer.value = player;
     };
+
+    const lockPlayer = (lock: { team: number; player: number } | null) => { lockedPlayer.value = lock; };
 
     // ─── Banner ───
     const banner = ref<BannerEvent>(null);
@@ -373,6 +380,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         actions.value = [];
     };
 
+
     return {
         match,
         config,
@@ -387,6 +395,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         playersDone,
         selectedPlayer,
         selectPlayer,
+        lockPlayer,
         banner,
         celebration,
         bouncerArmed,

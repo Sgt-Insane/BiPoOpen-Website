@@ -42,7 +42,7 @@ import { useToast } from 'primevue/usetoast';
 import router from '@/router.js';
 import BiPoKnecht from './BiPoKnecht.vue';
 import type { KnechtAction } from './knechtEngine';
-import { formatPoints, getResultPath, getTeamColor, getTeamName, normalizeTeams } from './KnechtUtilFunctions';
+import { formatPoints, getResultPath, getTeamColor, getTeamName, normalizeTeams, toRematch } from './KnechtUtilFunctions';
 import { clearStoredGame, loadStoredGame, storeGame } from './knechtStorage';
 import { useKnechtLaunch } from './useKnechtLaunch';
 import { isDemoMode } from '@/util/demoGames';
@@ -237,17 +237,6 @@ const leave = () => {
     persist();
     router.push('/');
 };
-
-// Revanche: gleiche Teams und gleicher Wettbewerb, neues Spiel
-const toRematch = (match: Match): Match => ({
-    _id: 'placeholder',
-    team1: { ...match.team1, players: match.team1.players.map(player => ({ ...player, score: 0 })) },
-    team2: { ...match.team2, players: match.team2.players.map(player => ({ ...player, score: 0 })) },
-    ...(match.season !== undefined && { season: match.season }),
-    ...(match.league !== undefined && { league: match.league }),
-    ...(match.cupId !== undefined && { cupId: match.cupId, cupRound: match.cupRound }),
-    ...(match.cupColors && { cupColors: match.cupColors }),
-});
 
 const onSaved = (result: Match, rematch: boolean) => {
     live.finish('done');

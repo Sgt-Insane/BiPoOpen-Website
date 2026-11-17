@@ -5,6 +5,9 @@ const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
 const supabase = createClient(supabaseUrl, supabasePublishableKey)
 
+// Auch fuer Realtime (Mehrspieler-Knecht)
+export const getSupabaseClient = () => supabase;
+
 const TEAM_LOGO_BUCKET = "BiPo Open Bilder";
 
 // Uploads a cropped logo (data URL) to Supabase Storage and returns the stored path.

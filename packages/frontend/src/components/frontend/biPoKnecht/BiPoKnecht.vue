@@ -4,7 +4,7 @@
             <!-- Schwebendes Menue (drei Punkte), das Spielfeld bleibt in voller Breite -->
             <KnechtSideBar
                 v-if="game.isStarted.value"
-                :canUndo="game.canUndo.value"
+                :canUndo="undoEnabled"
                 @undo="game.undo()"
                 @scoreboard="sheet = 'scoreboard'"
                 @timeline="sheet = 'timeline'"
@@ -18,7 +18,7 @@
                 <KnechtPlayers :game="game" :teamIndex="topTeam" :rotated="!twoPhone" :compact="!isThrowing(topTeam)" />
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(topTeam) }">
                     <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam) && !waitingForOther">
-                        <template #front><KnechtControls v-if="isTarget(topTeam)" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
+                        <template #front><KnechtControls v-if="isTarget(topTeam) && !waitingForOther" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(bottomTeam) }">
@@ -29,7 +29,7 @@
                 <KnechtPlayers :game="game" :teamIndex="bottomTeam" :compact="!isThrowing(bottomTeam)" />
                 <!-- Zwei Handys, das andere Team ist dran: Feld sichtbar, aber nicht bedienbar -->
                 <div v-if="waitingForOther" class="kn-wait">
-                    <div class="kn-wait-pill">{{ getTeamName(game.match, opponentSide) }} ist dran · Eingabe am anderen Handy</div>
+                    <div class="kn-wait-pill">{{ waitText }}</div>
                 </div>
             </div>
 
@@ -206,6 +206,15 @@
                     <button v-if="mode === 'referee'" type="button" class="kn-menu-button" @click="sheet = 'elbow'"><KnechtIcon name="penalty" /> Ellenbogen-Call</button>
                     <button type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmDeathcup"><KnechtIcon name="deathcup" /> Deathcup von {{ throwerName }}</button>
 
+                    <template v-if="perPlayer">
+                        <div class="kn-menu-label">Mehrspieler{{ sessionCode ? ` · Code ${sessionCode}` : '' }}</div>
+                        <button type="button" role="switch" class="kn-menu-toggle" :aria-checked="freeInput" @click="toggleFreeInput">
+                            <i class="pi pi-lock-open"></i>
+                            <span class="kn-menu-toggle-text">Für alle eintragen <small>Wenn das Handy eines Mitspielers ausfällt</small></span>
+                            <span class="kn-menu-switch" aria-hidden="true"></span>
+                        </button>
+                    </template>
+
                     <div class="kn-menu-label">Spiel</div>
                     <button v-if="live" type="button" class="kn-menu-button" @click="sheet = 'live'">
                         <span class="kn-live-dot" :class="{ 'kn-live-dot--off': live.status !== 'live' }"></span>
@@ -238,7 +247,7 @@
         ></span>
 
         <!-- Spielende -->
-        <KnechtGameOver v-if="game.isOver.value" :game="game" :refereeUsed="refereeUsed" :canSave="live?.role !== 'guest'" @saved="(result, rematch) => $emit('saved', result, rematch)" />
+        <KnechtGameOver v-if="game.isOver.value" :game="game" :refereeUsed="refereeUsed" :canSave="live?.role !== 'guest'" :saveHandler="saveHandler" :lockedText="savingText" @saved="(result, rematch) => $emit('saved', result, rematch)" />
     </div>
 </template>
 
@@ -279,6 +288,12 @@ const props = defineProps<{
     refereeUsed: boolean;
     live?: KnechtLiveInfo | null;       // Live-Ticker / zweites Handy (null = ausgeschaltet)
     phoneSide?: number | null;          // zwei Handys: Tischende dieses Handys (Teamindex), sonst null
+    // Mehrspieler (ein Handy pro Spieler, siehe multiplayer/): eigener Spieler im Team phoneSide
+    phonePlayer?: number | null;
+    undoAllowed?: boolean;              // letzter Eintrag stammt von diesem Handy
+    saveHandler?: (result: Match, rematch: boolean) => Promise<boolean>;
+    savingText?: string;                // anderes Handy traegt gerade ein
+    sessionCode?: string;
 }>();
 
 const emit = defineEmits<{
@@ -405,7 +420,30 @@ const sheetFlipped = computed(() => !twoPhone.value && mode.value === 'player' &
 // Animation zum Team, das geworfen hat (nicht zum Team, das danach dran ist)
 const celebrationFlipped = computed(() => !twoPhone.value && mode.value === 'player' && game.celebration.value?.teamIndex === topTeam.value);
 // Zwei Handys: das andere Team wirft gerade, dieses Handy wartet
-const waitingForOther = computed(() => twoPhone.value && game.isStarted.value && state.value.status === 'playing' && state.value.activeTeamIndex !== props.phoneSide);
+// Ein Handy pro Spieler: auch im eigenen Team traegt nur ein, wer gerade werfen darf
+const perPlayer = computed(() => twoPhone.value && typeof props.phonePlayer === 'number');
+const freeInput = ref(false);   // Handy eines Mitspielers ausgefallen: dieses Handy traegt fuer alle ein
+const isMyThrow = computed(() => state.value.activeTeamIndex === props.phoneSide
+    && (!perPlayer.value || game.allowedThrowers.value.includes(props.phonePlayer!)));
+const waitingForOther = computed(() => twoPhone.value && !freeInput.value && game.isStarted.value && state.value.status === 'playing' && !isMyThrow.value);
+const waitText = computed(() => {
+    const team = state.value.activeTeamIndex;
+    if (!perPlayer.value) return `${getTeamName(game.match, opponentSide.value)} ist dran · Eingabe am anderen Handy`;
+    const names = game.allowedThrowers.value.map(player => game.match[team === 0 ? 'team1' : 'team2'].players[player]?.name).filter(Boolean);
+    return `${names.length ? names.join(' & ') : getTeamName(game.match, team)} ${names.length > 1 ? 'sind' : 'ist'} dran · trägt selbst ein`;
+});
+const undoEnabled = computed(() => game.canUndo.value && (props.undoAllowed !== false || freeInput.value || !!game.pick.value));
+watch(() => [props.phoneSide, props.phonePlayer, freeInput.value] as const, ([team, player, free]) => {
+    game.lockPlayer(perPlayer.value && !free && typeof team === 'number' && typeof player === 'number' ? { team, player } : null);
+}, { immediate: true });
+// Kurz vibrieren, wenn man selbst dran ist
+watch(() => perPlayer.value && isMyThrow.value && game.isStarted.value && state.value.status === 'playing', (mine, before) => {
+    if (mine && !before) navigator.vibrate?.(80);
+});
+const toggleFreeInput = () => {
+    freeInput.value = !freeInput.value;
+    sheet.value = null;
+};
 
 
 // ─── Knecht Pro (nur Schiedsrichter): Doppelkante und Abprallrichtung nach einem Kanten-Nullwurf ───

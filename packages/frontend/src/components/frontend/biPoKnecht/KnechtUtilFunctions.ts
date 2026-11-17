@@ -82,6 +82,17 @@ export const saveKnechtGame = async (match: Match): Promise<boolean> => {
     return success;
 };
 
+// Revanche: gleiche Teams und gleicher Wettbewerb, neues Spiel
+export const toRematch = (match: Match): Match => ({
+    _id: 'placeholder',
+    team1: { ...match.team1, players: match.team1.players.map(player => ({ ...player, score: 0 })) },
+    team2: { ...match.team2, players: match.team2.players.map(player => ({ ...player, score: 0 })) },
+    ...(match.season !== undefined && { season: match.season }),
+    ...(match.league !== undefined && { league: match.league }),
+    ...(match.cupId !== undefined && { cupId: match.cupId, cupRound: match.cupRound }),
+    ...(match.cupColors && { cupColors: match.cupColors }),
+});
+
 // Wohin es nach dem Eintragen geht
 export const getResultPath = (match: Match) => {
     const kind = getGameKind(match);
