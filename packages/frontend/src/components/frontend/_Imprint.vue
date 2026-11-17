@@ -1,12 +1,12 @@
 <template>
 	<div class="Imprint">
-        <h1 class="bp-title">Impressum</h1>
+        <PageHeader title="Impressum"/>
 
         <h2>Angaben gemäß § 5 TMG</h2>
         <p>
             Simon Weck
             <br/>
-            Kaspar-von-Zumbusch-Straße 6
+            Varenseller Str. 8
             <br/>
             33378 Rheda-Wiedenbrück
         </p>
@@ -25,7 +25,7 @@
         <p>
             Simon Weck
             <br/>
-            Kaspar-von-Zumbusch-Straße 6
+            Varenseller Str. 8
             <br/>
             33378 Rheda-Wiedenbrück
         </p>
@@ -65,8 +65,13 @@
 	</div>
 </template>
 
+<script setup lang="ts">
+import PageHeader from '@/components/shared/PageHeader.vue';
+</script>
+
 <style scoped>
 .Imprint{
+    padding-top: 8px;
     text-align: left;
     margin-bottom: 50px;
 }

@@ -1,11 +1,6 @@
 <template>
     <div class="Notifications">
-        <button type="button" class="nt-back" aria-label="Zurück" @click="goBack">
-            <i class="pi pi-chevron-left"></i>
-        </button>
-
-        <h1 class="nt-title">Benachrichtigungen</h1>
-        <p class="nt-subtitle">Push-Benachrichtigungen {{ status === 'active' ? 'verwalten' : 'einrichten' }}</p>
+        <PageHeader title="Benachrichtigungen" :subtitle="`Push-Benachrichtigungen ${status === 'active' ? 'verwalten' : 'einrichten'}`"/>
 
         <div v-if="status === 'loading' || (status === 'active' && !settingsLoaded)" aria-busy="true">
             <div class="bp-skeleton" style="height: 64px"></div>
@@ -27,10 +22,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useGrayPage } from '@/components/shared/useGrayPage';
 import { usePushNotifications, type PushCategory } from '@/components/shared/usePushNotifications';
+import PageHeader from '@/components/shared/PageHeader.vue';
 import NotificationsSettings from './NotificationsSettings.vue';
 import NotificationsIntro from './NotificationsIntro.vue';
 import NotificationsUnavailable from './NotificationsUnavailable.vue';
@@ -43,7 +39,6 @@ const CATEGORIES: PushCategory[] = ['openGames', 'leagueGames', 'tournamentResul
 useGrayPage();
 
 const route = useRoute();
-const router = useRouter();
 const toast = useToast();
 const { status, settingsLoaded, loadSettings, activate, followPlayer, followToastDetail, setPreference, preferences, allCategoriesOff } = usePushNotifications();
 
@@ -54,10 +49,6 @@ const activating = ref(false);
 // Query gilt nur fuer den ersten Durchgang, nicht nach erneutem Aktivieren
 let queryHandled = false;
 
-const goBack = () => {
-    if (window.history.state?.back) router.back();
-    else router.push('/');
-};
 
 // Query nur einmal anwenden: ohne Neuaufbau aus der URL entfernen (router-view ist auf fullPath gekeyt)
 const clearQuery = () => {
@@ -126,47 +117,6 @@ watch(status, applyQueryWhenActive, { immediate: true });
     margin: 0 auto;
     padding-top: 8px;
     color: var(--bp-text-strong);
-}
-
-.nt-back {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    margin-left: -8px;
-    border: none;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--bp-text-strong);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-
-    .pi {
-        font-size: 16px;
-    }
-}
-.nt-back:hover {
-    background: var(--bp-fill-soft);
-}
-
-.nt-title {
-    margin: 14px 0 0;
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1.15;
-}
-.nt-subtitle {
-    margin: 4px 0 20px;
-    font-size: 14px;
-    color: var(--bp-text-muted);
-}
-
-/* Ohne App-Header (route meta detailPage): Abstand zur Statusleiste */
-@media (width <= 900px) {
-    .Notifications {
-        padding-top: calc(10px + env(safe-area-inset-top));
-    }
 }
 </style>
 

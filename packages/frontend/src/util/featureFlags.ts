@@ -15,7 +15,8 @@ import { isDemoMode } from '@/util/demoGames';
 // Versionsnummern MAJOR.MINOR.PATCH: grosses Update = erste Zahl, neues Feature = zweite, Bugfix/Optimierung = dritte.
 // Vorschlag fuer die naechste Nummer aus den Commits seit der letzten Version: npm run version:next
 
-export type Release = { version: string; date: string; title: string; notes: string[]; draft?: boolean };
+// notes: das Wichtige (immer sichtbar, die ersten drei kommen in den Update-Push), details: Kleinigkeiten zum Aufklappen
+export type Release = { version: string; date: string; title: string; notes: string[]; details?: string[]; draft?: boolean };
 
 export const FEATURES = {
     live: {

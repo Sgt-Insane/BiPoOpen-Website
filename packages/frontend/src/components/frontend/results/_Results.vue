@@ -1,11 +1,6 @@
 <template>
     <div class="Results">
-        <div class="rs-head">
-            <button type="button" class="rs-back" aria-label="Zurück" @click="goBack">
-                <i class="pi pi-chevron-left"></i>
-            </button>
-            <h1 class="rs-title">Ergebnisse</h1>
-        </div>
+        <PageHeader title="Ergebnisse"/>
 
         <!-- Spielerfilter: Spieler- oder Teamname -->
         <div class="rs-search">
@@ -62,10 +57,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
+import PageHeader from '@/components/shared/PageHeader.vue';
 import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
 import { useGrayPage } from '@/components/shared/useGrayPage';
 import { onGameSaved } from '@/components/shared/GameEntry/useAddGame';
@@ -82,7 +78,6 @@ const PAGE_SIZE = 20;
 useGrayPage();
 
 const route = useRoute();
-const router = useRouter();
 
 // Von der Startseite kommt der dort gewaehlte Filter mit: /Ergebnisse?typ=league
 const activeFilter = ref<GameFilter>(isGameFilter(route.query.typ) ? route.query.typ : 'all');
@@ -138,10 +133,6 @@ const visibleDays = computed(() => {
     return days;
 });
 
-const goBack = () => {
-    if (window.history.state?.back) router.back();
-    else router.push('/');
-};
 </script>
 
 <style scoped>
@@ -152,41 +143,6 @@ const goBack = () => {
     color: var(--bp-text-strong);
 }
 
-.rs-head{
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 4px 0 16px;
-}
-.rs-back{
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    margin-left: -8px;
-    border: none;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--bp-text-strong);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-
-    .pi{
-        font-size: 16px;
-    }
-}
-.rs-back:hover{
-    background: var(--bp-fill);
-}
-.rs-title{
-    margin: 0;
-    color: var(--main-color);
-    font-size: 32px;
-    font-weight: 800;
-    line-height: 1.15;
-}
 
 /* Spielerfilter */
 .rs-search{
@@ -284,12 +240,5 @@ const goBack = () => {
 }
 .bp-more-button{
     margin-top: 10px;
-}
-
-/* MOBILE */
-@media (width <= 900px){
-    .rs-title{
-        font-size: 28px;
-    }
 }
 </style>

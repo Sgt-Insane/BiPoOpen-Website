@@ -121,15 +121,13 @@ const routes = [
 		}
 	},
 
-	// Detailseite: mobil ohne App-Header, mit Zurueck-Pfeil (App.vue)
 	{
 		path: '/Benachrichtigungen',
 		name: 'Benachrichtigungen',
 		component: () => import('@/components/frontend/notifications/_Notifications.vue'),
 		meta: {
 			title: 'Weck BiPo Open - Benachrichtigungen',
-			description: 'Benachrichtigungen',
-			detailPage: true
+			description: 'Benachrichtigungen'
 		}
 	},
 
@@ -139,8 +137,7 @@ const routes = [
 		component: () => import('@/components/frontend/news/_Neuigkeiten.vue'),
 		meta: {
 			title: 'Weck BiPo Open - Neuigkeiten',
-			description: 'Was ist neu auf der Seite und im BiPo Knecht',
-			detailPage: true
+			description: 'Was ist neu auf der Seite und im BiPo Knecht'
 		}
 	},
 

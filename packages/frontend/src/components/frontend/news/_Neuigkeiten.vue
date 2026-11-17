@@ -1,20 +1,11 @@
 <template>
     <div class="Neuigkeiten">
         <div class="nw-content">
-            <!-- Kopf im Stil der Nackte-Meilen-Seite -->
-            <div class="nw-hero">
-                <div class="nw-hero-head">
-                    <button type="button" class="nw-back" aria-label="Zurück" @click="goBack()">
-                        <i class="pi pi-chevron-left"></i>
-                    </button>
-                    <h1 class="nw-hero-title" @click="onTitleTap()">Neuigkeiten</h1>
-                    <router-link v-if="devState.enabled" to="/Entwickler" class="nw-dev">DEV</router-link>
-                </div>
-                <div class="nw-hero-hint">
-                    Was sich auf der Seite und im BiPo Knecht geändert hat.
-                    <router-link to="/Benachrichtigungen" class="nw-hero-link">Push für Updates <i class="pi pi-angle-right"></i></router-link>
-                </div>
-            </div>
+            <PageHeader title="Neuigkeiten" subtitle="Was sich auf der Seite und im BiPo Knecht geändert hat." @titleClick="onTitleTap()">
+                <template v-if="devState.enabled" #actions>
+                    <router-link to="/Entwickler" class="nw-dev">DEV</router-link>
+                </template>
+            </PageHeader>
 
             <section v-for="release in releases" :key="release.version" class="nw-release">
                 <div class="nw-release-head">
@@ -26,6 +17,22 @@
                 <ul class="nw-notes">
                     <li v-for="(note, index) in release.notes" :key="index">{{ note }}</li>
                 </ul>
+
+                <!-- Kleinigkeiten: eingeklappt, damit das Wichtige auf einen Blick lesbar bleibt -->
+                <template v-if="release.details?.length">
+                    <button
+                        type="button"
+                        class="nw-details-toggle"
+                        :aria-expanded="openDetails.has(release.version)"
+                        @click="toggleDetails(release.version)"
+                    >
+                        <i class="pi" :class="openDetails.has(release.version) ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                        {{ openDetails.has(release.version) ? 'Kleinigkeiten ausblenden' : `${release.details.length} Kleinigkeiten anzeigen` }}
+                    </button>
+                    <ul v-if="openDetails.has(release.version)" class="nw-notes nw-notes--details">
+                        <li v-for="(detail, index) in release.details" :key="index">{{ detail }}</li>
+                    </ul>
+                </template>
             </section>
         </div>
     </div>
@@ -33,13 +40,21 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 import { devState, draftReleases, publishedReleases, setDevMode } from '@/util/featureFlags';
+import PageHeader from '@/components/shared/PageHeader.vue';
 
 // Neueste Version zuerst (src/releases.json; nach dem Deploy verschickt die GitHub Action dazu einen Push).
 // Entwuerfe ("draft": true) nur im Entwicklermodus.
 const releases = computed(() => [...publishedReleases, ...(devState.enabled ? draftReleases : [])].reverse());
 const router = useRouter();
+
+// Versionen, deren Kleinigkeiten aufgeklappt sind
+const openDetails = reactive(new Set<string>());
+const toggleDetails = (version: string) => {
+    if (openDetails.has(version)) openDetails.delete(version);
+    else openDetails.add(version);
+};
 
 // Versteckter Zugang zum Entwicklermodus: 7× schnell auf die Ueberschrift tippen
 let taps: number[] = [];
@@ -54,16 +69,12 @@ const onTitleTap = () => {
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-const goBack = () => {
-    if (window.history.state?.back) router.back();
-    else router.push('/');
-};
 </script>
 
 <style scoped>
 .Neuigkeiten{
     margin-inline: calc(50% - 50vw);
-    padding: 12px calc(50vw - 50%) 32px;
+    padding: 8px calc(50vw - 50%) 32px;
     background: var(--page-gray);
 }
 .nw-content{
@@ -73,23 +84,11 @@ const goBack = () => {
     max-width: 640px;
     margin: 0 auto;
 }
-.nw-hero{
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 8px 12px 18px;
-    border-radius: 20px;
-    background: var(--bp-hero);
-    color: white;
-}
-.nw-hero-head{
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    height: 44px;
+
+.nw-content > .PageHeader{
+    margin-bottom: 0;
 }
 .nw-dev{
-    margin-left: auto;
     padding: 3px 9px;
     border-radius: 999px;
     background: #F5A524;
@@ -107,34 +106,9 @@ const goBack = () => {
     font-size: 11px;
     font-weight: 700;
 }
-.nw-back{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border: none;
-    border-radius: 50%;
-    background: transparent;
-    color: white;
-    cursor: pointer;
-}
-.nw-hero-title{
-    user-select: none;
-    margin: 0;
-    font-size: 22px;
-    font-weight: 800;
-}
-.nw-hero-hint{
-    padding: 0 4px;
-    font-size: 13px;
-    color: #C9D2E6;
-}
-.nw-hero-link{
-    color: white;
-    font-weight: 600;
-    text-decoration: none;
-}
+
+
+
 .nw-release{
     padding: 14px 16px;
     border-radius: 16px;
@@ -174,5 +148,31 @@ const goBack = () => {
     gap: 6px;
     font-size: 14px;
     color: var(--bp-text);
+}
+.nw-details-toggle{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 6px 12px 6px 10px;
+    border: none;
+    border-radius: 999px;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.nw-details-toggle .pi{
+    font-size: 11px;
+}
+.nw-details-toggle:hover{
+    background: var(--bp-fill);
+}
+.nw-notes--details{
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--bp-text-secondary);
 }
 </style>

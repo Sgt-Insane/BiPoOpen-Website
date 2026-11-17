@@ -18,8 +18,11 @@
 			@bipoopen
 		</a>
 
-		<router-link class="af-imprint" to="/Neuigkeiten">Neuigkeiten</router-link>
-		<router-link class="af-imprint" to="/Impressum">Impressum</router-link>
+		<div class="af-links">
+			<router-link class="af-imprint" to="/Neuigkeiten">Neuigkeiten</router-link>
+			<span class="af-dot" aria-hidden="true">·</span>
+			<router-link class="af-imprint" to="/Impressum">Impressum</router-link>
+		</div>
 	</div>
 </template>
 
@@ -84,6 +87,15 @@ const { canInstall, isInstalled, installPwa } = usePwaInstall();
 	border-color: var(--bp-border-strong);
 }
 
+.af-links{
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.af-dot{
+	color: var(--bp-text-faint);
+	font-size: 13px;
+}
 .af-imprint{
 	color: var(--bp-text-muted);
 	font-size: 13px;
