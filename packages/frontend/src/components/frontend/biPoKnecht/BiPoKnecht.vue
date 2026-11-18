@@ -17,12 +17,16 @@
             <div v-if="mode === 'player'" class="kn-field kn-field--player">
                 <KnechtPlayers :game="game" :teamIndex="topTeam" :rotated="!twoPhone" :compact="!isThrowing(topTeam)" />
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(topTeam) }">
-                    <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam) && !waitingForOther" :owners="cupOwners?.racks[topTeam]">
+                    <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam) && !waitingForOther" :owners="cupOwners.racks[topTeam]" :showDrinkers="!twoPhone">
                         <template #front><KnechtControls v-if="isTarget(topTeam) && !waitingForOther" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
-                <div class="kn-end" :class="{ 'kn-end--target': isTarget(bottomTeam) }">
-                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && !twoPhone ? 'up' : 'down'" :isTarget="isTarget(bottomTeam) && !waitingForOther" :rotated="isTarget(bottomTeam) && !twoPhone" :owners="cupOwners?.racks[bottomTeam]" :showDrinkers="twoPhone">
+                <div class="kn-end" :class="{ 'kn-end--target': isTarget(bottomTeam), 'kn-end--own': twoPhone }">
+                    <!-- Mehrere Handys, man ist selbst dran: Hinweis ueber den eigenen Bechern, nie ueber Becher oder Knoepfen des Gegners -->
+                    <transition name="kn-myturn">
+                        <div v-if="showMyTurn" class="kn-myturn">🎯 Du bist dran!</div>
+                    </transition>
+                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && !twoPhone ? 'up' : 'down'" :isTarget="isTarget(bottomTeam) && !waitingForOther" :rotated="isTarget(bottomTeam) && !twoPhone" :owners="cupOwners.racks[bottomTeam]" showDrinkers>
                         <template #front><KnechtControls v-if="isTarget(bottomTeam) && !waitingForOther" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
@@ -41,7 +45,7 @@
             <div v-else class="kn-field kn-field--referee">
                 <div v-for="teamIndex in [leftTeam, rightTeam]" :key="teamIndex" class="kn-end" :class="{ 'kn-end--target': isTarget(teamIndex) }">
                     <div class="kn-end-rack">
-                        <KnechtRack :game="game" :teamIndex="teamIndex" :direction="teamIndex === leftTeam ? 'left' : 'right'" :isTarget="isTarget(teamIndex)">
+                        <KnechtRack :game="game" :teamIndex="teamIndex" :direction="teamIndex === leftTeam ? 'left' : 'right'" :isTarget="isTarget(teamIndex)" :owners="cupOwners.racks[teamIndex]" showDrinkers>
                             <template #front><KnechtControls v-if="isTarget(teamIndex)" :game="game" :trickshotActive="sheet === 'trickshot'" @trickshot="openTrickshot" /></template>
                         </KnechtRack>
                     </div>
@@ -313,7 +317,8 @@ const game = useBiPoKnecht(props.match, props.startTeamIndex, props.actions);
 const toast = useToast();
 
 // ─── Einstellungen (bleiben fuer das naechste Spiel erhalten) ───
-const MODE_KEY = 'bipo_knecht_mode';
+// v2: einmalig alle auf Auto zuruecksetzen (fruehere Versionen haben jede Wahl dauerhaft gespeichert)
+const MODE_KEY = 'bipo_knecht_mode_v2';
 const MODE_OPTIONS = [{ label: 'Auto', value: 'auto' }, { label: 'Spieler', value: 'player' }, { label: 'Schiri', value: 'referee' }];
 
 // Auto: der Modus folgt der Bildschirm-Orientierung (hochkant = Spieler, quer = Schiedsrichter)
@@ -441,17 +446,25 @@ const undoEnabled = computed(() => game.canUndo.value && (props.undoAllowed !== 
 watch(() => [props.phoneSide, props.phonePlayer, freeInput.value] as const, ([team, player, free]) => {
     game.lockPlayer(perPlayer.value && !free && typeof team === 'number' && typeof player === 'number' ? { team, player } : null);
 }, { immediate: true });
-// Kurz vibrieren, wenn man selbst dran ist
-watch(() => perPlayer.value && isMyThrow.value && game.isStarted.value && state.value.status === 'playing', (mine, before) => {
-    if (mine && !before) navigator.vibrate?.(80);
+// Kurz vibrieren und Hinweis zeigen, wenn man selbst dran ist (verschwindet nach kurzer Zeit)
+const showMyTurn = ref(false);
+let myTurnTimer: ReturnType<typeof setTimeout> | null = null;
+watch(() => twoPhone.value && !freeInput.value && isMyThrow.value && game.isStarted.value && state.value.status === 'playing', (mine, before) => {
+    if (myTurnTimer) clearTimeout(myTurnTimer);
+    showMyTurn.value = mine;
+    if (!mine) return;
+    if (!before && perPlayer.value) navigator.vibrate?.(80);
+    myTurnTimer = setTimeout(() => { showMyTurn.value = false; }, 2500);
 });
 // ─── Mehrere Handys: Werfer auf den getroffenen Bechern, Trinker fuer das getroffene Team ───
-const cupOwners = computed(() => twoPhone.value ? getCupOwners(state.value) : null);
+// Alle Modi: Werfer auf dem Becherplatz, darunter wer trinkt. Den Hinweis "... trinkt" gibt es nur mit mehreren
+// Handys (auf einem gemeinsamen Handy wuerde er die Becher verdecken, auf die gerade geworfen wird).
+const cupOwners = computed(() => getCupOwners(state.value));
 const drinkNotice = ref<{ id: number; text: string; me: boolean } | null>(null);
 let drinkTimer: ReturnType<typeof setTimeout> | null = null;
-let knownRemovals = cupOwners.value?.removals.length ?? 0;
-watch(() => cupOwners.value?.removals, (removals) => {
-    if (!removals) return;
+let knownRemovals = cupOwners.value.removals.length;
+watch(() => cupOwners.value.removals, (removals) => {
+    if (!twoPhone.value) { knownRemovals = removals.length; return; }
     const fresh = removals.slice(knownRemovals).filter(removal => removal.rackTeam === props.phoneSide);
     knownRemovals = removals.length;
     if (!fresh.length || !game.isStarted.value) return;
@@ -935,6 +948,27 @@ onUnmounted(() => {
 .kn-edge-leave-to{
     opacity: 0;
 }
+/* Mehrere Handys: selbst dran. Sitzt im eigenen Tischende (dort wird gerade nicht getippt) */
+.kn-end--own{ position: relative; }
+.kn-myturn{
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    z-index: 6;
+    transform: translateX(-50%);
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--main-color);
+    color: white;
+    font-size: 14px;
+    font-weight: 800;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .2);
+}
+.kn-myturn-enter-active, .kn-myturn-leave-active{ transition: opacity .25s ease; }
+.kn-myturn-enter-from, .kn-myturn-leave-to{ opacity: 0; }
+
 /* Mehrere Handys: wer trinkt */
 .kn-drink{
     position: absolute;
