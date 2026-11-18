@@ -1,4 +1,4 @@
-import { MAX_PLAYERS_PER_TEAM, MpError, type MpBumpResult, type MpPatch, type MpPlayer, type MpSession } from './multiplayerTypes';
+import { MAX_PLAYERS_PER_TEAM, MpError, hasPhone, type MpBumpResult, type MpPatch, type MpPlayer, type MpSession } from './multiplayerTypes';
 
 // Nachbau des Backends (KnechtSession-Controller) im Browser: fuer den Demo-Modus (mehrere Tabs im selben
 // Browser spielen gegeneinander) und fuer Tests. Gleiche Regeln wie im Backend, Daten im Storage.
@@ -30,19 +30,15 @@ export const createLocalServer = (store: LocalStore) => {
     const newSession = (data: LocalData, players: { deviceId: string; name: string }[]): MpSession => {
         let code = '';
         do code = String(Math.floor(1000 + Math.random() * 9000));
-        while (data.sessions[code] && !['saved', 'aborted'].includes(data.sessions[code].status));
+        while (data.sessions[code] && data.sessions[code].status === 'lobby');
         const now = store.now();
         const session: MpSession = {
             code,
             hostId: players[0].deviceId,
             status: 'lobby',
             players: players.map((player, index) => ({ deviceId: player.deviceId, name: player.name, team: index % 2, joinedAt: now + index })),
-            match: null,
-            startTeamIndex: null,
-            actions: [],
-            authors: [],
-            savingBy: null,
-            result: null,
+            cupColors: null,
+            live: null,
             version: 1,
         };
         data.sessions[code] = session;
@@ -121,8 +117,10 @@ export const createLocalServer = (store: LocalStore) => {
             const session = data.sessions[code];
             if (!session) return null;
             session.players = session.players.filter(player => player.deviceId !== deviceId);
-            if (session.hostId === deviceId && session.players.length) session.hostId = session.players[0].deviceId;
-            if (!session.players.length) session.status = 'aborted';
+            // Ohne Handy in der Lobby gibt es niemanden mehr, der starten koennte
+            const phones = session.players.filter(hasPhone);
+            if (session.hostId === deviceId && phones.length) session.hostId = phones[0].deviceId;
+            if (!phones.length && session.status === 'lobby') session.status = 'aborted';
             session.version++;
             return session;
         }),

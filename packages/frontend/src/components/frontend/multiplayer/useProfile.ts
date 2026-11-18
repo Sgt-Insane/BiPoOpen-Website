@@ -1,15 +1,15 @@
 import { computed, ref } from 'vue';
 import { getSeason, CURRENT_SEASON_SLUG } from '../league/LeagueSeasonsData';
+import { getDeviceStorage } from '@/util/deviceStorage';
 
 // Standard-Profil ohne Login: welcher Spieler auf diesem Handy spielt. Bleibt im Browser gespeichert.
-// deviceId unterscheidet die Handys im Mehrspieler-Knecht (zwei Handys koennen denselben Namen haben).
+// deviceId unterscheidet die Handys in der Anstoss-Lobby (zwei Handys koennen denselben Namen haben).
 
 const NAME_KEY = 'bipo_profile_name';
 const DEVICE_KEY = 'bipo_device_id';
 
 // Demo-Modus spielt in mehreren Tabs gegeneinander: dort ist jeder Tab ein eigenes Handy (sessionStorage)
-const isTabScoped = import.meta.env.VITE_KNECHT_MULTIPLAYER === 'local' || (import.meta.env.DEV && import.meta.env.VITE_KNECHT_MULTIPLAYER !== 'remote');
-const getStorage = () => isTabScoped ? sessionStorage : localStorage;
+const getStorage = getDeviceStorage;
 
 export const readSetting = (key: string) => {
     try { return getStorage().getItem(key); } catch { return null; }

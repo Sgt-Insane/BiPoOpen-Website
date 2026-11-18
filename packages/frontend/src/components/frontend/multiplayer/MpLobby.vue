@@ -1,34 +1,43 @@
 <template>
     <div class="MpLobby">
         <div class="ml-code-card">
-            <div class="ml-code-label">Spiel-Code</div>
+            <div class="ml-code-label">Lobby-PIN</div>
             <div class="ml-code">{{ session.code }}</div>
-            <div class="ml-code-hint">Weitere Spieler: Handy an ein Handy der Runde stoßen oder den Code eingeben</div>
-            <button type="button" class="ml-share" @click="$emit('share')"><i class="pi pi-share-alt"></i> Einladen</button>
+            <button v-hint="'Weitere Spieler stoßen mit einem Handy der Runde an oder geben die PIN ein – auch nach dem Start'" type="button" class="ml-share" @click="$emit('share')"><i class="pi pi-share-alt"></i> Einladen</button>
         </div>
 
         <div class="ml-teams">
-            <div v-for="team in [0, 1]" :key="team" class="ml-team" :style="{ '--ml-team-color': TEAM_COLORS[team] }">
-                <div class="ml-team-title">Team {{ team + 1 }}</div>
-                <button
-                    v-for="player in getTeamPlayers(session.players, team)"
-                    :key="player.deviceId"
-                    type="button"
-                    class="ml-player"
-                    :class="{ 'ml-player--me': player.deviceId === deviceId }"
-                    :disabled="player.deviceId !== deviceId || !canMove(team)"
-                    :title="player.deviceId === deviceId && canMove(team) ? 'Ins andere Team wechseln' : undefined"
-                    @click="$emit('move', player.deviceId)"
-                >
-                    <Avatar :name="player.name" class="ml-player-avatar" :lazy="false" />
-                    <span class="ml-player-name">{{ player.name }}</span>
-                    <span v-if="player.deviceId === deviceId" class="ml-player-tag">Du<template v-if="canMove(team)"> ⇄</template></span>
-                    
-                </button>
+            <template v-for="team in [0, 1]" :key="team">
+            <!-- Seiten tauschen: bei zwei Spielern tauschen beide, sonst wechselt nur man selbst -->
+            <button v-if="team === 1" v-hint="swapLabel" type="button" class="ml-swap" :disabled="!canSwap" @click="$emit('swap')">
+                <i class="pi pi-arrow-right-arrow-left"></i>
+            </button>
+            <div class="ml-team" :style="{ '--ml-team-color': colors[team] }">
+                <div class="ml-team-title">{{ teamName(team) }}</div>
+                <div v-for="player in getTeamPlayers(session.players, team)" :key="player.deviceId" class="ml-player-row">
+                    <div class="ml-player" :class="{ 'ml-player--me': player.deviceId === deviceId }">
+                        <Avatar :name="player.name" class="ml-player-avatar" :lazy="false" />
+                        <span class="ml-player-name">
+                            {{ player.name }}
+                            <small v-if="!hasPhone(player)" class="ml-player-nophone">ohne Handy</small>
+                        </span>
+                        <span v-if="player.deviceId === deviceId" class="ml-player-tag">Du</span>
+                    </div>
+                    <button v-if="!hasPhone(player)" type="button" class="ml-remove" :aria-label="`${player.name} entfernen`" @click="$emit('removeGuest', player.deviceId)">
+                        <i class="pi pi-times"></i>
+                    </button>
+                </div>
                 <div v-if="!getTeamPlayers(session.players, team).length" class="ml-empty">Wartet auf Spieler …</div>
+
+                <!-- Spieler ohne eigenes Handy: kleine Option, ein Handy des Teams traegt fuer ihn ein -->
+                <form v-if="guestTeam === team" class="ml-guest" @submit.prevent="addGuest">
+                    <PlayerSearchAutoComplete v-model="guestName" placeholder="Name …" className="ml-guest-input" @item-select="onGuestSelect" />
+                    <button type="submit" class="ml-guest-add" :disabled="!guestName.trim()" aria-label="Hinzufügen"><i class="pi pi-check"></i></button>
+                </form>
+                <button v-else-if="hasRoom(team)" v-hint="'Ein Handy seines Teams trägt für ihn ein'" type="button" class="ml-add" @click="openGuest(team)">+ Ohne Handy</button>
             </div>
+            </template>
         </div>
-        <p class="ml-hint">Tippe auf dich selbst, um das Team zu wechseln. Jeder trägt später auf seinem Handy nur seine eigenen Würfe ein.</p>
 
         <!-- Spieltyp: offen oder noch offenes Liga-/Cup-Spiel -->
         <div v-if="options && options.length > 1" class="ml-options">
@@ -42,34 +51,61 @@
         </div>
 
         <div v-else class="ml-footer">
-            <button type="button" class="ml-button" @click="$emit('leave')">Verlassen</button>
-            <button type="button" class="ml-button ml-button--primary" :disabled="!canStart || loadingOptions" @click="$emit('prepare')">
-                <i v-if="loadingOptions" class="pi pi-spin pi-spinner"></i>
+            <button type="button" class="ml-button ml-button--primary" :disabled="!canStart || busy" @click="$emit('prepare')">
+                <i v-if="busy" class="pi pi-spin pi-spinner"></i>
                 <span v-else>{{ canStart ? 'Spiel starten' : 'Warte auf Gegner …' }}</span>
             </button>
+            <button type="button" class="ml-leave" @click="$emit('leave')">Verlassen</button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
+import PlayerSearchAutoComplete from '@/components/shared/PlayerSearchAutoComplete.vue';
 import { TEAM_COLORS } from '../biPoKnecht/KnechtUtilFunctions';
-import { MAX_PLAYERS_PER_TEAM, getTeamPlayers, type MpSession } from './multiplayerTypes';
+import { MAX_PLAYERS_PER_TEAM, getTeamPlayers, hasPhone, type MpSession } from './multiplayerTypes';
 import type { MpGameOption } from './multiplayerGameOptions';
 
 const props = defineProps<{
     session: MpSession;
     deviceId: string;
     options: MpGameOption[] | null;
-    loadingOptions: boolean;
+    busy: boolean;
 }>();
 
-defineEmits<{ move: [deviceId: string]; prepare: []; start: [option: MpGameOption]; cancelOptions: []; leave: []; share: [] }>();
+const emit = defineEmits<{
+    swap: []; prepare: []; start: [option: MpGameOption]; cancelOptions: []; leave: []; share: [];
+    addGuest: [team: number, name: string]; removeGuest: [deviceId: string];
+}>();
 
+const colors = computed(() => props.session.cupColors ?? TEAM_COLORS);
+const teamName = (team: number) => colors.value[team] === TEAM_COLORS[1] ? 'Team Blau' : 'Team Rot';
 const canStart = computed(() => [0, 1].every(team => getTeamPlayers(props.session.players, team).length > 0));
-// Wechseln geht, solange im anderen Team Platz ist
-const canMove = (team: number) => getTeamPlayers(props.session.players, 1 - team).length < MAX_PLAYERS_PER_TEAM;
+const hasRoom = (team: number) => getTeamPlayers(props.session.players, team).length < MAX_PLAYERS_PER_TEAM;
+// Zwei Spieler in verschiedenen Teams: beide tauschen. Sonst wechselt man selbst, wenn drueben Platz ist.
+const me = computed(() => props.session.players.find(player => player.deviceId === props.deviceId));
+const swapsBoth = computed(() => props.session.players.length === 2 && new Set(props.session.players.map(player => player.team)).size === 2);
+const canSwap = computed(() => swapsBoth.value || (!!me.value && hasRoom(1 - me.value.team)));
+const swapLabel = computed(() => swapsBoth.value ? 'Seiten tauschen' : 'Ins andere Team wechseln');
+
+const guestTeam = ref<number | null>(null);
+const guestName = ref('');
+const openGuest = (team: number) => {
+    guestTeam.value = team;
+    guestName.value = '';
+};
+const addGuest = () => {
+    const name = guestName.value.trim();
+    if (!name || guestTeam.value === null) return;
+    emit('addGuest', guestTeam.value, name);
+    guestTeam.value = null;
+};
+const onGuestSelect = (event: { value: string }) => {
+    guestName.value = event.value;
+    addGuest();
+};
 </script>
 
 <style scoped>
@@ -121,9 +157,22 @@ const canMove = (team: number) => getTeamPlayers(props.session.players, 1 - team
 }
 .ml-teams{
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: start;
+    gap: 8px;
 }
+.ml-swap{
+    align-self: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+    font-size: 15px;
+}
+.ml-swap:disabled{ opacity: .4; }
 .ml-team{
     display: flex;
     flex-direction: column;
@@ -153,7 +202,11 @@ const canMove = (team: number) => getTeamPlayers(props.session.players, 1 - team
     color: var(--bp-text-strong);
     text-align: left;
 }
-.ml-player--me{ border-color: var(--ml-team-color); }
+/* Man selbst: farbig hinterlegt, damit man sich sofort findet */
+.ml-player--me{
+    border: 2px solid var(--ml-team-color);
+    background: color-mix(in srgb, var(--ml-team-color) 14%, var(--bp-surface));
+}
 .ml-player:disabled{ opacity: 1; }
 .ml-player-avatar{
     width: 30px !important;
@@ -239,7 +292,22 @@ const canMove = (team: number) => getTeamPlayers(props.session.players, 1 - team
 }
 .ml-footer{
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+.ml-footer .ml-button--primary{
+    width: 100%;
+    max-width: 320px;
+}
+.ml-leave{
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    color: var(--bp-text-secondary);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
 }
 .ml-button{
     display: flex;
@@ -260,4 +328,59 @@ const canMove = (team: number) => getTeamPlayers(props.session.players, 1 - team
     color: white;
 }
 .ml-button:disabled{ opacity: .55; }
+.ml-player-row{
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+.ml-player-row .ml-player{ flex: 1; }
+.ml-player-nophone{
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bp-text-muted);
+}
+.ml-remove{
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--bp-text-muted);
+}
+.ml-add{
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 4px 2px;
+    color: var(--bp-text-secondary);
+    font-size: 13px;
+    font-weight: 700;
+}
+.ml-guest{
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+}
+.ml-guest :deep(.ml-guest-input),
+.ml-guest :deep(.p-autocomplete),
+.ml-guest :deep(input){
+    width: 100%;
+    min-width: 0;
+}
+.ml-guest > :first-child{
+    flex: 1;
+    min-width: 0;
+}
+.ml-guest-add{
+    flex-shrink: 0;
+    width: 40px;
+    border: none;
+    border-radius: 12px;
+    background: var(--ml-team-color);
+    color: white;
+}
+.ml-guest-add:disabled{ opacity: .5; }
 </style>

@@ -136,7 +136,7 @@ const routes = [
 		name: 'Mitspielen',
 		component: () => import('@/components/frontend/multiplayer/_Multiplayer.vue'),
 		meta: {
-			title: 'Weck BiPo Knecht - Spiel starten',
+			title: 'Weck BiPo Knecht - Anstoßen',
 			description: 'Spiel starten'
 		}
 	},

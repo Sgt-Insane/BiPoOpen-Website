@@ -13,6 +13,7 @@ import BellIcon from './BellIcon.vue';
 import Avatar from './Avatar.vue';
 import { useProfile } from '@/components/frontend/multiplayer/useProfile';
 import { useMultiplayerSession } from '@/components/frontend/multiplayer/useMultiplayerSession';
+import { isFeatureOn } from '@/util/featureFlags';
 
 const route = useRoute();
 const { tournamentPickerVisible, openTournamentPicker } = useTournamentPicker();
@@ -116,6 +117,7 @@ const logo = computed(() => isDark.value ? logoDark : logoLight);
 
 				<!-- Profil: Standard-Spieler dieses Handys, von dort aus Spiel starten -->
 				<router-link
+					v-if="isFeatureOn('mitspielen')"
 					to="/Profil"
 					class="ap-round-btn ap-profile-btn"
 					:class="{ 'ap-round-btn--active': route.path === '/Profil' || route.path.startsWith('/Mitspielen') }"

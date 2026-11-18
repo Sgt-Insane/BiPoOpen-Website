@@ -1,6 +1,58 @@
 <template>
+    <!-- Erst waehlen, was man vorhat (ab 2.1.0, vorher direkt das Formular) -->
+    <BottomSheet v-if="useChooser" v-model:visible="chooserVisible">
+        <template #header>
+            <div class="ag-title">Spiel</div>
+        </template>
+        <div class="ag-choose">
+            <button v-if="runningGameTitle" type="button" class="ag-knecht" @click="resumeKnecht">
+                <span class="ag-knecht-icon">🎯</span>
+                <span class="ag-knecht-text">
+                    <span class="ag-knecht-title">Laufendes Knecht-Spiel</span>
+                    <span class="ag-knecht-subtitle">{{ runningGameTitle }}</span>
+                </span>
+                <span class="ag-knecht-action">Fortsetzen</span>
+            </button>
+            <button v-if="openLobby" type="button" class="ag-knecht" @click="resumeLobby">
+                <span class="ag-knecht-icon">🍻</span>
+                <span class="ag-knecht-text">
+                    <span class="ag-knecht-title">Offene Lobby</span>
+                    <span class="ag-knecht-subtitle">PIN {{ openLobby }}</span>
+                </span>
+                <span class="ag-knecht-action">Fortsetzen</span>
+            </button>
+
+            <button type="button" class="ag-option" :class="{ 'ag-option--muted': !profileName }" @click="goBump">
+                <span class="ag-option-icon">🍻</span>
+                <span class="ag-option-text">
+                    <span class="ag-option-title">Anstoßen &amp; spielen</span>
+                    <span class="ag-option-detail">{{ profileName ? 'Jeder mit eigenem Handy – per Anstoßen oder PIN' : 'Erst dein Profil wählen, dann anstoßen' }}</span>
+                </span>
+                <i class="pi pi-angle-right"></i>
+            </button>
+            <button type="button" class="ag-option" @click="step = 'track'">
+                <span class="ag-option-icon">🎯</span>
+                <span class="ag-option-text">
+                    <span class="ag-option-title">Spiel tracken</span>
+                    <span class="ag-option-detail">Ein Handy zählt jeden Wurf im BiPo Knecht</span>
+                </span>
+                <i class="pi pi-angle-right"></i>
+            </button>
+            <button type="button" class="ag-option" @click="step = 'result'">
+                <span class="ag-option-icon">✏️</span>
+                <span class="ag-option-text">
+                    <span class="ag-option-title">Ergebnis eintragen</span>
+                    <span class="ag-option-detail">Spiel ist schon vorbei – Treffer eintragen</span>
+                </span>
+                <i class="pi pi-angle-right"></i>
+            </button>
+        </div>
+    </BottomSheet>
+
     <GameEntryDrawer
-        v-model:visible="addGameVisible"
+        v-model:visible="entryVisible"
+        :title="entryTitle"
+        :entry="useChooser ? (step === 'track' ? 'track' : 'result') : 'both'"
         :subtitle="subtitle"
         :initialSides="initialSides"
         v-bind="MODE_PROPS[mode]"
@@ -9,8 +61,9 @@
         :launch="launch"
     >
         <template #top="{ setTeams }">
+            <button v-if="useChooser" type="button" class="ag-back" @click="step = 'choose'"><i class="pi pi-angle-left"></i> Andere Auswahl</button>
             <!-- Laufendes BiPo-Knecht-Spiel fortsetzen -->
-            <button v-if="runningGameTitle" type="button" class="ag-knecht" @click="resumeKnecht">
+            <button v-if="runningGameTitle && !useChooser" type="button" class="ag-knecht" @click="resumeKnecht">
                 <span class="ag-knecht-icon">🎯</span>
                 <span class="ag-knecht-text">
                     <span class="ag-knecht-title">Laufendes Knecht-Spiel</span>
@@ -83,6 +136,10 @@ import { clearPlayerCaches, getUnlockedBadges } from '@/components/frontend/play
 import { clearGameDataCache, getGameData } from '@/util/gameDataCache';
 import { useKnechtLaunch } from '@/components/frontend/biPoKnecht/useKnechtLaunch';
 import { runningGameTitle } from '@/components/frontend/biPoKnecht/knechtStorage';
+import BottomSheet from '@/components/shared/BottomSheet.vue';
+import { isFeatureOn } from '@/util/featureFlags';
+import { useProfile } from '@/components/frontend/multiplayer/useProfile';
+import { useMultiplayerSession } from '@/components/frontend/multiplayer/useMultiplayerSession';
 import router from '@/router.js';
 
 // Drawer-Einstellungen je Spieltyp
@@ -94,6 +151,41 @@ const MODE_PROPS = {
 };
 
 const { addGameVisible, pageContext, presetNames, notifyGameSaved } = useAddGame();
+const { profileName } = useProfile();
+
+// ─── Auswahl: anstossen, tracken oder Ergebnis eintragen (ab 2.1.0) ───
+const useChooser = computed(() => isFeatureOn('mitspielen'));
+const step = ref<'choose' | 'track' | 'result'>('choose');
+const chooserVisible = computed({
+    get: () => addGameVisible.value && step.value === 'choose',
+    set: (visible) => { if (!visible) addGameVisible.value = false; },
+});
+const entryVisible = computed({
+    get: () => addGameVisible.value && (!useChooser.value || step.value !== 'choose'),
+    set: (visible) => { if (!visible) addGameVisible.value = false; },
+});
+const entryTitle = computed(() => !useChooser.value ? 'Spiel eintragen' : step.value === 'track' ? 'Spiel tracken' : 'Ergebnis eintragen');
+
+// Ohne Profil fragt die Anstoss-Seite zuerst danach
+// Offene Anstoss-Lobby (nur pruefen, ob es sie noch gibt)
+const { storedCode, checkStored } = useMultiplayerSession();
+const openLobby = ref<string | null>(null);
+watch(addGameVisible, async (isVisible) => {
+    if (!isVisible || !useChooser.value || !storedCode.value) { if (!storedCode.value) openLobby.value = null; return; }
+    openLobby.value = storedCode.value;
+    openLobby.value = await checkStored();
+});
+const resumeLobby = () => {
+    const code = openLobby.value;
+    addGameVisible.value = false;
+    if (code) router.push(`/Mitspielen/${code}`);
+};
+
+const goBump = () => {
+    addGameVisible.value = false;
+    router.push('/Mitspielen');
+};
+
 const { launchKnecht } = useKnechtLaunch();
 
 // Eingetragen wird immer in der aktuellen Saison.
@@ -137,6 +229,8 @@ const loadData = () => {
 // Vorauswahl der angezeigten Seite, sonst offenes Spiel
 watch(addGameVisible, (isVisible) => {
     if (!isVisible) return;
+    // Vorbelegte Namen (z.B. offene Liga-Paarung): direkt zum Eintragen, sonst erst die Auswahl
+    step.value = presetNames.value ? 'result' : 'choose';
 
     const context = pageContext.value;
     mode.value = context && modeOptions.some(option => option.value === context.mode) ? context.mode : 'open';
@@ -274,6 +368,69 @@ const showNewAwards = async (badgesBefore: Map<string, PlayerBadge[]>, names: st
     color: var(--bp-text-muted);
     font-size: 14px;
     text-align: center;
+}
+
+/* ─── Auswahl ─── */
+.ag-title{
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--bp-text-strong);
+}
+.ag-choose{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 8px;
+}
+.ag-option{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 72px;
+    padding: 12px 16px;
+    border: 1px solid var(--bp-border);
+    border-radius: 18px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.ag-option--muted{
+    border-color: var(--bp-border);
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-muted);
+}
+.ag-option--muted .ag-option-detail{ color: var(--bp-text-muted); }
+.ag-option-icon{ font-size: 26px; }
+.ag-option-text{
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.ag-option-title{
+    font-size: 17px;
+    font-weight: 800;
+}
+.ag-option-detail{
+    font-size: 13px;
+    color: var(--bp-text-secondary);
+}
+.ag-back{
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+    border: none;
+    background: none;
+    color: var(--bp-text-secondary);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 /* ─── BiPo Knecht ─── */

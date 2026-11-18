@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import type { KnechtMode } from './useBiPoKnecht';
 
 // Wie viele grosse Animationen der Knecht zeigt, getrennt je Modus und pro Geraet gespeichert:
-// 'all' = auch bei jedem normalen Treffer, 'special' = nur besondere Momente (Bombe, On Fire ...), 'off' = keine.
+// 'all' = bei jeder Aktion (auch Fehlwurf), 'special' = nur Bombe, Bouncer, Trickshot, Balls Back und Formationen, 'off' = keine.
 // Standard: Spieler-Modus alle, Schiri-Modus nur besondere (der Schiri traegt schnell hintereinander ein).
 
 export type AnimationLevel = 'all' | 'special' | 'off';

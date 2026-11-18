@@ -46,17 +46,18 @@ const channels = new Map<string, Channel>();
 // Gesendet, bevor die Verbindung stand (z.B. direkt nach dem Beitreten): beim Verbinden nachholen
 const unsent = new Map<string, MpSession>();
 
-const createRemoteApi = (): MpApi => ({
+// base: Backend (/knechtSessions) oder im Demo-Modus der Lobby-Server im Dev-Server (/__mp, siehe devMpServer.ts)
+const createRemoteApi = (base: string, realtime: boolean): MpApi => ({
     kind: 'remote',
-    create: async (deviceId, name) => (await call(() => axios.post('/knechtSessions/create', { deviceId, name }))).session,
-    join: async (code, deviceId, name) => (await call(() => axios.post('/knechtSessions/join', { code, deviceId, name }))).session,
+    create: async (deviceId, name) => (await call(() => axios.post(`${base}/create`, { deviceId, name }))).session,
+    join: async (code, deviceId, name) => (await call(() => axios.post(`${base}/join`, { code, deviceId, name }))).session,
     get: async (code, since) => {
-        const data = await call(() => axios.post(`/knechtSessions/${code}/get`, { since }));
+        const data = await call(() => axios.post(`${base}/${code}/get`, { since }));
         return data.unchanged ? null : data.session;
     },
     update: async (code, baseVersion, patch) => {
         try {
-            const response = await axios.post(`/knechtSessions/${code}/update`, { baseVersion, patch });
+            const response = await axios.post(`${base}/${code}/update`, { baseVersion, patch });
             return { ok: true, session: response.data.session };
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 409 && error.response.data?.session)
@@ -64,15 +65,15 @@ const createRemoteApi = (): MpApi => ({
             throw toError(error);
         }
     },
-    leave: async (code, deviceId) => (await call(() => axios.post(`/knechtSessions/${code}/leave`, { deviceId }))).session ?? null,
-    bump: (deviceId, name, code) => call(() => axios.post('/knechtSessions/bump', { deviceId, name, code })),
-    bumpStatus: (bumpId) => call(() => axios.post(`/knechtSessions/bump/${bumpId}`)),
+    leave: async (code, deviceId) => (await call(() => axios.post(`${base}/${code}/leave`, { deviceId }))).session ?? null,
+    bump: (deviceId, name, code) => call(() => axios.post(`${base}/bump`, { deviceId, name, code })),
+    bumpStatus: (bumpId) => call(() => axios.post(`${base}/bump/${bumpId}`)),
 
     subscribe: (code, onSession, onStatus) => {
         let closed = false;
         let channel: Channel | null = null;
         // Ohne Supabase-Konfiguration bleibt es beim Abfragen im Takt
-        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) return () => {};
+        if (!realtime || !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) return () => {};
 
         import('@/util/supabaseStorage').then(({ getSupabaseClient }) => {
             if (closed) return;
@@ -144,6 +145,11 @@ const createLocalApi = (): MpApi => {
     };
 };
 
-// Demo-Modus spielt lokal, ausser VITE_KNECHT_MULTIPLAYER=remote (z.B. echte Handys gegen ein lokales Backend)
+// Demo-Modus: Lobby-Server im Dev-Server (auch echte Handys ueber WLAN/Tunnel), ohne Echtzeit, nur Abfragen im Takt.
+// VITE_KNECHT_MULTIPLAYER=local: nur Tabs im selben Browser, =remote: echtes Backend.
 const transport = import.meta.env.VITE_KNECHT_MULTIPLAYER as string | undefined;
-export const mpApi: MpApi = transport === 'local' || (isDemoMode && transport !== 'remote') ? createLocalApi() : createRemoteApi();
+export const mpApi: MpApi = transport === 'local'
+    ? createLocalApi()
+    : isDemoMode && transport !== 'remote'
+        ? createRemoteApi(`${typeof window !== 'undefined' ? window.location.origin : ''}/__mp`, false)
+        : createRemoteApi('/knechtSessions', true);

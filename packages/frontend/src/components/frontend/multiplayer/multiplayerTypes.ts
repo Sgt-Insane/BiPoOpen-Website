@@ -1,54 +1,29 @@
-import type { KnechtAction } from '../biPoKnecht/knechtEngine';
-
-// Mehrspieler-Knecht: jedes Handy ist ein Spieler. Der gemeinsame Stand liegt im Backend (KnechtSession),
-// jede Aenderung erhoeht version. So merkt ein Handy, wenn ein anderes schneller war.
+// Anstoss-Lobby vor einem Knecht-Spiel mit mehreren Handys: Handys aneinanderstossen oder Code eingeben, Teams und
+// Farben waehlen, Spieler ohne Handy dazunehmen. Mit dem Start wird daraus ein Live-Spiel (biPoKnecht/knechtLive.ts),
+// jedes Handy tritt dort als sein Spieler bei. Jede Aenderung der Lobby erhoeht version (zwei Handys gleichzeitig).
 
 export type MpPlayer = {
-    deviceId: string;
+    deviceId: string;   // bei Spielern ohne Handy eine erfundene Kennung
     name: string;
     team: number;       // 0 | 1
     joinedAt: number;
+    phone?: boolean;    // false: Spieler ohne eigenes Handy (ein Handy seines Teams traegt fuer ihn ein)
 };
 
-export type MpStatus = 'lobby' | 'playing' | 'saving' | 'saved' | 'aborted';
-
-// Ergebnis eines gespeicherten Spiels, damit alle Handys es anzeigen koennen
-export type MpResult = {
-    id: number;
-    match: Match;
-    path: string;
-    rematch: boolean;
-    savedBy: string;
-};
-
-// Speichern und Abbrechen brauchen das OK aller Handys
-export type MpVote = {
-    id: number;
-    kind: 'save' | 'abort';
-    by: string;                 // deviceId, wer gefragt hat
-    rematch: boolean;           // speichern und Revanche
-    approvals: string[];        // deviceIds mit OK
-    declinedBy: string | null;
-    createdAt: number;
-};
+// lobby: Spieler sammeln, started: Spiel laeuft (live zeigt wohin), aborted: alle weg
+export type MpStatus = 'lobby' | 'started' | 'aborted';
 
 export type MpSession = {
     code: string;
     hostId: string;
     status: MpStatus;
     players: MpPlayer[];
-    match: Match | null;
-    startTeamIndex: number | null;
-    actions: KnechtAction[];
-    authors: string[];
-    paused?: boolean;
-    vote?: MpVote | null;
-    savingBy: string | null;
-    result: MpResult | null;
+    cupColors?: string[] | null;            // Becherfarben je Team
+    live?: { id: string; code: string } | null;
     version: number;
 };
 
-export type MpPatch = Partial<Pick<MpSession, 'status' | 'players' | 'match' | 'startTeamIndex' | 'actions' | 'authors' | 'paused' | 'vote' | 'savingBy' | 'result'>>;
+export type MpPatch = Partial<Pick<MpSession, 'status' | 'players' | 'cupColors' | 'live'>>;
 
 export type MpBumpResult =
     | { session: MpSession }
@@ -65,3 +40,5 @@ export class MpError extends Error {
 // Spieler eines Teams in Beitrittsreihenfolge (= Reihenfolge im Knecht)
 export const getTeamPlayers = (players: MpPlayer[], team: number) =>
     players.filter(player => player.team === team).sort((a, b) => a.joinedAt - b.joinedAt);
+
+export const hasPhone = (player: MpPlayer) => player.phone !== false;

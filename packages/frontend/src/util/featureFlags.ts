@@ -20,8 +20,13 @@ export type Release = { version: string; date: string; title: string; notes: str
 
 export const FEATURES = {
     live: {
-        title: 'Live-Ticker & zweites Handy',
-        description: 'Knecht-Spiele live auf der Startseite verfolgen und mit zwei Handys zählen (Code oder Link).',
+        title: 'Live-Ticker & mehrere Handys',
+        description: 'Knecht-Spiele live auf der Startseite verfolgen und mit mehreren Handys zählen: jeder Spieler oder jedes Tischende trägt selbst ein (Code oder Link).',
+        release: '2.1.0',
+    },
+    mitspielen: {
+        title: 'Anstoßen & Profil',
+        description: 'Standard-Profil auf diesem Handy und Lobby per Anstoßen: Spieler, Teams und Farben wählen, dann spielt jeder mit seinem Handy.',
         release: '2.1.0',
     },
     shareOverlay: {

@@ -2,15 +2,16 @@ import { Request, Response } from "express";
 import KnechtSession from "../models/KnechtSession";
 import KnechtBump from "../models/KnechtBump";
 
-// Mehrspieler-Knecht. Das Backend ist bewusst duenn: es haelt den Stand, vergibt Codes, ordnet Stoesse zu
-// und verhindert mit version, dass sich zwei Handys gegenseitig ueberschreiben. Die Spiellogik bleibt im Frontend.
+// Lobby fuer Knecht-Spiele mit mehreren Handys. Das Backend ist bewusst duenn: es haelt die Lobby, vergibt Codes,
+// ordnet Stoesse zu und verhindert mit version, dass sich zwei Handys gegenseitig ueberschreiben.
+// Gespielt wird danach im Live-Spiel (LiveGame), dessen Code in live steht.
 
 const MAX_PLAYERS_PER_TEAM = 3;
 const BUMP_WINDOW = 2000;       // ms, so weit duerfen zwei Stoesse beim Server auseinander ankommen
 const BUMP_LIFETIME = 7000;     // ms, danach gilt ein Stoss als ins Leere gegangen
-const UPDATABLE = ['status', 'players', 'match', 'startTeamIndex', 'actions', 'authors', 'paused', 'vote', 'savingBy', 'result'] as const;
+const UPDATABLE = ['status', 'players', 'cupColors', 'live'] as const;
 
-type SessionPlayer = { deviceId: string; name: string; team: number; joinedAt: number };
+type SessionPlayer = { deviceId: string; name: string; team: number; joinedAt: number; phone?: boolean };
 
 const toClient = (session: any) => {
     if (!session) return null;
@@ -28,7 +29,7 @@ const createSession = async (players: { deviceId: string; name: string }[]) => {
         const code = randomCode();
         // Code nur vergeben, wenn keine laufende Session ihn nutzt
         const existing = await KnechtSession.findOne({ code }).lean();
-        if (existing && !['saved', 'aborted'].includes(existing.status as string)) continue;
+        if (existing && existing.status === 'lobby') continue;
         if (existing) await KnechtSession.deleteOne({ code });
         try {
             const now = Date.now();
@@ -147,8 +148,10 @@ const leave = async (req: Request, res: Response) => {
             if (!session) return res.status(200).json({ session: null });
             const players = (session.players as SessionPlayer[]).filter(player => player.deviceId !== deviceId);
             const $set: Record<string, unknown> = { players, updatedAt: new Date() };
-            if (session.hostId === deviceId && players.length) $set.hostId = players[0].deviceId;
-            if (!players.length) $set.status = 'aborted';
+            // Ohne Handy in der Lobby gibt es niemanden mehr, der starten koennte
+            const phones = players.filter(player => player.phone !== false);
+            if (session.hostId === deviceId && phones.length) $set.hostId = phones[0].deviceId;
+            if (!phones.length && session.status === 'lobby') $set.status = 'aborted';
             const updated = await KnechtSession.findOneAndUpdate(
                 { code: req.params.code, version: session.version },
                 { $set, $inc: { version: 1 } },

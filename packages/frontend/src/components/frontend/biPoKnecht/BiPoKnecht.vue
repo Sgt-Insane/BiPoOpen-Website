@@ -76,7 +76,7 @@
 
             <!-- Airball-Shots: je 3 Airballs eines Teams trinkt jede Person dieses Teams einen Shot -->
             <transition name="kn-confirm">
-                <div v-if="shotTeam !== null && !game.isOver.value" class="kn-overlay kn-confirm kn-shot">
+                <div v-if="shotTeam !== null && showsShot(shotTeam) && !game.isOver.value" class="kn-overlay kn-confirm kn-shot">
                     <div class="kn-confirm-card" :style="{ transform: !twoPhone && mode === 'player' && shotTeam === topTeam ? 'rotate(180deg)' : undefined }">
                         <div class="kn-confirm-icon kn-shot-icon">🥃</div>
                         <div class="kn-confirm-title">Shot-Zeit!</div>
@@ -101,11 +101,12 @@
             <div v-if="!game.isStarted.value" class="kn-overlay">
                 <button v-if="live" type="button" class="kn-live-chip" @click="sheet = 'live'">
                     <span class="kn-live-dot" :class="{ 'kn-live-dot--off': live.status !== 'live' }"></span>
-                    <template v-if="live.status === 'off'">Live &amp; zweites Handy</template>
-                    <template v-else-if="live.code">Live · Code {{ live.code }} fürs zweite Handy</template>
+                    <template v-if="live.status === 'off'">Live &amp; mehrere Handys</template>
+                    <template v-else-if="live.code">Live · PIN {{ live.code }} für weitere Handys</template>
                     <template v-else>Live</template>
                 </button>
-                <KnechtStartTeam :match="game.match" @start="startGame" @cancel="$emit('exit')" />
+                <!-- Handy gehoert einem Spieler/Tischende (Lobby oder per PIN beigetreten): Farben sind schon gewaehlt -->
+                <KnechtStartTeam :match="game.match" :skipColors="typeof live?.team === 'number'" @start="startGame" @cancel="multiDevice ? confirmAbort() : $emit('exit')" />
             </div>
 
             <!-- Pause -->
@@ -162,8 +163,8 @@
                 <KnechtOwnCup :game="game" @done="sheet = null" />
             </KnechtSheet>
 
-            <KnechtSheet :visible="sheet === 'live'" title="Live & zweites Handy" :flipped="sheetFlipped" @update:visible="sheet = null">
-                <KnechtLivePanel :live="live ?? null" :referee="mode === 'referee'" @start="emit('live', 'start')" @stop="emit('live', 'stop'); sheet = null" @leave="emit('live', 'leave')" @kick="emit('live', 'kick')" />
+            <KnechtSheet :visible="sheet === 'live'" title="Live & mehrere Handys" :flipped="sheetFlipped" @update:visible="sheet = null">
+                <KnechtLivePanel :live="live ?? null" :match="game.match" :referee="mode === 'referee'" @action="onLiveAction" />
             </KnechtSheet>
 
             <KnechtSheet :visible="sheet === 'menu'" title="Einstellungen & Sonderfälle" :flipped="sheetFlipped" @update:visible="sheet = null">
@@ -171,7 +172,7 @@
                     <!-- Einheitlich: Auswahl als Segmente, An/Aus als Schalter (Zustand immer sichtbar), Aktionen als Knoepfe -->
                     <div class="kn-menu-label">Modus</div>
                     <SelectButton :modelValue="twoPhone ? 'player' : modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" :disabled="twoPhone" fluid @update:modelValue="setMode" />
-                    <div v-if="twoPhone" class="kn-menu-hint">Mit zwei Handys immer Spieler-Modus</div>
+                    <div v-if="twoPhone" class="kn-menu-hint">Mit mehreren Handys immer Spieler-Modus</div>
                     <div v-else-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
                     <button v-if="mode === 'referee'" type="button" role="switch" class="kn-menu-toggle" :aria-checked="proEnabled" @click="toggleProMode">
                         <KnechtIcon name="miss" />
@@ -197,11 +198,11 @@
                     </button>
                     <div class="kn-menu-label">Animationen im {{ mode === 'player' ? 'Spieler' : 'Schiri' }}-Modus</div>
                     <SelectButton :modelValue="animationLevel" :options="ANIMATION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setAnimationLevel" />
-                    <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Auch bei jedem Treffer' : animationLevel === 'special' ? 'Nur Bombe, On Fire, Formationen & Co.' : 'Keine großen Animationen' }}</div>
+                    <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Bei jeder Aktion' : animationLevel === 'special' ? 'Nur Bombe, Bouncer, Trickshot, Balls Back & Formationen' : 'Keine großen Animationen' }}</div>
 
                     <div class="kn-menu-label">Tisch</div>
-                    <!-- Gemeinsame Einstellungen des Spiels: nur am ersten Handy (das zweite zaehlt nur mit) -->
-                    <button v-if="!isGuest" type="button" class="kn-menu-button" @click="swapColors">
+                    <!-- Becherfarben gehoeren zum Spiel: gelten auf allen Handys -->
+                    <button type="button" class="kn-menu-button" @click="swapColors">
                         <i class="pi pi-palette"></i> Becherfarben tauschen
                     </button>
                     <button v-if="!twoPhone" type="button" class="kn-menu-button" @click="swapSides">
@@ -214,8 +215,8 @@
                     <button v-if="mode === 'referee'" type="button" class="kn-menu-button" @click="sheet = 'elbow'"><KnechtIcon name="penalty" /> Ellenbogen-Call</button>
                     <button type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmDeathcup"><KnechtIcon name="deathcup" /> Deathcup von {{ throwerName }}</button>
 
-                    <template v-if="perPlayer">
-                        <div class="kn-menu-label">Mehrspieler{{ sessionCode ? ` · Code ${sessionCode}` : '' }}</div>
+                    <template v-if="twoPhone">
+                        <div class="kn-menu-label">Mehrere Handys</div>
                         <button type="button" role="switch" class="kn-menu-toggle" :aria-checked="freeInput" @click="toggleFreeInput">
                             <i class="pi pi-lock-open"></i>
                             <span class="kn-menu-toggle-text">Für alle eintragen <small>Wenn das Handy eines Mitspielers ausfällt</small></span>
@@ -226,7 +227,7 @@
                     <div class="kn-menu-label">Spiel</div>
                     <button v-if="live" type="button" class="kn-menu-button" @click="sheet = 'live'">
                         <span class="kn-live-dot" :class="{ 'kn-live-dot--off': live.status !== 'live' }"></span>
-                        {{ live.status === 'off' ? 'Live & zweites Handy' : live.code ? `Live · Code ${live.code}` : 'Live' }}
+                        {{ live.status === 'off' ? 'Live & mehrere Handys' : live.code ? `Live · PIN ${live.code}` : 'Live' }}
                     </button>
                     <button type="button" class="kn-menu-button" @click="pause">
                         <i class="pi pi-pause"></i> Pause
@@ -234,13 +235,12 @@
                     <button type="button" class="kn-menu-button" @click="$emit('leave')">
                         <i class="pi pi-sign-out"></i> Zur Webseite (Spiel bleibt gespeichert)
                     </button>
-                    <button v-if="!isGuest" type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmAbort">
-                        <i class="pi pi-times"></i> Spiel abbrechen
+                    <button v-if="multiDevice" type="button" class="kn-menu-button" @click="emit('live', { type: 'leave' })">
+                        <i class="pi pi-sign-out"></i> Dieses Handy abmelden (Spiel läuft auf den anderen weiter)
                     </button>
-                    <button v-else type="button" class="kn-menu-button kn-menu-button--danger" @click="emit('live', 'leave')">
-                        <i class="pi pi-sign-out"></i> Dieses Handy abmelden (Spiel läuft am anderen weiter)
+                    <button type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmAbort">
+                        <i class="pi pi-times"></i> Spiel abbrechen{{ multiDevice ? ' (für alle)' : '' }}
                     </button>
-                    <div v-if="isGuest" class="kn-menu-hint">Becherfarben, Abbrechen und Speichern macht das erste Handy.</div>
                 </div>
             </KnechtSheet>
         </div>
@@ -255,7 +255,7 @@
         ></span>
 
         <!-- Spielende -->
-        <KnechtGameOver v-if="game.isOver.value" :game="game" :refereeUsed="refereeUsed" :canSave="live?.role !== 'guest'" :saveHandler="saveHandler" :lockedText="savingText" @saved="(result, rematch) => $emit('saved', result, rematch)" />
+        <KnechtGameOver v-if="game.isOver.value" :game="game" :refereeUsed="refereeUsed" :undoAllowed="lastEntryIsMine" :saveHandler="saveHandler" :lockedText="savingText" @saved="(result, rematch) => $emit('saved', result, rematch)" />
     </div>
 </template>
 
@@ -272,7 +272,8 @@ import KnechtScoreboard from './KnechtScoreboard.vue';
 import KnechtTimeline from './KnechtTimeline.vue';
 import KnechtTurnEditor from './KnechtTurnEditor.vue';
 import { getCupOwners } from './knechtCupOwners';
-import KnechtLivePanel, { type KnechtLiveInfo } from './KnechtLivePanel.vue';
+import KnechtLivePanel, { type KnechtLiveAction, type KnechtLiveInfo } from './KnechtLivePanel.vue';
+import { canDeviceEnter, getTeamDevice } from './liveDevices';
 import type { LiveProgress } from './knechtLive';
 import KnechtCelebration from './KnechtCelebration.vue';
 import KnechtOwnCup from './KnechtOwnCup.vue';
@@ -295,14 +296,9 @@ const props = defineProps<{
     startTeamIndex: number | null;
     actions: KnechtAction[];
     refereeUsed: boolean;
-    live?: KnechtLiveInfo | null;       // Live-Ticker / zweites Handy (null = ausgeschaltet)
-    phoneSide?: number | null;          // zwei Handys: Tischende dieses Handys (Teamindex), sonst null
-    // Mehrspieler (ein Handy pro Spieler, siehe multiplayer/): eigener Spieler im Team phoneSide
-    phonePlayer?: number | null;
-    undoAllowed?: boolean;              // letzter Eintrag stammt von diesem Handy
-    saveHandler?: (result: Match, rematch: boolean) => Promise<boolean>;
-    savingText?: string;                // anderes Handy traegt gerade ein
-    sessionCode?: string;
+    live?: KnechtLiveInfo | null;       // Live-Ticker / mehrere Handys (null = ausgeschaltet)
+    saveHandler?: (result: Match, rematch: boolean) => Promise<boolean>;    // mehrere Handys: nur eines traegt ein
+    savingText?: string;                // ein anderes Handy traegt gerade ein
 }>();
 
 const emit = defineEmits<{
@@ -310,7 +306,7 @@ const emit = defineEmits<{
     leave: [];                                      // zur Webseite, Spiel bleibt gespeichert
     saved: [match: Match, rematch: boolean];
     change: [progress: { startTeamIndex: number | null; actions: KnechtAction[]; refereeUsed: boolean }];
-    live: [action: 'start' | 'stop' | 'leave' | 'kick'];
+    live: [action: KnechtLiveAction];
 }>();
 
 const game = useBiPoKnecht(props.match, props.startTeamIndex, props.actions);
@@ -326,11 +322,14 @@ type ModeSetting = KnechtMode | 'auto';
 const storedMode = localStorage.getItem(MODE_KEY);
 const modeSetting = ref<ModeSetting>(storedMode === 'referee' || storedMode === 'player' ? storedMode : 'auto');
 const swapped = ref(false);
-// Zwei Handys (nur Spielermodus): dieses Handy liegt bei phoneSide und zeigt die Becher des Gegners
-const twoPhone = computed(() => props.phoneSide === 0 || props.phoneSide === 1);
-const opponentSide = computed(() => 1 - (props.phoneSide ?? 0));
-// Zweites Handy: zaehlt nur mit, gemeinsame Einstellungen (Farben, Abbrechen, Speichern) macht das erste
-const isGuest = computed(() => props.live?.role === 'guest');
+// Mehrere Handys (siehe liveDevices.ts): jedes traegt fuer einen Spieler oder ein Tischende ein
+const devices = computed(() => props.live?.devices ?? []);
+const myDevice = computed(() => devices.value.find(device => device.id === props.live?.deviceId) ?? null);
+const multiDevice = computed(() => devices.value.length > 1 && !!myDevice.value);
+// Nur Spielermodus: dieses Handy liegt am Tischende phoneSide und zeigt die Becher des Gegners
+const phoneSide = computed(() => multiDevice.value ? myDevice.value!.team : null);
+const myPlayer = computed(() => multiDevice.value ? myDevice.value!.player : null);
+const twoPhone = computed(() => phoneSide.value === 0 || phoneSide.value === 1);
 const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
 const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
@@ -414,7 +413,7 @@ const teamPoints = computed(() => getTeamPoints(state.value));
 // Spielermodus: Team 1 (rot) steht unten, getauscht oben. Schiedsrichter: Team 1 wirft von links.
 // Am Tischende eines Teams stehen dessen Becher und (im Spielermodus) dessen Spieler.
 // Zwei Handys: das eigene Team liegt unten
-const bottomTeam = computed(() => twoPhone.value ? props.phoneSide! : swapped.value ? 1 : 0);
+const bottomTeam = computed(() => twoPhone.value ? phoneSide.value! : swapped.value ? 1 : 0);
 const topTeam = computed(() => 1 - bottomTeam.value);
 const leftTeam = computed(() => swapped.value ? 1 : 0);
 const rightTeam = computed(() => 1 - leftTeam.value);
@@ -429,23 +428,32 @@ const throwerName = computed(() => getPlayerName(game.match, state.value.activeT
 const sheetFlipped = computed(() => !twoPhone.value && mode.value === 'player' && state.value.activeTeamIndex === topTeam.value);
 // Animation zum Team, das geworfen hat (nicht zum Team, das danach dran ist)
 const celebrationFlipped = computed(() => !twoPhone.value && mode.value === 'player' && game.celebration.value?.teamIndex === topTeam.value);
-// Zwei Handys: das andere Team wirft gerade, dieses Handy wartet
-// Ein Handy pro Spieler: auch im eigenen Team traegt nur ein, wer gerade werfen darf
-const perPlayer = computed(() => twoPhone.value && typeof props.phonePlayer === 'number');
+// Mehrere Handys: eintragen nur fuer die eigenen Spieler (und Spieler, die kein Handy abdeckt)
 const freeInput = ref(false);   // Handy eines Mitspielers ausgefallen: dieses Handy traegt fuer alle ein
-const isMyThrow = computed(() => state.value.activeTeamIndex === props.phoneSide
-    && (!perPlayer.value || game.allowedThrowers.value.includes(props.phonePlayer!)));
-const waitingForOther = computed(() => twoPhone.value && !freeInput.value && game.isStarted.value && state.value.status === 'playing' && !isMyThrow.value);
+const canEnter = (team: number, player: number) => !twoPhone.value || freeInput.value || canDeviceEnter(devices.value, props.live?.deviceId ?? null, team, player);
+const isMyThrow = computed(() => game.allowedThrowers.value.some(player => canEnter(state.value.activeTeamIndex, player)));
+const waitingForOther = computed(() => twoPhone.value && game.isStarted.value && state.value.status === 'playing' && !isMyThrow.value);
 const waitText = computed(() => {
     const team = state.value.activeTeamIndex;
-    if (!perPlayer.value) return `${getTeamName(game.match, opponentSide.value)} ist dran · Eingabe am anderen Handy`;
-    const names = game.allowedThrowers.value.map(player => game.match[team === 0 ? 'team1' : 'team2'].players[player]?.name).filter(Boolean);
-    return `${names.length ? names.join(' & ') : getTeamName(game.match, team)} ${names.length > 1 ? 'sind' : 'ist'} dran · trägt selbst ein`;
+    const names = game.allowedThrowers.value.map(player => getTeam(game.match, team).players[player]?.name).filter(Boolean);
+    const who = names.length && getTeam(game.match, team).players.length > 1 ? names.join(' & ') : getTeamName(game.match, team);
+    return `${who} ${names.length > 1 ? 'sind' : 'ist'} dran · Eingabe an einem anderen Handy`;
 });
-const undoEnabled = computed(() => game.canUndo.value && (props.undoAllowed !== false || freeInput.value || !!game.pick.value));
-watch(() => [props.phoneSide, props.phonePlayer, freeInput.value] as const, ([team, player, free]) => {
-    game.lockPlayer(perPlayer.value && !free && typeof team === 'number' && typeof player === 'number' ? { team, player } : null);
+// Werfer auswaehlen nur unter den Spielern, fuer die dieses Handy eintraegt
+watch(() => [twoPhone.value, freeInput.value, devices.value] as const, () => {
+    game.setInputFilter(twoPhone.value && !freeInput.value ? canEnter : null);
 }, { immediate: true });
+// Rueckgaengig nur fuer eigene Eintraege (sonst nimmt man den Wurf eines anderen Handys zurueck)
+const lastEntryIsMine = computed(() => {
+    const actions = game.actions.value;
+    const last = actions.at(-1);
+    if (!twoPhone.value || freeInput.value || !last) return true;
+    const before = game.getStateAfter(actions.length - 1);
+    const team = 'team' in last ? last.team : before.activeTeamIndex;
+    const players = 'player' in last ? [last.player] : getTeam(game.match, team).players.map((_, index) => index);
+    return players.some(player => canEnter(team, player));
+});
+const undoEnabled = computed(() => game.canUndo.value && (lastEntryIsMine.value || !!game.pick.value));
 // Kurz vibrieren und Hinweis zeigen, wenn man selbst dran ist (verschwindet nach kurzer Zeit)
 const showMyTurn = ref(false);
 let myTurnTimer: ReturnType<typeof setTimeout> | null = null;
@@ -453,7 +461,7 @@ watch(() => twoPhone.value && !freeInput.value && isMyThrow.value && game.isStar
     if (myTurnTimer) clearTimeout(myTurnTimer);
     showMyTurn.value = mine;
     if (!mine) return;
-    if (!before && perPlayer.value) navigator.vibrate?.(80);
+    if (!before && myPlayer.value !== null) navigator.vibrate?.(80);
     myTurnTimer = setTimeout(() => { showMyTurn.value = false; }, 2500);
 });
 // ─── Mehrere Handys: Werfer auf den getroffenen Bechern, Trinker fuer das getroffene Team ───
@@ -465,12 +473,12 @@ let drinkTimer: ReturnType<typeof setTimeout> | null = null;
 let knownRemovals = cupOwners.value.removals.length;
 watch(() => cupOwners.value.removals, (removals) => {
     if (!twoPhone.value) { knownRemovals = removals.length; return; }
-    const fresh = removals.slice(knownRemovals).filter(removal => removal.rackTeam === props.phoneSide);
+    const fresh = removals.slice(knownRemovals).filter(removal => removal.rackTeam === phoneSide.value);
     knownRemovals = removals.length;
     if (!fresh.length || !game.isStarted.value) return;
-    const team = props.phoneSide === 0 ? game.match.team1 : game.match.team2;
-    const me = perPlayer.value && fresh.some(removal => removal.drinker === props.phonePlayer);
-    const names = [...new Set(fresh.map(removal => removal.drinker === props.phonePlayer && perPlayer.value ? 'Du' : team.players[removal.drinker]?.name ?? ''))];
+    const team = getTeam(game.match, phoneSide.value!);
+    const me = myPlayer.value !== null && fresh.some(removal => removal.drinker === myPlayer.value);
+    const names = [...new Set(fresh.map(removal => removal.drinker === myPlayer.value ? 'Du' : team.players[removal.drinker]?.name ?? ''))];
     const cups = fresh.length === 1 ? 'den Becher' : `${fresh.length} Becher`;
     drinkNotice.value = { id: Date.now(), me, text: `🍺 ${names.join(' & ')} ${names.length === 1 && names[0] === 'Du' ? 'trinkst' : names.length > 1 ? 'trinken' : 'trinkt'} ${cups}` };
     if (me) navigator.vibrate?.([120, 60, 120]);
@@ -482,6 +490,15 @@ const toggleFreeInput = () => {
     freeInput.value = !freeInput.value;
     sheet.value = null;
 };
+
+// Live-Panel: Handy wechseln/abmelden schliesst das Menue
+const onLiveAction = (action: KnechtLiveAction) => {
+    if (action.type === 'stop' || action.type === 'leave') sheet.value = null;
+    emit('live', action);
+};
+
+// "Shot-Zeit" zeigt nur ein Handy je Team (sonst landet "Spaeter" mehrfach auf der Liste)
+const showsShot = (team: number) => !multiDevice.value || getTeamDevice(devices.value, team)?.id === myDevice.value?.id;
 
 
 // ─── Knecht Pro (nur Schiedsrichter): Doppelkante und Abprallrichtung nach einem Kanten-Nullwurf ───
@@ -598,7 +615,7 @@ const confirmAbort = () => {
     confirmDialog.value = {
         icon: 'miss',
         title: 'Spiel wirklich beenden?',
-        text: 'Das Spiel wird abgebrochen und nicht gespeichert.',
+        text: multiDevice.value ? 'Das Spiel wird auf allen Handys abgebrochen und nicht gespeichert.' : 'Das Spiel wird abgebrochen und nicht gespeichert.',
         confirmLabel: 'Ja, abbrechen',
         action: () => emit('exit'),
     };

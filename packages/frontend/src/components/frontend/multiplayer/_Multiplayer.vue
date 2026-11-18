@@ -1,102 +1,90 @@
 <template>
     <div class="MultiplayerPage">
-        <!-- Spiel laeuft: BiPo Knecht im Vollbild, jedes Handy aus Sicht seines Spielers -->
-        <BiPoKnecht
-            v-if="showKnecht && session && session.match"
-            ref="knecht"
-            :key="knechtKey"
-            :match="session.match"
-            :startTeamIndex="session.startTeamIndex"
-            :actions="session.actions"
-            :refereeUsed="false"
-            :phoneSide="myTeam"
-            :phonePlayer="Math.max(0, myPlayerIndex)"
-            :undoAllowed="session.authors.at(-1) === deviceId"
-            :saveHandler="saveHandler"
-            :savingText="savingText"
-            :sessionCode="session.code"
-            @change="onKnechtChange"
-            @exit="onKnechtExit"
-            @leave="onKnechtLeave"
-        />
+        <PageHeader title="Anstoßen" subtitle="Jeder spielt mit seinem eigenen Handy">
+            <template v-if="session" #actions>
+                <span class="mp-status" :class="{ 'mp-status--offline': offline }">
+                    <span class="mp-status-dot"></span>{{ offline ? 'Offline' : 'Verbunden' }}
+                </span>
+            </template>
+        </PageHeader>
 
-        <MpVote
-            v-if="showVote && vote"
-            :vote="vote"
-            :players="players"
+        <!-- Verbunden: kurz "Prost!", dann die Lobby -->
+        <transition name="mp-cheers">
+            <div v-if="cheers" class="mp-cheers" aria-live="polite">
+                <div class="mp-cheers-cups" aria-hidden="true">
+                    <span class="mp-cheers-cup mp-cheers-cup--left"><BeerCup :color="TEAM_COLORS[0]" slosh /></span>
+                    <span class="mp-cheers-cup mp-cheers-cup--right"><BeerCup :color="TEAM_COLORS[1]" slosh /></span>
+                </div>
+                <div class="mp-cheers-title">Prost!</div>
+                <div class="mp-cheers-text">Ihr seid in einer Lobby</div>
+            </div>
+        </transition>
+
+        <div v-if="loading || starting" class="mp-loading">
+            <i class="pi pi-spin pi-spinner"></i> {{ starting ? 'Spiel wird gestartet …' : 'Lade …' }}
+        </div>
+
+        <ProfilePicker v-else-if="!profileName" @saved="onProfileSaved" />
+
+        <MpLobby
+            v-else-if="session"
+            :session="session"
             :deviceId="deviceId"
-            :score="voteScore"
-            @approve="approveVote"
-            @decline="declineVote"
-            @dismiss="dismissVote"
-            @force="forceVote"
+            :options="gameOptions"
+            :busy="loadingOptions"
+            @swap="swapSides"
+            @prepare="prepareStart"
+            @start="startGame"
+            @cancelOptions="gameOptions = null"
+            @leave="leaveLobby"
+            @share="share"
+            @addGuest="addGuest"
+            @removeGuest="removeGuest"
         />
 
-        <template v-if="!showKnecht">
-            <PageHeader title="Spiel starten" subtitle="Jeder spielt mit seinem eigenen Handy">
-                <template v-if="session" #actions>
-                    <span class="mp-status" :class="{ 'mp-status--offline': offline }">
-                        <span class="mp-status-dot"></span>{{ offline ? 'Offline' : 'Verbunden' }}
-                    </span>
-                </template>
-            </PageHeader>
-
-            <div v-if="loading" class="bp-skeleton" style="height: 320px"></div>
-
-            <ProfilePicker v-else-if="!profileName" @saved="onProfileSaved" />
-
-            <MpLobby
-                v-else-if="session"
-                :session="session"
-                :deviceId="deviceId"
-                :options="gameOptions"
-                :loadingOptions="loadingOptions"
-                @move="movePlayer"
-                @prepare="prepareStart"
-                @start="startGame"
-                @cancelOptions="gameOptions = null"
-                @leave="leaveLobby"
-                @share="share"
-            />
-
-            <MpConnect
-                v-else
-                :bumpState="bumpState"
-                :isSupported="bumpSensor.isSupported"
-                :isListening="bumpSensor.isListening.value"
-                :denied="bumpSensor.denied.value"
-                :hasSensor="bumpSensor.hasSensor.value"
-                :busy="busy"
-                :isLocal="api.kind === 'local'"
-                @enable="bumpSensor.start()"
-                @bump="bump()"
-                @create="createLobby"
-                @join="joinLobby"
-            />
-        </template>
+        <MpConnect
+            v-else
+            :bumpState="bumpState"
+            :isSupported="bumpSensor.isSupported"
+            :isListening="bumpSensor.isListening.value"
+            :denied="bumpSensor.denied.value"
+            :hasSensor="bumpSensor.hasSensor.value"
+            :detectedAt="bumpSensor.detectedAt.value"
+            :sway="bumpSensor.sway.value"
+            :direction="bumpSensor.direction.value"
+            :busy="busy"
+            :isLocal="api.kind === 'local'"
+            @enable="bumpSensor.start()"
+            @bump="bump()"
+            @create="createLobby"
+            @join="joinLobby"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+// Anstoss-Lobby: Handys aneinanderstossen (oder Code), Teams und Farben waehlen, Spieler ohne Handy dazunehmen.
+// "Spiel starten" legt ein Live-Spiel an (wie "+ Spiel" → "Spiel tracken"); jedes Handy der Lobby tritt
+// dort als sein Spieler bei. Wer spaeter kommt, tritt mit dem Code bei (Lobby-Code oder Code im Knecht).
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useGrayPage } from '@/components/shared/useGrayPage';
 import PageHeader from '@/components/shared/PageHeader.vue';
-import BiPoKnecht from '../biPoKnecht/BiPoKnecht.vue';
-import type { LiveProgress } from '../biPoKnecht/knechtLive';
-import { getTeamPoints, replay, type KnechtAction } from '../biPoKnecht/knechtEngine';
-import { buildKnechtMatch, formatPoints, getResultPath, getTeamName, saveKnechtGame, toRematch } from '../biPoKnecht/KnechtUtilFunctions';
-import { isDemoMode } from '@/util/demoGames';
+import { TEAM_COLORS, normalizeTeams } from '../biPoKnecht/KnechtUtilFunctions';
+import { createLiveGame } from '../biPoKnecht/knechtLive';
+import { clearStoredGame, loadStoredGame, storeGame } from '../biPoKnecht/knechtStorage';
+import { isFeatureOn } from '@/util/featureFlags';
 import ProfilePicker from './ProfilePicker.vue';
 import MpConnect from './MpConnect.vue';
 import MpLobby from './MpLobby.vue';
-import MpVote from './MpVote.vue';
+import BeerCup from './BeerCup.vue';
 import { useProfile } from './useProfile';
 import { useBump } from './useBump';
 import { useMultiplayerSession } from './useMultiplayerSession';
 import { getGameOptions, type MpGameOption } from './multiplayerGameOptions';
-import { MAX_PLAYERS_PER_TEAM, MpError, getTeamPlayers, type MpPatch, type MpResult, type MpSession } from './multiplayerTypes';
+import { mpApi } from './multiplayerApi';
+import { MAX_PLAYERS_PER_TEAM, MpError, getTeamPlayers, type MpSession } from './multiplayerTypes';
 
 useGrayPage();
 
@@ -111,13 +99,14 @@ const {
 
 const loading = ref(true);
 const busy = ref(false);
+const starting = ref(false);
 
 const showError = (error: unknown, fallback: string) => {
     toast.add({ severity: 'error', summary: error instanceof MpError ? error.message : fallback, life: 4000 });
 };
 
 // ─── Anstossen ───
-// Aktiv, solange man noch kein Spiel hat oder in der Lobby weitere Spieler holen kann
+// Aktiv, solange man noch keine Lobby hat oder in der Lobby weitere Spieler holen kann
 const bumpSensor = useBump(() => {
     if (profileName.value && (!session.value || session.value.status === 'lobby')) bump();
 });
@@ -128,7 +117,16 @@ watch(() => session.value?.code, (code) => {
     if (route.path !== path) window.history.replaceState({ ...window.history.state, as: path, url: path }, '', path);
 });
 
-// ─── Beitreten ───
+// Anstossen hat geklappt: kurz "Prost!" ueber der Lobby
+const cheers = ref(false);
+let cheersTimer: ReturnType<typeof setTimeout> | null = null;
+watch(bumpState, (state) => {
+    if (state !== 'found') return;
+    cheers.value = true;
+    if (cheersTimer) clearTimeout(cheersTimer);
+    cheersTimer = setTimeout(() => { cheers.value = false; }, 1700);
+});
+
 const run = async (action: () => Promise<unknown>, fallback: string) => {
     if (busy.value) return;
     busy.value = true;
@@ -141,8 +139,33 @@ const run = async (action: () => Promise<unknown>, fallback: string) => {
     }
 };
 
-const createLobby = () => run(create, 'Spiel konnte nicht erstellt werden');
-const joinLobby = (code: string) => run(() => join(code), 'Beitreten hat nicht geklappt');
+// ─── Spiel laeuft schon: ins Live-Spiel ───
+// Mitglied der Lobby: mit dem eigenen Platz. Sonst: Auswahl, fuer wen dieses Handy eintraegt.
+const goToGame = (current: MpSession) => {
+    if (!current.live) return false;
+    const me = current.players.find(player => player.deviceId === deviceId);
+    clear();
+    if (!me) {
+        router.push({ path: '/Knecht', query: { join: current.live.code } });
+        return true;
+    }
+    const player = getTeamPlayers(current.players, me.team).findIndex(entry => entry.deviceId === deviceId);
+    router.push({ path: '/Knecht', query: { join: current.live.code, team: String(me.team), player: String(Math.max(0, player)) } });
+    return true;
+};
+
+// Code eingeben: Lobby beitreten oder, wenn das Spiel schon laeuft, direkt ins Spiel
+const enterCode = async (code: string) => {
+    const existing = await mpApi.get(code).catch(() => null);
+    if (existing?.status === 'started' && existing.live) {
+        goToGame(existing);
+        return;
+    }
+    await join(code);
+};
+
+const createLobby = () => run(create, 'Lobby konnte nicht erstellt werden');
+const joinLobby = (code: string) => run(() => enterCode(code.replace(/\D/g, '')), 'Beitreten hat nicht geklappt');
 
 const leaveLobby = async () => {
     await leave();
@@ -152,7 +175,7 @@ const leaveLobby = async () => {
 const share = async () => {
     if (!session.value) return;
     const url = `${window.location.origin}/Mitspielen/${session.value.code}`;
-    const text = `Spiel mit mir im BiPo Knecht – Code ${session.value.code}`;
+    const text = `Spiel mit uns BiPo! Lobby-PIN ${session.value.code}`;
     try {
         if (navigator.share) await navigator.share({ title: 'BiPo Knecht', text, url });
         else {
@@ -167,7 +190,7 @@ const enterFromRoute = async () => {
     if (!profileName.value) return;
     if (code) {
         if (await resume(code)) return;
-        await run(() => join(code), 'Beitreten hat nicht geklappt');
+        await run(() => enterCode(code), 'Beitreten hat nicht geklappt');
     } else if (storedCode.value) {
         await resume();
     }
@@ -176,13 +199,26 @@ const enterFromRoute = async () => {
 const onProfileSaved = () => { enterFromRoute(); };
 
 // ─── Lobby ───
-// Jeder wechselt nur selbst das Team
-const movePlayer = (playerId: string) => commit(current => {
-    if (current.status !== 'lobby' || playerId !== deviceId) return null;
-    const player = current.players.find(entry => entry.deviceId === playerId);
+// Pfeil in der Mitte: zwei Spieler tauschen die Seiten, sonst wechselt nur man selbst (wenn drueben Platz ist)
+const swapSides = () => commit(current => {
+    if (current.status !== 'lobby') return null;
+    if (current.players.length === 2 && current.players[0].team !== current.players[1].team)
+        return { players: current.players.map(entry => ({ ...entry, team: 1 - entry.team })) };
+    const player = current.players.find(entry => entry.deviceId === deviceId);
     if (!player || getTeamPlayers(current.players, 1 - player.team).length >= MAX_PLAYERS_PER_TEAM) return null;
-    return { players: current.players.map(entry => entry.deviceId === playerId ? { ...entry, team: 1 - entry.team, joinedAt: Date.now() } : entry) };
+    return { players: current.players.map(entry => entry.deviceId === deviceId ? { ...entry, team: 1 - entry.team, joinedAt: Date.now() } : entry) };
 });
+
+const addGuest = (team: number, name: string) => commit(current => {
+    if (current.status !== 'lobby' || getTeamPlayers(current.players, team).length >= MAX_PLAYERS_PER_TEAM) return null;
+    if (current.players.some(player => player.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return null;
+    const guest = { deviceId: `np-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, name, team, joinedAt: Date.now(), phone: false };
+    return { players: [...current.players, guest] };
+});
+
+const removeGuest = (playerId: string) => commit(current => current.status === 'lobby' && current.players.some(player => player.deviceId === playerId && player.phone === false)
+    ? { players: current.players.filter(player => player.deviceId !== playerId) }
+    : null);
 
 const gameOptions = ref<MpGameOption[] | null>(null);
 const loadingOptions = ref(false);
@@ -200,266 +236,43 @@ const prepareStart = async () => {
     }
 };
 
+// Start: Lobby fuer sich beanspruchen (nur ein Handy legt das Spiel an), Live-Spiel anlegen, Code in die Lobby
 const startGame = async (option: MpGameOption) => {
     gameOptions.value = null;
-    const result = await commit(current => current.status === 'lobby'
-        ? { status: 'playing', match: option.match, startTeamIndex: null, actions: [], authors: [], savingBy: null }
-        : null);
-    if (result === 'failed') toast.add({ severity: 'error', summary: 'Start hat nicht geklappt – bitte nochmal', life: 3000 });
-};
-
-// ─── Spiel ───
-const isInGame = computed(() => session.value?.status === 'playing' || session.value?.status === 'saving');
-const showKnecht = computed(() => !!session.value?.match && isInGame.value);
-const knechtKey = computed(() => `${session.value?.code}-${session.value?.result?.id ?? 0}`);
-
-const knecht = ref<{ getProgress: () => LiveProgress; applyRemote: (progress: LiveProgress) => boolean } | null>(null);
-
-const nameOf = (id: string | null) => session.value?.players.find(player => player.deviceId === id)?.name ?? 'Ein anderes Handy';
-const savingText = computed(() => {
     const current = session.value;
-    return current?.status === 'saving' && current.savingBy !== deviceId ? `${nameOf(current.savingBy)} trägt ein …` : undefined;
-});
-
-// Reine Kopien: die Engine klont mit structuredClone, reaktive Objekte (z.B. spot) lassen sich nicht klonen
-const plain = <T>(value: T): T => JSON.parse(JSON.stringify(value));
-const progressOf = (current: MpSession): LiveProgress => ({
-    startTeamIndex: current.startTeamIndex,
-    startedAt: current.match?.time ?? null,
-    actions: plain(current.actions),
-    match: current.match ? plain(current.match) : undefined,
-    paused: !!current.paused,
-});
-
-// Gemeinsamen Stand in den Knecht uebernehmen (neue Wuerfe der anderen mit Animation und Ton)
-const showShared = () => {
-    const current = session.value;
-    if (current && knecht.value) knecht.value.applyRemote(progressOf(current));
-};
-watch(() => session.value?.version, () => nextTick(showShared));
-
-const sameAction = (a: KnechtAction, b: KnechtAction) => JSON.stringify(a) === JSON.stringify(b);
-const commonPrefix = (a: KnechtAction[], b: KnechtAction[]) => {
-    let index = 0;
-    while (index < a.length && index < b.length && sameAction(a[index], b[index])) index++;
-    return index;
-};
-const isValid = (current: MpSession, startTeamIndex: number, actions: KnechtAction[]) => !replay({
-    playerCounts: [current.match?.team1.players.length ?? 1, current.match?.team2.players.length ?? 1],
-    startTeamIndex,
-}, actions).error;
-
-// Eigene Eingabe ins gemeinsame Spiel. Neue Wuerfe werden auf den neuesten Stand gesetzt (zwei Mitspieler
-// werfen gleichzeitig), Rueckgaengig/Korrekturen nur, wenn niemand dazwischen etwas eingetragen hat.
-const onKnechtChange = async () => {
-    const known = session.value;
-    const progress = knecht.value?.getProgress();
-    if (!known || !isInGame.value || !progress) return;
-    const knownActions = known.actions;
-
-    const result = await commit(current => {
-        if (progress.startTeamIndex !== current.startTeamIndex) {
-            if (current.startTeamIndex !== null || progress.startTeamIndex === null) return null;   // anderes Handy hat schon gestartet
-            return {
-                startTeamIndex: progress.startTeamIndex,
-                actions: progress.actions,
-                authors: progress.actions.map(() => deviceId),
-                match: { ...current.match!, ...progress.match, time: progress.startedAt ?? current.match?.time ?? Date.now() },
-            };
-        }
-        // Becherfarben und Pause gelten fuer alle
-        const shared: MpPatch = {};
-        if (progress.match?.cupColors && JSON.stringify(progress.match.cupColors) !== JSON.stringify(current.match?.cupColors))
-            shared.match = { ...current.match!, cupColors: progress.match.cupColors };
-        if (!!progress.paused !== !!current.paused) shared.paused = !!progress.paused;
-        // Neue Wuerfe oder Korrekturen machen eine laufende Abstimmung ungueltig (sie galt fuer den alten Stand)
-        const withShared = (patch: MpPatch | null) => patch
-            ? { ...shared, ...patch, ...(patch.actions && current.vote ? { vote: null } : {}) }
-            : Object.keys(shared).length ? shared : null;
-
-        if (progress.actions.length === current.actions.length && commonPrefix(progress.actions, current.actions) === current.actions.length) return withShared(null);
-
-        const prefix = commonPrefix(knownActions, progress.actions);
-        if (prefix === knownActions.length) {
-            const added = progress.actions.slice(prefix);
-            const merged = [...current.actions, ...added];
-            if (!isValid(current, current.startTeamIndex ?? 0, merged)) return withShared(null);
-            return withShared({ actions: merged, authors: [...current.authors, ...added.map(() => deviceId)] });
-        }
-        if (current.actions.length !== knownActions.length || commonPrefix(current.actions, knownActions) !== knownActions.length) return withShared(null);
-        return withShared({
-            actions: progress.actions,
-            authors: progress.actions.map((_, index) => index < prefix ? current.authors[index] ?? deviceId : deviceId),
-        });
-    });
-
-    // Eingabe passte nicht mehr zum gemeinsamen Stand: Knecht zeigt wieder den aktuellen Stand
-    const shown = session.value;
-    const differs = shown && (shown.startTeamIndex !== progress.startTeamIndex || commonPrefix(shown.actions, progress.actions) !== Math.max(shown.actions.length, progress.actions.length));
-    if (result === 'failed' || (result === 'noop' && differs)) {
-        showShared();
-        if (result === 'failed') toast.add({ severity: 'warn', summary: 'Eintrag nicht übernommen – bitte nochmal', life: 3000 });
-        else if (shown?.startTeamIndex === progress.startTeamIndex) toast.add({ severity: 'info', summary: 'Ein Mitspieler hat gleichzeitig eingetragen – bitte prüfen, ob dein Wurf fehlt', life: 3500 });
-    }
-};
-
-// ─── Speichern und Abbrechen: alle Handys muessen zustimmen ───
-const players = computed(() => session.value?.players ?? []);
-const vote = computed(() => session.value?.vote ?? null);
-const dismissedVote = ref(0);
-const showVote = computed(() => !!vote.value && isInGame.value && (!vote.value.declinedBy || dismissedVote.value !== vote.value.id));
-
-// Endstand aus dem gemeinsamen Verlauf (gleich auf allen Handys)
-const sharedState = computed(() => {
-    const current = session.value;
-    if (!current?.match || current.startTeamIndex === null) return null;
-    return replay({ playerCounts: [current.match.team1.players.length, current.match.team2.players.length], startTeamIndex: current.startTeamIndex }, plain(current.actions)).state;
-});
-const voteScore = computed(() => {
-    const current = session.value;
-    if (!current?.match || !sharedState.value) return '';
-    const points = getTeamPoints(sharedState.value);
-    return `${getTeamName(current.match, 0)} ${formatPoints(points[0])} : ${formatPoints(points[1])} ${getTeamName(current.match, 1)}`;
-});
-
-const isComplete = (current: MpSession, approvals: string[]) => current.players.every(player => approvals.includes(player.deviceId));
-
-// Wer die letzte Zustimmung abgibt, fuehrt aus (genau ein Handy, weil jede Zustimmung eine neue Version ist)
-const startVote = async (kind: 'save' | 'abort', rematch = false) => {
-    let completed = false;
-    const result = await commit(current => {
-        if (current.status !== 'playing') return null;
-        const open = current.vote && !current.vote.declinedBy ? current.vote : null;
-        if (open && open.kind !== kind) return null;
-        if (open?.approvals.includes(deviceId)) return null;
-        const next = open
-            ? { ...open, approvals: [...open.approvals, deviceId] }
-            : { id: Date.now(), kind, by: deviceId, rematch, approvals: [deviceId], declinedBy: null, createdAt: Date.now() };
-        completed = isComplete(current, next.approvals);
-        return { vote: completed ? null : next };
-    });
-    if (result === 'applied' && completed) await runVote(kind, vote.value?.rematch ?? rematch);
-    else if (result === 'noop' && vote.value && vote.value.kind !== kind && !vote.value.declinedBy)
-        toast.add({ severity: 'info', summary: 'Es läuft schon eine andere Abstimmung', life: 3000 });
-};
-
-const approveVote = async () => {
-    const open = vote.value;
-    if (!open) return;
-    let completed = false;
-    const result = await commit(current => {
-        if (current.vote?.id !== open.id || current.vote.declinedBy || current.vote.approvals.includes(deviceId)) return null;
-        const approvals = [...current.vote.approvals, deviceId];
-        completed = isComplete(current, approvals);
-        return { vote: completed ? null : { ...current.vote, approvals } };
-    });
-    if (result === 'applied' && completed) await runVote(open.kind, open.rematch);
-};
-
-const declineVote = () => commit(current => current.vote && !current.vote.declinedBy ? { vote: { ...current.vote, declinedBy: deviceId } } : null);
-
-const dismissVote = () => {
-    const open = vote.value;
-    if (!open) return;
-    dismissedVote.value = open.id;
-    // Wer gefragt hat, raeumt die abgelehnte Abstimmung weg
-    if (open.by === deviceId) commit(current => current.vote?.id === open.id ? { vote: null } : null);
-};
-
-// Handy ausgefallen: wer gefragt hat, fuehrt nach einer Weile ohne die fehlenden Zustimmungen aus
-const forceVote = async () => {
-    const open = vote.value;
-    if (!open || open.by !== deviceId) return;
-    const result = await commit(current => current.vote?.id === open.id && !current.vote.declinedBy ? { vote: null } : null);
-    if (result === 'applied') await runVote(open.kind, open.rematch);
-};
-
-const runVote = async (kind: 'save' | 'abort', rematch: boolean) => {
-    if (kind === 'abort') {
-        await commit(current => current.status === 'playing' ? { status: 'aborted', vote: null } : null);
-        return;
-    }
-    const current = session.value;
-    if (!current?.match || !sharedState.value) return;
-    await saveShared(buildKnechtMatch(plain(current.match), sharedState.value), rematch);
-};
-
-// Nur ein Handy traegt ein: erst die Session fuer sich beanspruchen, dann speichern
-const saveShared = async (result: Match, rematch: boolean): Promise<boolean> => {
-    const claim = await commit(current => current.status === 'playing' ? { status: 'saving', savingBy: deviceId } : null);
-    if (claim !== 'applied') {
-        toast.add({ severity: 'info', summary: `${nameOf(session.value?.savingBy ?? null)} trägt das Spiel gerade ein`, life: 3000 });
-        return false;
-    }
-
-    let success = false;
+    if (!current || starting.value) return;
+    if (loadStoredGame() && !confirm('Auf diesem Handy läuft noch ein Knecht-Spiel. Es wird verworfen. Neues Spiel starten?')) return;
+    starting.value = true;
     try {
-        success = await saveKnechtGame(result);
-    } catch {
-        success = false;
-    }
-    if (!success) {
-        await commit(current => current.savingBy === deviceId ? { status: 'playing', savingBy: null } : null);
-        toast.add({ severity: 'error', summary: 'Spiel nicht gespeichert – bitte nochmal versuchen', life: 4000 });
-        return false;
-    }
-
-    const saved: MpResult = { id: Date.now(), match: result, path: getResultPath(result), rematch, savedBy: deviceId };
-    await commit(() => rematch
-        ? { status: 'playing', savingBy: null, vote: null, result: saved, match: toRematch(result), startTeamIndex: null, actions: [], authors: [] }
-        : { status: 'saved', savingBy: null, vote: null, result: saved });
-    return true;
-};
-
-// Speichern-Knopf im Knecht: fragt alle anderen (gespeichert wird erst mit allen OKs)
-const saveHandler = async (_result: Match, rematch: boolean): Promise<boolean> => {
-    await startVote('save', rematch);
-    return false;
-};
-
-// Abbrechen: vor dem ersten Wurf zurueck in die Lobby, sonst muessen alle zustimmen
-const onKnechtExit = async () => {
-    if (session.value?.startTeamIndex === null) {
-        await commit(current => current.startTeamIndex === null ? { status: 'lobby', match: null, actions: [], authors: [], vote: null } : null);
-        return;
-    }
-    await startVote('abort');
-};
-
-const onKnechtLeave = () => {
-    suspend();
-    router.push('/');
-};
-
-// ─── Ergebnis und Ende (fuer alle Handys gleich) ───
-let lastResultId = session.value?.result?.id ?? 0;
-let lastStatus = session.value?.status;
-
-watch(session, (current) => {
-    if (!current) return;
-    const result = current.result;
-    if (result && result.id !== lastResultId) {
-        lastResultId = result.id;
-        const score = [result.match.team1, result.match.team2].map(team => formatPoints(team.players.reduce((sum, player) => sum + player.score, 0)));
-        const suffix = isDemoMode ? ' (Demo, nur lokal gespeichert)' : ' eingetragen';
-        toast.add({
-            severity: 'success',
-            summary: `${getTeamName(result.match, 0)} ${score[0]} : ${score[1]} ${getTeamName(result.match, 1)}${suffix}`,
-            detail: result.savedBy !== deviceId ? `von ${nameOf(result.savedBy)}` : undefined,
-            life: 3500,
-        });
-        if (!result.rematch) {
-            clear();
-            router.push(result.path);
+        const claimed = await commit(latest => latest.status === 'lobby' ? { status: 'started', live: null } : null);
+        if (claimed !== 'applied') {
+            toast.add({ severity: 'info', summary: 'Ein anderes Handy startet gerade', life: 3000 });
             return;
         }
-    }
-    if (current.status === 'aborted' && lastStatus !== 'aborted') {
+        const match = normalizeTeams({ ...option.match, ...(current.cupColors && { cupColors: current.cupColors }) });
+        // Liga/Cup: ein Team = ein Spieler
+        const player = option.kind === 'open' ? Math.max(0, myPlayerIndex.value) : 0;
+        try {
+            const progress = { startTeamIndex: null, startedAt: null, actions: [] };
+            const { game, binding } = await createLiveGame(match, progress, { name: profileName.value, team: myTeam.value, player });
+            clearStoredGame();
+            storeGame({ match: game.match, startTeamIndex: null, actions: [], refereeUsed: false, savedAt: Date.now(), live: binding });
+            await commit(() => ({ live: { id: game.id, code: binding.code } }));
+        } catch {
+            await commit(latest => latest.status === 'started' && !latest.live ? { status: 'lobby' } : null);
+            toast.add({ severity: 'error', summary: 'Start hat nicht geklappt – bitte nochmal', life: 3500 });
+            return;
+        }
         clear();
-        toast.add({ severity: 'info', summary: 'Das Spiel wurde abgebrochen', life: 3000 });
-        router.push('/Profil');
+        router.push('/Knecht');
+    } finally {
+        starting.value = false;
     }
-    lastStatus = current.status;
+};
+
+// Ein anderes Handy hat gestartet: als eigener Spieler beitreten
+watch(session, (current) => {
+    if (current?.status === 'started' && current.live && !starting.value) goToGame(current);
 });
 
 const stopEnded = onEnded((_, reason) => {
@@ -467,20 +280,23 @@ const stopEnded = onEnded((_, reason) => {
 });
 
 onMounted(async () => {
+    if (!isFeatureOn('mitspielen')) {
+        router.replace('/');
+        return;
+    }
     // Android braucht keine Erlaubnis: sofort lauschen. iPhone: erst nach "Anstossen aktivieren".
     if (!bumpSensor.needsPermission) bumpSensor.start();
     try {
         await enterFromRoute();
+        if (session.value?.status === 'started' && session.value.live) goToGame(session.value);
     } finally {
         loading.value = false;
-        lastResultId = session.value?.result?.id ?? 0;
-        lastStatus = session.value?.status;
     }
 });
 
 onUnmounted(() => {
     stopEnded();
-    // Lobby/Spiel laeuft weiter, die Seite fragt nur nicht mehr nach
+    // Lobby laeuft weiter, die Seite fragt nur nicht mehr nach
     if (session.value) suspend();
 });
 </script>
@@ -515,5 +331,55 @@ onUnmounted(() => {
     height: 7px;
     border-radius: 50%;
     background: currentColor;
+}
+.mp-cheers{
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+}
+.mp-cheers-cups{
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.mp-cheers-cup{
+    display: block;
+    width: 96px;
+    height: 116px;
+}
+.mp-cheers-cup :deep(svg){ width: 100%; height: 100%; }
+.mp-cheers-cup--left{ animation: mp-cheers-left .5s ease-out both; }
+.mp-cheers-cup--right{ animation: mp-cheers-right .5s ease-out both; }
+@keyframes mp-cheers-left{ from{ transform: scaleX(-1) translateX(40px); opacity: 0; } to{ transform: scaleX(-1); opacity: 1; } }
+@keyframes mp-cheers-right{ from{ transform: translateX(40px); opacity: 0; } to{ transform: none; opacity: 1; } }
+.mp-cheers-cup--left{ transform: scaleX(-1); }
+.mp-cheers-title{
+    font-size: 40px;
+    font-weight: 900;
+}
+.mp-cheers-text{
+    font-size: 15px;
+    font-weight: 600;
+    opacity: .9;
+}
+.mp-cheers-enter-active, .mp-cheers-leave-active{ transition: opacity .25s ease; }
+.mp-cheers-enter-from, .mp-cheers-leave-to{ opacity: 0; }
+@media (prefers-reduced-motion: reduce){ .mp-cheers-cup{ animation: none; } }
+.mp-loading{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 60px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--bp-text-muted);
 }
 </style>

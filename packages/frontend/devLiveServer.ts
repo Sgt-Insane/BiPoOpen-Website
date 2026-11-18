@@ -1,34 +1,51 @@
 import type { Plugin } from 'vite';
 import crypto from 'crypto';
+import { isBindingTaken, withJoinedDevice } from './src/components/frontend/biPoKnecht/liveDevices';
 
 // Nur fuer den lokalen Entwicklungsserver (Demo-Modus): Live-Spiele im Arbeitsspeicher statt in der echten Datenbank.
 // Gleiche Endpunkte wie das Backend (/live/...), erreichbar unter /__live/... - alle Handys im WLAN oder ueber
 // den Tunnel teilen sich so dasselbe Live-Spiel. Nach einem Neustart des Dev-Servers ist alles weg.
 
+type Device = { id: string; token: string; name: string | null; team: number | null; player: number | null; joinedAt: number };
+type Match = { team1?: { players?: unknown[] }; team2?: { players?: unknown[] } };
 type LiveGame = {
-    id: string; code: string; token: string; match: unknown; startTeamIndex: number | null; startedAt: number | null;
-    actions: unknown[]; version: number; status: 'live' | 'done' | 'aborted'; createdAt: number; updatedAt: number;
-    guestToken: string | null; guestId: string | null; guestSide: number | null; paused?: boolean;
+    id: string; code: string; match: Match; startTeamIndex: number | null; startedAt: number | null;
+    actions: unknown[]; version: number; status: 'live' | 'saving' | 'done' | 'aborted'; createdAt: number; updatedAt: number;
+    devices: Device[]; savingBy: string | null; endedBy: string | null; paused?: boolean;
 };
 
 const STALE_MS = 2 * 60 * 60 * 1000;
 // Wie das Backend: im Ticker nur, was gerade laeuft (nicht pausiert, Aenderung in den letzten 15 Minuten)
 const TICKER_MS = 15 * 60 * 1000;
-const isInTicker = (game: LiveGame) => isFresh(game) && !game.paused && game.updatedAt > Date.now() - TICKER_MS;
+const MAX_DEVICES = 8;
+const isInTicker = (game: LiveGame) => game.status === 'live' && isFresh(game) && !game.paused && game.updatedAt > Date.now() - TICKER_MS;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const games = new Map<string, LiveGame>();
 
 const randomCode = () => Array.from(crypto.randomBytes(5), byte => CODE_CHARS[byte % CODE_CHARS.length]).join('');
-const isFresh = (game: LiveGame) => game.status === 'live' && game.updatedAt > Date.now() - STALE_MS;
+const randomToken = () => crypto.randomBytes(18).toString('hex');
+const randomId = () => crypto.randomBytes(6).toString('hex');
+const isFresh = (game: LiveGame) => (game.status === 'live' || game.status === 'saving') && game.updatedAt > Date.now() - STALE_MS;
 const uniqueCode = () => {
     let code = randomCode();
     while ([...games.values()].some(game => game.code === code && isFresh(game))) code = randomCode();
     return code;
 };
-// Wie das Backend: ohne Code und Schreibrechte, devices aus dem zweiten Handy abgeleitet
-const toPublic = ({ code: _code, token: _token, guestToken, ...game }: LiveGame) => ({ ...game, devices: guestToken ? 2 : 1 });
-const canWrite = (game: LiveGame, token: unknown) => !!token && (token === game.token || token === game.guestToken);
+// Wie das Backend: ohne Code und Schreibrechte
+const toPublic = ({ code: _code, devices, ...game }: LiveGame) => ({ ...game, devices: devices.map(({ token: _token, ...device }) => device) });
+const deviceOf = (game: LiveGame, token: unknown) => typeof token === 'string' && token ? game.devices.find(device => device.token === token) : undefined;
 const findByCode = (code: string) => [...games.values()].find(item => item.code === code && isFresh(item));
+const cleanName = (name: unknown) => typeof name === 'string' && name.trim() ? name.trim().slice(0, 60) : null;
+
+const readBinding = (body: any, match: Match) => {
+    const team = body?.team ?? null;
+    const player = body?.player ?? null;
+    if (team === null) return player === null ? { team: null, player: null } : null;
+    if (team !== 0 && team !== 1) return null;
+    const count = (team === 0 ? match.team1 : match.team2)?.players?.length ?? 0;
+    if (player !== null && (!Number.isInteger(player) || player < 0 || player >= count)) return null;
+    return { team: team as number, player: player as number | null };
+};
 
 const readBody = (req: import('http').IncomingMessage) => new Promise<any>((resolve) => {
     let raw = '';
@@ -57,32 +74,34 @@ export const devLiveServer = (): Plugin => ({
             if (req.method === 'POST' && parts[0] === 'create') {
                 if (!body?.match || !Array.isArray(body.actions)) return send(400, { message: 'invalid game' });
                 const now = Date.now();
+                const device: Device = { id: randomId(), token: randomToken(), name: cleanName(body.device?.name), ...(readBinding(body.device, body.match) ?? { team: null, player: null }), joinedAt: now };
                 const game: LiveGame = {
-                    id: crypto.randomBytes(12).toString('hex'), code: uniqueCode(), token: crypto.randomBytes(18).toString('hex'),
+                    id: crypto.randomBytes(12).toString('hex'), code: uniqueCode(),
                     match: body.match, startTeamIndex: body.startTeamIndex ?? null, startedAt: body.startedAt ?? null,
                     actions: body.actions, version: 0, status: 'live', createdAt: now, updatedAt: now,
-                    guestToken: null, guestId: null, guestSide: null,
+                    devices: [device], savingBy: null, endedBy: null,
                 };
                 games.set(game.id, game);
-                return send(201, { game: toPublic(game), code: game.code, token: game.token });
+                return send(201, { game: toPublic(game), code: game.code, token: device.token, deviceId: device.id });
             }
 
             if (req.method === 'POST' && parts[0] === 'peek') {
                 const game = findByCode(String(body?.code ?? '').trim().toUpperCase());
                 if (!game) return send(404, { message: 'not found' });
-                return send(200, { game: toPublic(game), busy: !!game.guestToken });
+                return send(200, { game: toPublic(game) });
             }
 
             if (req.method === 'POST' && parts[0] === 'join') {
-                if (body?.side !== 0 && body?.side !== 1) return send(400, { message: 'invalid side' });
                 const game = findByCode(String(body?.code ?? '').trim().toUpperCase());
                 if (!game) return send(404, { message: 'not found' });
-                if (game.guestToken) return send(409, { message: 'busy' });
-                game.guestToken = crypto.randomBytes(18).toString('hex');
-                game.guestId = crypto.randomBytes(6).toString('hex');
-                game.guestSide = body.side;
+                const binding = readBinding(body?.device, game.match);
+                if (!binding || binding.team === null) return send(400, { message: 'invalid binding' });
+                if (game.devices.length >= MAX_DEVICES) return send(409, { message: 'full' });
+                if (isBindingTaken(game.devices, binding)) return send(409, { message: 'taken' });
+                const device: Device = { id: randomId(), token: randomToken(), name: cleanName(body.device?.name), ...binding, joinedAt: Date.now() };
+                game.devices = withJoinedDevice(game.devices, device);
                 touch(game);
-                return send(200, { game: toPublic(game), code: game.code, token: game.guestToken });
+                return send(200, { game: toPublic(game), code: game.code, token: device.token, deviceId: device.id });
             }
 
             const game = games.get(parts[0] ?? '');
@@ -90,8 +109,10 @@ export const devLiveServer = (): Plugin => ({
 
             if (req.method === 'GET' && parts.length === 1) return send(200, { game: toPublic(game) });
 
+            const me = deviceOf(game, body?.token);
+            if (!me) return send(404, { message: 'not found' });
+
             if (req.method === 'POST' && parts[1] === 'sync') {
-                if (!canWrite(game, body?.token)) return send(404, { message: 'not found' });
                 if (body.baseVersion !== game.version || game.status !== 'live') return send(409, { game: toPublic(game) });
                 if (!Array.isArray(body.actions)) return send(400, { message: 'invalid payload' });
                 game.actions = body.actions;
@@ -103,24 +124,41 @@ export const devLiveServer = (): Plugin => ({
                 return send(200, { game: toPublic(game) });
             }
 
-            if (req.method === 'POST' && parts[1] === 'kick') {
-                if (body?.token !== game.token || game.status !== 'live') return send(404, { message: 'not found' });
-                Object.assign(game, { guestToken: null, guestId: null, guestSide: null, code: uniqueCode() });
+            if (req.method === 'POST' && parts[1] === 'bind') {
+                const binding = readBinding(body, game.match);
+                if (!isFresh(game) || !binding || (binding.team === null && game.devices.length > 1)) return send(400, { message: 'invalid binding' });
+                if (isBindingTaken(game.devices, binding, me.id)) return send(409, { message: 'taken' });
+                Object.assign(me, binding);
                 touch(game);
-                return send(200, { game: toPublic(game), code: game.code });
+                return send(200, { game: toPublic(game) });
             }
 
-            if (req.method === 'POST' && parts[1] === 'leave') {
-                if (!body?.token || body.token !== game.guestToken) return send(404, { message: 'not found' });
-                Object.assign(game, { guestToken: null, guestId: null, guestSide: null });
+            if (req.method === 'POST' && (parts[1] === 'leave' || parts[1] === 'kick')) {
+                const target = parts[1] === 'leave' ? me.id : game.devices.find(device => device.id === body?.deviceId)?.id;
+                if (!target) return send(404, { message: 'not found' });
+                game.devices = game.devices.filter(device => device.id !== target);
+                if (!game.devices.length) game.status = 'aborted';
+                touch(game);
+                return send(200, { game: toPublic(game) });
+            }
+
+            if (req.method === 'POST' && parts[1] === 'claim') {
+                if (game.status !== 'live') return send(409, { game: toPublic(game) });
+                Object.assign(game, { status: 'saving', savingBy: me.id });
+                touch(game);
+                return send(200, { game: toPublic(game) });
+            }
+
+            if (req.method === 'POST' && parts[1] === 'release') {
+                if (game.status !== 'saving' || game.savingBy !== me.id) return send(409, { game: toPublic(game) });
+                Object.assign(game, { status: 'live', savingBy: null });
                 touch(game);
                 return send(200, { game: toPublic(game) });
             }
 
             if (req.method === 'POST' && parts[1] === 'finish') {
-                if (!canWrite(game, body?.token)) return send(404, { message: 'not found' });
-                game.status = body.status === 'done' ? 'done' : 'aborted';
-                game.updatedAt = Date.now();
+                Object.assign(game, { status: body.status === 'done' ? 'done' : 'aborted', endedBy: me.name, savingBy: null });
+                touch(game);
                 return send(200, { game: toPublic(game) });
             }
 

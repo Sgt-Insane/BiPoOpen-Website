@@ -22,7 +22,7 @@ describe('Mehrspieler: Sessions', () => {
         const session = server.create('a', 'Anna');
         server.join(session.code, 'b', 'Ben');
         const current = server.get(session.code)!;
-        server.update(session.code, current.version, { status: 'playing' });
+        server.update(session.code, current.version, { status: 'started' });
         expect(() => server.join(session.code, 'c', 'Cleo')).toThrow('läuft schon');
         expect(server.join(session.code, 'b', 'Ben').players).toHaveLength(2);
     });
@@ -30,11 +30,18 @@ describe('Mehrspieler: Sessions', () => {
     it('lehnt Aenderungen auf veraltetem Stand ab', () => {
         const { server } = setup();
         const session = server.create('a', 'Anna');
-        const first = server.update(session.code, session.version, { startTeamIndex: 0 });
-        const second = server.update(session.code, session.version, { startTeamIndex: 1 });
+        const first = server.update(session.code, session.version, { cupColors: ['#1', '#2'] });
+        const second = server.update(session.code, session.version, { cupColors: ['#2', '#1'] });
         expect(first.ok).toBe(true);
         expect(second.ok).toBe(false);
-        expect(second.session.startTeamIndex).toBe(0);
+        expect(second.session.cupColors).toEqual(['#1', '#2']);
+    });
+
+    it('beendet die Lobby erst, wenn kein Handy mehr da ist (Spieler ohne Handy zaehlen nicht)', () => {
+        const { server } = setup();
+        const session = server.create('a', 'Anna');
+        server.update(session.code, session.version, { players: [...session.players, { deviceId: 'np-1', name: 'Nora', team: 1, joinedAt: 5, phone: false }] });
+        expect(server.leave(session.code, 'a')!.status).toBe('aborted');
     });
 });
 

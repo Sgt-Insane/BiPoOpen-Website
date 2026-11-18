@@ -1,18 +1,19 @@
 import { onUnmounted, ref } from 'vue';
 import {
-    createLiveGame, finishLiveGame, getLiveGame, joinLiveGame, kickLiveGuest, leaveLiveGame, syncLiveGame,
+    bindLiveDevice, claimLiveGame, createLiveGame, finishLiveGame, getLiveGame, joinLiveGame, kickLiveDevice, leaveLiveGame, releaseLiveGame, syncLiveGame,
     type LiveBinding, type LiveGame, type LiveProgress,
 } from './knechtLive';
+import type { LiveDevice, LiveDeviceBinding } from './liveDevices';
 
-// Synchronisiert ein laufendes Knecht-Spiel mit dem Server (Live-Ticker, zweites Handy).
+// Synchronisiert ein laufendes Knecht-Spiel mit dem Server (Live-Ticker, mehrere Handys).
 //
 // - Jede lokale Aenderung wird kurz danach hochgeladen, mit der zuletzt bekannten Version (baseVersion).
-// - Alle 1,5 s wird der Serverstand abgefragt; hat das andere Handy etwas eingetragen, wird es uebernommen.
-// - Haben beide gleichzeitig eingetragen (Konflikt), gilt der Stand, der zuerst beim Server war, und das andere
-//   Handy bekommt einen Hinweis. Zwei Eintraege innerhalb einer Sekunde sind fast immer derselbe Wurf, doppelt
-//   erfasst - anhaengen wuerde ihn doppelt zaehlen.
-// - Zwei Handys: jedes steht an einem Tischende (side = Teamindex). Das zweite waehlt seine Seite beim Beitreten,
-//   das erste steht gegenueber. Das erste Handy kann das zweite trennen (neuer Code, kein Wiedereintritt).
+// - Alle 1,5 s wird der Serverstand abgefragt; hat ein anderes Handy etwas eingetragen, wird es uebernommen.
+// - Haben zwei Handys gleichzeitig eingetragen (Konflikt), werden die eigenen neuen Wuerfe hinter die des anderen
+//   gehaengt (z.B. 2 gegen 2, beide Spieler werfen gleichzeitig). Passt das nicht zu den Regeln, gilt der Stand,
+//   der zuerst beim Server war, und dieses Handy bekommt einen Hinweis.
+// - Jedes Handy traegt fuer einen Spieler oder ein Tischende ein (siehe liveDevices.ts). Jedes Handy kann eintragen,
+//   abbrechen und andere Handys trennen; eingetragen wird nur von einem Handy gleichzeitig (claim).
 
 const POLL_MS = 1500;
 const PUSH_DELAY_MS = 250;
@@ -23,21 +24,27 @@ type Options = {
     getProgress: () => LiveProgress | null;
     // Serverstand ins laufende Spiel uebernehmen; false = passt nicht (Regeln)
     applyRemote: (progress: LiveProgress) => boolean;
-    // Das andere Handy hat das Spiel eingetragen oder abgebrochen
+    // Ein anderes Handy hat das Spiel eingetragen oder abgebrochen
     onEnded: (status: 'done' | 'aborted', game: LiveGame) => void;
     onBindingChange: (binding: LiveBinding | null) => void;
     onNotice: (message: string) => void;
-    // Zweites Handy: das erste Handy hat es getrennt
+    // Dieses Handy wurde von einem anderen getrennt
     onKicked: () => void;
 };
 
 const keyOf = (progress: LiveProgress) => JSON.stringify([progress.startTeamIndex, progress.startedAt, progress.actions, progress.match?.cupColors ?? null, !!progress.paused]);
 const progressOf = (game: LiveGame): LiveProgress => ({ startTeamIndex: game.startTeamIndex, startedAt: game.startedAt, actions: game.actions, match: game.match, paused: !!game.paused });
+const isPrefix = (prefix: unknown[], list: unknown[]) =>
+    prefix.length <= list.length && prefix.every((entry, index) => JSON.stringify(entry) === JSON.stringify(list[index]));
+const sameColors = (a?: Match, b?: Match) => JSON.stringify(a?.cupColors ?? null) === JSON.stringify(b?.cupColors ?? null);
+
+export const deviceName = (device: LiveDevice | undefined | null) => device?.name || 'Ein Handy';
 
 export const useKnechtLiveSync = (options: Options) => {
     const binding = ref<LiveBinding | null>(null);
     const status = ref<LiveStatus>('off');
-    const devices = ref(1);
+    const devices = ref<LiveDevice[]>([]);
+    const savingBy = ref<string | null>(null);     // Handy, das gerade eintraegt
 
     let synced: LiveProgress | null = null;     // Stand, den der Server zuletzt bestaetigt hat
     let pushing = false;
@@ -51,28 +58,56 @@ export const useKnechtLiveSync = (options: Options) => {
         options.onBindingChange(value);
     };
 
-    // Zweites Handy getrennt? (seine Kennung ist nicht mehr die des Spiels)
-    const wasKicked = (game: LiveGame) => binding.value?.role === 'guest' && game.guestId !== binding.value.guestId;
+    const isMember = (game: LiveGame) => !binding.value || game.devices.some(device => device.id === binding.value!.deviceId);
+
+    // Wer ist dazugekommen, wer ist weg? (nur Hinweise, die Bindungen kommen vom Server)
+    const announce = (before: LiveDevice[], after: LiveDevice[]) => {
+        if (!before.length) return;
+        const myId = binding.value?.deviceId;
+        const joined = after.filter(device => device.id !== myId && !before.some(entry => entry.id === device.id));
+        const left = before.filter(device => device.id !== myId && !after.some(entry => entry.id === device.id));
+        joined.forEach(device => options.onNotice(`${deviceName(device)} ist dazugekommen`));
+        left.forEach(device => options.onNotice(`${deviceName(device)} ist nicht mehr verbunden`));
+    };
 
     const adopt = (game: LiveGame) => {
         synced = progressOf(game);
+        announce(devices.value, game.devices);
         devices.value = game.devices;
+        savingBy.value = game.status === 'saving' ? game.savingBy : null;
         if (!binding.value) return;
-        // Erstes Handy: steht gegenueber dem zweiten (ohne zweites Handy: keine feste Seite)
-        const side = binding.value.role === 'host' ? (game.guestSide === null ? null : 1 - game.guestSide) : binding.value.side ?? null;
-        if (side !== (binding.value.side ?? null) && binding.value.role === 'host') {
-            options.onNotice(side === null ? 'Zweites Handy getrennt – du zählst wieder allein' : 'Zweites Handy verbunden – jedes Handy zeigt jetzt die Becher des Gegners');
-        }
-        setBinding({ ...binding.value, version: game.version, side });
+        const me = game.devices.find(device => device.id === binding.value!.deviceId);
+        setBinding({ ...binding.value, version: game.version, team: me?.team ?? binding.value.team, player: me?.player ?? null });
     };
 
-    // Konflikt: der Stand des anderen Handys (zuerst beim Server) gilt
+    // Konflikt: eigene neue Wuerfe hinter die des anderen Handys haengen, sonst gilt der Serverstand
     const resolveConflict = (server: LiveGame) => {
         const local = options.getProgress();
+        const base = synced;
         adopt(server);
-        options.applyRemote(progressOf(server));
+        const remote = progressOf(server);
+        if (local && base && local.startTeamIndex === server.startTeamIndex && isPrefix(base.actions, local.actions) && isPrefix(base.actions, server.actions)) {
+            const merged: LiveProgress = {
+                ...remote,
+                actions: [...server.actions, ...local.actions.slice(base.actions.length)],
+                paused: !!local.paused !== !!base.paused ? !!local.paused : !!server.paused,
+                match: !sameColors(local.match, base.match) && server.match ? { ...server.match, cupColors: local.match?.cupColors } : server.match,
+            };
+            if (options.applyRemote(merged)) {
+                if (keyOf(merged) !== keyOf(remote)) schedulePush(0);
+                return;
+            }
+        }
+        options.applyRemote(remote);
         if (local && JSON.stringify(local.actions) !== JSON.stringify(server.actions))
-            options.onNotice('Das andere Handy hat gerade eingetragen – bitte prüfen, ob dein Eintrag noch fehlt');
+            options.onNotice('Ein anderes Handy hat gerade eingetragen – bitte prüfen, ob dein Eintrag noch fehlt');
+    };
+
+    // Stand vom Server, der nicht von diesem Handy kommt: vorbei, getrennt oder neuer Stand
+    const handleServer = (game: LiveGame): boolean => {
+        if (game.status === 'done' || game.status === 'aborted') { ended(game); return false; }
+        if (!isMember(game)) { kicked(); return false; }
+        return true;
     };
 
     const push = async () => {
@@ -85,16 +120,12 @@ export const useKnechtLiveSync = (options: Options) => {
             const result = await syncLiveGame(binding.value, progress);
             status.value = 'live';
             if (result.ok) adopt(result.game);
-            else if (result.game) {
-                if (wasKicked(result.game)) return kicked();
-                if (result.game.status !== 'live') return ended(result.game);
-                resolveConflict(result.game);
-            } else if (binding.value?.role === 'guest') {
-                // Schreibrecht weg: getrennt
-                return kicked();
+            else if (result.game && handleServer(result.game)) {
+                if (result.game.status === 'saving') adopt(result.game);
+                else resolveConflict(result.game);
             }
         } catch (error: any) {
-            if (error?.response?.status === 404 && binding.value?.role === 'guest') return kicked();
+            if (error?.response?.status === 404) return kicked();
             status.value = 'offline';
         } finally {
             pushing = false;
@@ -114,17 +145,16 @@ export const useKnechtLiveSync = (options: Options) => {
         if (!binding.value) return;
         if (!game) { status.value = 'offline'; return; }
         status.value = 'live';
-        devices.value = game.devices;
-        if (wasKicked(game)) return kicked();
-        if (game.status !== 'live') return ended(game);
+        if (!handleServer(game)) return;
         if (resyncPending) {
             resyncPending = false;
             if (game.version === binding.value.version) {
                 // Server steht noch auf unserem letzten Stand: eigene Aenderungen seit dem Neuladen nachreichen
+                devices.value = game.devices;
                 synced = progressOf(game);
                 schedulePush(0);
             } else {
-                // Das andere Handy war weiter: dessen Stand gilt
+                // Ein anderes Handy war weiter: dessen Stand gilt
                 adopt(game);
                 options.applyRemote(progressOf(game));
             }
@@ -163,32 +193,35 @@ export const useKnechtLiveSync = (options: Options) => {
         options.onKicked();
     };
 
+    const start = (created: LiveBinding, game: LiveGame) => {
+        devices.value = [];
+        setBinding(created);
+        adopt(game);
+        status.value = 'live';
+        startPolling();
+    };
+
     // ─── Oeffentliche Funktionen ───
-    const host = async (match: Match, progress: LiveProgress) => {
+    // Spiel live stellen (dieses Handy ist das erste). device: Name und wofuer dieses Handy eintraegt
+    const host = async (match: Match, progress: LiveProgress, device: { name: string | null } & Partial<LiveDeviceBinding>) => {
         status.value = 'connecting';
         try {
-            const { game, binding: created } = await createLiveGame(match, progress);
-            setBinding({ ...created, side: null });
-            adopt(game);
-            status.value = 'live';
-            startPolling();
+            const { game, binding: created } = await createLiveGame(match, progress, device);
+            start(created, game);
             schedulePush(0);    // was seit dem Start schon passiert ist
             return true;
         } catch {
-            status.value = 'offline';
+            status.value = 'off';
             return false;
         }
     };
 
-    // Zweites Handy: mit gewaehlter Tischseite beitreten (wirft LiveJoinError)
-    const join = async (code: string, side: number) => {
+    // Weiteres Handy: als Spieler oder Tischende beitreten (wirft LiveJoinError)
+    const join = async (code: string, device: { name: string | null } & LiveDeviceBinding) => {
         status.value = 'connecting';
         try {
-            const { game, binding: joined } = await joinLiveGame(code, side);
-            setBinding(joined);
-            adopt(game);
-            status.value = 'live';
-            startPolling();
+            const { game, binding: joined } = await joinLiveGame(code, device);
+            start(joined, game);
             return game;
         } catch (error) {
             status.value = 'off';
@@ -206,12 +239,18 @@ export const useKnechtLiveSync = (options: Options) => {
         poll();
     };
 
-    // Erstes Handy: zweites Handy trennen, alleine weiterzaehlen (neuer Code)
-    const kick = async () => {
-        if (!binding.value || binding.value.role !== 'host') return false;
+    // Dieses Handy umstellen (wirft LiveJoinError('taken'))
+    const bind = async (target: LiveDeviceBinding) => {
+        if (!binding.value) return;
+        adopt(await bindLiveDevice(binding.value, target));
+    };
+
+    // Anderes Handy trennen (z.B. Akku leer). Kein "nicht mehr verbunden"-Hinweis: das meldet der Aufrufer selbst.
+    const kick = async (deviceId: string) => {
+        if (!binding.value) return false;
         try {
-            const { game, code } = await kickLiveGuest(binding.value);
-            setBinding({ ...binding.value, code });
+            const game = await kickLiveDevice(binding.value, deviceId);
+            devices.value = game.devices;
             adopt(game);
             return true;
         } catch {
@@ -219,17 +258,47 @@ export const useKnechtLiveSync = (options: Options) => {
         }
     };
 
+    // Eintragen beanspruchen: false = ein anderes Handy traegt schon ein
+    const claim = async () => {
+        if (!binding.value) return true;
+        const result = await claimLiveGame(binding.value);
+        if (result.game) adopt(result.game);
+        return result.ok;
+    };
+
+    // Eintragen fehlgeschlagen: Spiel wieder freigeben
+    const release = async () => {
+        if (!binding.value) return;
+        const game = await releaseLiveGame(binding.value);
+        if (game) adopt(game);
+    };
+
+    // Revanche: freigeben und gleich den neuen Stand (leeres Spiel) hochladen. Solange keine Abfrage dazwischen,
+    // sonst hielte sie das alte Spiel fuer eine Aenderung eines anderen Handys und spielte es zurueck.
+    const restart = async () => {
+        if (!binding.value) return;
+        pushing = true;
+        try {
+            const game = await releaseLiveGame(binding.value);
+            if (game) adopt(game);
+        } finally {
+            pushing = false;
+        }
+        await push();
+    };
+
+    // Eingetragen oder abgebrochen: gilt fuer alle Handys
     const finish = async (result: 'done' | 'aborted') => {
         const current = binding.value;
         stop();
         if (current) await finishLiveGame(current, result);
     };
 
-    // Nur dieses Handy steigt aus (das Spiel laeuft auf dem anderen weiter), der Platz wird frei
+    // Nur dieses Handy steigt aus, das Spiel laeuft auf den anderen weiter
     const leave = () => {
         const current = binding.value;
         stop();
-        if (current?.role === 'guest') leaveLiveGame(current);
+        if (current) leaveLiveGame(current);
     };
 
     const stop = () => {
@@ -238,6 +307,8 @@ export const useKnechtLiveSync = (options: Options) => {
         pushTimer = null;
         setBinding(null);
         status.value = 'off';
+        devices.value = [];
+        savingBy.value = null;
         synced = null;
         resyncPending = false;
     };
@@ -247,5 +318,5 @@ export const useKnechtLiveSync = (options: Options) => {
         if (pushTimer) clearTimeout(pushTimer);
     });
 
-    return { binding, status, devices, host, join, resume, kick, finish, leave, schedulePush };
+    return { binding, status, devices, savingBy, host, join, resume, bind, kick, claim, release, restart, finish, leave, schedulePush };
 };

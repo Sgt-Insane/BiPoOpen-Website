@@ -3,7 +3,7 @@ import { mpApi } from './multiplayerApi';
 import { MpError, getTeamPlayers, type MpPatch, type MpSession } from './multiplayerTypes';
 import { readSetting, useProfile, writeSetting } from './useProfile';
 
-// Gemeinsamer Stand des Mehrspieler-Knechts auf diesem Handy (ein Spiel gleichzeitig, modulweit).
+// Anstoss-Lobby auf diesem Handy (eine Lobby gleichzeitig, modulweit). Gespielt wird danach im Live-Spiel.
 // Eigene Aenderungen gehen nacheinander raus (commit), jede mit der zuletzt bekannten version. War ein anderes
 // Handy schneller, wird der Patch auf dem neuen Stand neu gebaut. Fremde Aenderungen kommen per Echtzeit
 // oder Abfrage im Takt.
@@ -11,7 +11,8 @@ import { readSetting, useProfile, writeSetting } from './useProfile';
 const CODE_KEY = 'bipo_mp_code';
 const POLL_FAST = 1500;
 const POLL_LIVE = 4000;
-const BUMP_TIMEOUT = 8000;
+const BUMP_TIMEOUT = 3000;           // ms, der Server verbindet nur Stoesse, die hoechstens 2 s auseinanderliegen
+const BUMP_REPLACE_AFTER = 2500;     // ms, laenger als das Zeitfenster des Servers fuer zwei Stoesse
 
 const readCode = () => readSetting(CODE_KEY);
 const writeCode = (code: string | null) => writeSetting(CODE_KEY, code);
@@ -28,6 +29,8 @@ let inFlight = 0;
 let queue: Promise<unknown> = Promise.resolve();
 let unsubscribe: (() => void) | null = null;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
+let bumpRun = 0;
+let bumpStartedAt = 0;
 let endedListener: ((session: MpSession | null, reason: string) => void) | null = null;
 
 export type CommitResult = 'applied' | 'noop' | 'failed';
@@ -141,7 +144,7 @@ export const useMultiplayerSession = () => {
         try {
             const next = await mpApi.get(code);
             const isMember = !!next?.players.some(player => player.deviceId === deviceId);
-            if (!next || !isMember || ['saved', 'aborted'].includes(next.status)) {
+            if (!next || !isMember || next.status === 'aborted') {
                 if (storedCode.value === code) { storedCode.value = null; writeCode(null); }
                 return false;
             }
@@ -156,7 +159,28 @@ export const useMultiplayerSession = () => {
         }
     };
 
-    // Seite verlassen, Spiel laeuft weiter (Code bleibt gespeichert, resume() holt es zurueck)
+    // Gespeicherte Lobby noch offen? Nur pruefen, nicht verbinden. Vorbei oder nicht mehr dabei -> vergessen
+    const checkStored = async (): Promise<string | null> => {
+        const code = storedCode.value;
+        if (!code) return null;
+        try {
+            const next = await mpApi.get(code);
+            const isMember = !!next?.players.some(player => player.deviceId === deviceId);
+            if (next && isMember && next.status === 'lobby') return code;
+            if (!next || !isMember || next.status === 'aborted') {
+                if (storedCode.value === code) { storedCode.value = null; writeCode(null); }
+            }
+            return null;
+        } catch (error) {
+            if (error instanceof MpError && error.status === 404 && storedCode.value === code) {
+                storedCode.value = null;
+                writeCode(null);
+            }
+            return null;
+        }
+    };
+
+    // Seite verlassen, Lobby bleibt (Code bleibt gespeichert, resume() holt sie zurueck)
     const suspend = () => {
         stopSync();
         session.value = null;
@@ -216,20 +240,28 @@ export const useMultiplayerSession = () => {
     };
 
     // ─── Anstossen ───
+    // Ein neuer Stoss ersetzt eine laufende Suche (z.B. war die erste ein Fehlalarm beim Hinlegen des Handys).
+    // Erst nach dem Zeitfenster des Servers (2 s): bis dahin kann der erste Stoss noch verbunden werden.
     const bump = async () => {
-        if (bumpState.value === 'searching' || !profileName.value) return;
+        if (!profileName.value) return;
+        if (bumpState.value === 'searching' && Date.now() - bumpStartedAt < BUMP_REPLACE_AFTER) return;
+        bumpStartedAt = Date.now();
+        const run = ++bumpRun;
         bumpState.value = 'searching';
         const settle = (state: 'found' | 'none') => {
+            if (run !== bumpRun) return;
             bumpState.value = state;
-            setTimeout(() => { if (bumpState.value === state) bumpState.value = 'idle'; }, state === 'found' ? 1500 : 2500);
+            setTimeout(() => { if (bumpState.value === state) bumpState.value = 'idle'; }, state === 'found' ? 1500 : 3000);
         };
         try {
             const startedAt = Date.now();
             let result = await mpApi.bump(deviceId, profileName.value, session.value?.code);
             while (!('session' in result) && !result.expired && Date.now() - startedAt < BUMP_TIMEOUT) {
                 await sleep(400);
+                if (run !== bumpRun) return;
                 result = await mpApi.bumpStatus(result.bumpId);
             }
+            if (run !== bumpRun && !('session' in result)) return;
             if ('session' in result && result.session) {
                 if (session.value && session.value.code !== result.session.code) await mpApi.leave(session.value.code, deviceId).catch(() => {});
                 if (session.value?.code === result.session.code) {
@@ -252,6 +284,7 @@ export const useMultiplayerSession = () => {
         api: mpApi,
         session,
         storedCode,
+        checkStored,
         live,
         offline,
         bumpState,

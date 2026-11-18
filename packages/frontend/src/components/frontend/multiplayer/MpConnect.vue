@@ -2,24 +2,31 @@
     <div class="MpConnect">
         <!-- Anstossen -->
         <div class="mc-bump" :class="`mc-bump--${bumpState}`">
-            <div class="mc-phones" aria-hidden="true">
+            <!-- Vor dem Freischalten: zwei Handys stossen an. Danach der Becher, das Bier folgt der Handybewegung -->
+            <div v-if="needsActivation" class="mc-phones" aria-hidden="true">
                 <span class="mc-phone mc-phone--left"><Avatar :name="profileName ?? ''" class="mc-phone-avatar" :lazy="false" /></span>
                 <span class="mc-spark">✦</span>
                 <span class="mc-phone mc-phone--right"><i class="pi pi-user"></i></span>
             </div>
+            <BeerCup v-else :key="sloshKey" class="mc-cup" :color="cupColor" :slosh="sloshing" :sway="sloshing ? 0 : sway" :direction="direction" />
             <div class="mc-bump-title">{{ title }}</div>
             <div class="mc-bump-text">{{ text }}</div>
 
-            <button v-if="!isListening && isSupported && !denied" type="button" class="mc-button mc-button--primary" @click="$emit('enable')">
+            <!-- Sensor aktiv: bereit oder (nach einem Stoss) Suche - immer passend zum Titel -->
+            <div v-if="sensorActive" class="mc-sensor" :class="{ 'mc-sensor--hit': bumpState === 'searching' }">
+                <span class="mc-sensor-dot" aria-hidden="true"></span>
+                <span class="mc-sensor-label">{{ bumpState === 'searching' ? 'Angestoßen!' : 'Bereit – jetzt anstoßen' }}</span>
+            </div>
+
+            <button v-if="needsActivation" type="button" class="mc-button mc-button--primary" @click="$emit('enable')">
                 Anstoßen aktivieren
             </button>
-            <button v-else-if="showTapFallback" type="button" class="mc-tap" :disabled="bumpState === 'searching'" @click="$emit('bump')">
+            <button v-else-if="showTapFallback" v-hint="'Kein Bewegungssensor? Zählt auf 3 und tippt beide gleichzeitig.'" type="button" class="mc-tap" :disabled="bumpState === 'searching'" @click="$emit('bump')">
                 <span class="mc-tap-title">Gleichzeitig tippen</span>
-                <span class="mc-tap-text">Kein Sensor? Zählt auf 3 und tippt beide gleichzeitig.</span>
             </button>
         </div>
 
-        <div class="mc-divider"><span>oder mit Code</span></div>
+        <div class="mc-divider"><span>oder mit PIN</span></div>
 
         <form class="mc-code" @submit.prevent="submitCode">
             <input
@@ -28,14 +35,14 @@
                 inputmode="numeric"
                 autocomplete="off"
                 maxlength="4"
-                placeholder="1234"
-                aria-label="Code eingeben"
+                placeholder="PIN"
+                aria-label="PIN eingeben"
                 @input="code = code.replace(/\D/g, '').slice(0, 4)"
             />
-            <button type="submit" class="mc-button mc-button--primary" :disabled="code.length !== 4 || busy">Beitreten</button>
+            <button v-hint="'PIN aus der Lobby eines anderen Handys'" type="submit" class="mc-button mc-button--primary" :disabled="code.length !== 4 || busy">Beitreten</button>
         </form>
-        <button type="button" class="mc-button mc-create" :disabled="busy" @click="$emit('create')">
-            <i class="pi pi-plus"></i> Neues Spiel – Code für die anderen anzeigen
+        <button v-hint="'Die anderen geben die PIN dieser Lobby ein'" type="button" class="mc-button mc-create" :disabled="busy" @click="$emit('create')">
+            <i class="pi pi-plus"></i> Neue Lobby – PIN für die anderen anzeigen
         </button>
 
         <p v-if="isLocal" class="mc-demo">Demo-Modus: Mehrere Tabs in diesem Browser spielen gegeneinander. Anstoßen geht hier über „Gleichzeitig tippen“ in zwei Tabs.</p>
@@ -43,8 +50,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
+import { TEAM_COLORS } from '../biPoKnecht/KnechtUtilFunctions';
 import Avatar from '@/components/shared/Avatar.vue';
+import BeerCup from './BeerCup.vue';
 import { useProfile } from './useProfile';
 
 const props = defineProps<{
@@ -55,30 +64,57 @@ const props = defineProps<{
     hasSensor: boolean | null;
     busy: boolean;
     isLocal: boolean;
+    detectedAt?: number;        // Zeitpunkt des letzten erkannten Stosses
+    sway?: number;              // Bier im Becher, -1..1
+    direction?: 1 | -1;         // Bewegungsrichtung beim Stoss
 }>();
 
 const emit = defineEmits<{ enable: []; bump: []; create: []; join: [code: string] }>();
 
 const { profileName } = useProfile();
 const code = ref('');
+const needsActivation = computed(() => !props.isListening && props.isSupported && !props.denied);
+
+// Becher mal rot, mal blau. Bei erkanntem Stoss (oder Gleichzeitig-Tippen) kippt er kurz und schwappt ueber
+const cupColor = TEAM_COLORS[Math.random() < .5 ? 0 : 1];
+const sloshKey = ref(0);
+const sloshing = ref(false);
+let sloshTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSlosh = 0;
+const slosh = () => {
+    if (Date.now() - lastSlosh < 1200) return;
+    lastSlosh = Date.now();
+    sloshKey.value++;
+    sloshing.value = true;
+    if (sloshTimer) clearTimeout(sloshTimer);
+    sloshTimer = setTimeout(() => { sloshing.value = false; }, 1100);
+};
+watch(() => props.detectedAt, (at) => { if (at) slosh(); });
+watch(() => props.bumpState, (state) => {
+    if (state !== 'searching' || lastSlosh > Date.now() - 1200) return;
+    navigator.vibrate?.(40);
+    slosh();
+});
+onUnmounted(() => { if (sloshTimer) clearTimeout(sloshTimer); });
+
+const sensorActive = computed(() => props.isListening && props.hasSensor === true && props.bumpState !== 'found');
 
 const showTapFallback = computed(() => props.isLocal || !props.isSupported || props.denied || props.hasSensor === false);
 
 const title = computed(() => {
     switch (props.bumpState) {
-        case 'searching': return 'Suche Mitspieler …';
-        case 'found': return 'Verbunden!';
-        case 'none': return 'Niemanden gefunden';
-        default: return 'Handys aneinanderstoßen';
+        case 'searching': return 'Suche Gegenüber …';
+        case 'found': return 'Prost! 🍻';
+        default: return 'Anstoßen 🍻';
     }
 });
 
 const text = computed(() => {
-    if (props.bumpState === 'none') return 'Beide Handys gleichzeitig und kurz aneinanderstoßen – beide müssen diese Seite offen haben.';
+    // Kein Gegenueber: kein Fehler, einfach wieder bereit
+    if (props.bumpState === 'none') return 'Niemand gefunden – einfach nochmal anstoßen.';
     if (props.bumpState === 'searching') return 'Gleich geht’s los.';
-    if (props.denied) return 'Bewegungssensor nicht erlaubt – nutzt „Gleichzeitig tippen“ oder einen Code.';
-    if (props.isListening && props.hasSensor !== false) return 'Haltet eure Handys fest und stoßt sie kurz aneinander. Beide brauchen diese Seite offen.';
-    return 'Öffnet beide diese Seite und stoßt eure Handys kurz aneinander.';
+    if (props.denied) return 'Bewegungssensor nicht erlaubt.';
+    return 'Wie mit dem Bier: Handys kurz aneinanderstoßen.';
 });
 
 const submitCode = () => {
@@ -87,6 +123,30 @@ const submitCode = () => {
 </script>
 
 <style scoped>
+.mc-sensor{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    padding: 6px 14px 6px 8px;
+    border-radius: 999px;
+    background: var(--bp-success-weak);
+    color: var(--bp-success-strong);
+    font-size: 13px;
+    font-weight: 700;
+}
+.mc-sensor-dot{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: mc-pulse 1.4s ease-in-out infinite;
+}
+@keyframes mc-pulse{ 50%{ opacity: .3; } }
+.mc-sensor--hit{
+    background: var(--main-color);
+    color: white;
+}
 .MpConnect{
     display: flex;
     flex-direction: column;
@@ -147,11 +207,13 @@ const submitCode = () => {
 @keyframes mc-spark{
     45%, 55%{ opacity: 1; transform: scale(1.4); }
 }
-.mc-bump--searching .mc-phone{ animation-duration: .5s; }
-.mc-bump--searching .mc-spark{ animation-duration: .5s; }
-.mc-bump--found .mc-phone, .mc-bump--found .mc-spark{ animation: none; }
-.mc-bump--found .mc-phone{ border-color: var(--bp-success); }
-.mc-bump--none .mc-bump-title{ color: var(--main-color); }
+.mc-cup{
+    width: 200px;
+    height: 240px;
+    margin: 4px 0 8px;
+}
+.mc-bump--searching .mc-cup{ animation: mc-wait .8s ease-in-out infinite; }
+@keyframes mc-wait{ 50%{ transform: translateY(-4px); } }
 
 .mc-bump-title{
     font-size: 20px;

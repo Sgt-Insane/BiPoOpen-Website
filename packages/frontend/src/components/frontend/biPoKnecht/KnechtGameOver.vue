@@ -65,7 +65,8 @@
 
         <div class="kn-over-footer">
             <template v-if="step === 'awards'">
-                <button type="button" class="kn-over-button kn-over-button-secondary" @click="game.undo()">
+                <!-- Mehrere Handys: nur den eigenen letzten Eintrag zuruecknehmen -->
+                <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="!undoAllowed" title="Letzten Wurf rückgängig machen" @click="game.undo()">
                     <i class="pi pi-undo"></i>
                 </button>
                 <button type="button" class="kn-over-button kn-over-button-primary" @click="step = 'summary'">
@@ -117,10 +118,11 @@ const props = withDefaults(defineProps<{
     game: BiPoKnechtGame;
     refereeUsed: boolean;
     canSave?: boolean;
-    // Mehrspieler: Speichern ueber die Session, damit nur ein Handy eintraegt
+    undoAllowed?: boolean;  // mehrere Handys: letzter Eintrag stammt von diesem Handy
+    // Mehrere Handys: Speichern ueber das Live-Spiel, damit nur ein Handy eintraegt
     saveHandler?: (result: Match, rematch: boolean) => Promise<boolean>;
     lockedText?: string;    // anderes Handy traegt gerade ein
-}>(), { canSave: true });
+}>(), { canSave: true, undoAllowed: true });
 const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
 
 const toast = useToast();
@@ -171,7 +173,7 @@ const save = async (rematch: boolean) => {
     saving.value = false;
 
     if (!success) {
-        if (props.saveHandler) return;     // Hinweis kommt aus dem Mehrspieler-Knecht
+        if (props.saveHandler) return;     // Hinweis kommt vom saveHandler
         toast.add({ severity: 'error', summary: 'Spiel nicht gespeichert – bitte nochmal versuchen', life: 4000 });
         return;
     }
