@@ -9,23 +9,31 @@
             :actions="game.actions"
             :refereeUsed="game.refereeUsed"
             :live="isFeatureOn('live') || live.binding.value ? liveInfo : null"
-            :phoneSide="live.binding.value?.side ?? null"
+            :saveHandler="live.binding.value ? saveShared : undefined"
+            :savingText="savingText"
             @change="onChange"
             @exit="abort"
             @leave="leave"
             @saved="onSaved"
             @live="onLiveAction"
         />
-        <!-- Zweites Handy: an welchem Tischende steht dieses Handy? -->
-        <div v-else-if="sideChoice" class="KnechtJoining">
+        <!-- Weiteres Handy: wofuer traegt dieses Handy ein? -->
+        <div v-else-if="seatChoice" class="KnechtJoining">
             <div class="kj-card">
-                <div class="kj-title">Wo liegt dieses Handy?</div>
-                <div class="kj-text">Jedes Handy liegt an einem Tischende und zeigt die Becher, auf die dieses Team wirft.</div>
-                <button v-for="teamIndex in [0, 1]" :key="teamIndex" type="button" class="kj-option"
-                    :style="{ '--kj-color': getTeamColor(sideChoice.game.match, teamIndex) }" @click="chooseSide(teamIndex)">
-                    <span class="kj-dot"></span>
-                    <span>Bei <b>{{ getTeamName(sideChoice.game.match, teamIndex) }}</b></span>
-                </button>
+                <div class="kj-title">Wer bist du?</div>
+                <div class="kj-text">Dieses Handy trägt deine Würfe ein. Spieler ohne eigenes Handy trägt ein Handy ihres Teams mit ein.</div>
+                <template v-for="teamIndex in [0, 1]" :key="teamIndex">
+                    <div class="kj-team" :style="{ '--kj-color': getTeamColor(seatChoice.game.match, teamIndex) }">{{ getTeamName(seatChoice.game.match, teamIndex) }}</div>
+                    <button v-for="seat in seatsOf(teamIndex)" :key="`${teamIndex}-${seat.player}`" type="button" class="kj-option"
+                        :style="{ '--kj-color': getTeamColor(seatChoice.game.match, teamIndex) }" :disabled="!!seat.takenBy" @click="chooseSeat(teamIndex, seat.player)">
+                        <span class="kj-dot"></span>
+                        <span class="kj-option-text">
+                            <b>{{ seat.label }}</b>
+                            <small v-if="seat.takenBy">{{ seat.takenBy }}</small>
+                            <small v-else-if="seat.player === null">Alle Spieler dieses Teams auf einem Handy</small>
+                        </span>
+                    </button>
+                </template>
                 <button type="button" class="kj-cancel" @click="cancelJoin">Abbrechen</button>
             </div>
         </div>
@@ -34,22 +42,25 @@
 </template>
 
 <script setup lang="ts">
-// Nur Spielflaeche: gestartet wird ueber "Spiel eintragen" (Teams waehlen, "Mit BiPo Knecht spielen"),
-// ein laufendes Spiel wird beim Oeffnen fortgesetzt. Ohne Spiel geht es zur Startseite.
+// Nur Spielflaeche: gestartet wird ueber "Spiel eintragen" ("Spiel tracken": Teams waehlen, "Spiel starten") oder ueber die
+// Anstoss-Lobby (/Mitspielen). Ein laufendes Spiel wird beim Oeffnen fortgesetzt. Ohne Spiel geht es zur Startseite.
+// Mehrere Handys: jedes traegt fuer einen Spieler oder ein Tischende ein (liveDevices.ts), beitreten mit Code.
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import router from '@/router.js';
 import BiPoKnecht from './BiPoKnecht.vue';
 import type { KnechtAction } from './knechtEngine';
-import { formatPoints, getResultPath, getTeamColor, getTeamName, normalizeTeams } from './KnechtUtilFunctions';
+import { formatPoints, getResultPath, getTeamColor, getTeamName, normalizeTeams, saveKnechtGame, toRematch } from './KnechtUtilFunctions';
 import { clearStoredGame, loadStoredGame, storeGame } from './knechtStorage';
 import { useKnechtLaunch } from './useKnechtLaunch';
 import { isDemoMode } from '@/util/demoGames';
-import { isLiveEnabled, LiveJoinError, peekLiveGame, setLiveEnabled, type LiveBinding, type LiveGame, type LiveProgress } from './knechtLive';
-import { useKnechtLiveSync } from './useKnechtLiveSync';
-import type { KnechtLiveInfo } from './KnechtLivePanel.vue';
+import { isCurrentBinding, isLiveEnabled, LiveJoinError, peekLiveGame, setLiveEnabled, type LiveGame, type LiveProgress } from './knechtLive';
+import { deviceName, useKnechtLiveSync } from './useKnechtLiveSync';
+import type { LiveDeviceBinding } from './liveDevices';
+import type { KnechtLiveInfo, KnechtLiveAction } from './KnechtLivePanel.vue';
 import { isFeatureOn } from '@/util/featureFlags';
+import { useProfile } from '../multiplayer/useProfile';
 
 type ActiveGame = {
     key: number;
@@ -57,12 +68,12 @@ type ActiveGame = {
     startTeamIndex: number | null;
     actions: KnechtAction[];
     refereeUsed: boolean;
-    guest?: boolean;            // dieses Handy ist per Code beigetreten (andere Tischseite)
 };
 
 const toast = useToast();
 const route = useRoute();
 const { consumeLaunch, hasLaunch, onLaunch } = useKnechtLaunch();
+const { profileName } = useProfile();
 
 const game = ref<ActiveGame | null>(null);
 let gameKey = 0;
@@ -80,30 +91,45 @@ const persist = () => {
     });
 };
 
-// ─── Live-Ticker / zweites Handy ───
+const endHere = (path = '/') => {
+    clearStoredGame();
+    game.value = null;
+    router.push(path);
+};
+
+// ─── Live-Ticker / mehrere Handys ───
 const knecht = ref<{ getProgress: () => LiveProgress; applyRemote: (progress: LiveProgress) => boolean } | null>(null);
 const joining = ref(false);
 
+// Revanche auf einem anderen Handy: neues Spiel mit denselben Handys
+const applyRemote = (progress: LiveProgress) => {
+    const current = game.value;
+    if (current && progress.match && progress.startTeamIndex === null && !progress.actions.length && current.startTeamIndex !== null) {
+        game.value = { key: ++gameKey, match: progress.match, startTeamIndex: null, actions: [], refereeUsed: false };
+        persist();
+        toast.add({ severity: 'success', summary: 'Revanche! Das letzte Spiel ist eingetragen', life: 3500 });
+        return true;
+    }
+    return knecht.value?.applyRemote(progress) ?? false;
+};
+
 const live = useKnechtLiveSync({
     getProgress: () => knecht.value?.getProgress() ?? null,
-    applyRemote: (progress) => knecht.value?.applyRemote(progress) ?? false,
+    applyRemote,
     onBindingChange: () => persist(),
     onNotice: (message) => toast.add({ severity: 'info', summary: message, life: 3500 }),
     onKicked: () => {
-        clearStoredGame();
-        game.value = null;
-        toast.add({ severity: 'warn', summary: 'Vom anderen Handy getrennt', detail: 'Das Spiel wird dort allein weitergezählt. Hier wird nichts gespeichert.' });
-        router.push('/');
+        toast.add({ severity: 'warn', summary: 'Dieses Handy wurde von einem anderen getrennt', detail: 'Das Spiel läuft dort weiter. Hier wird nichts gespeichert.' });
+        endHere();
     },
     onEnded: (status, liveGame) => {
-        clearStoredGame();
-        game.value = null;
+        const who = liveGame.endedBy ?? 'Ein anderes Handy';
         if (status === 'done') {
-            toast.add({ severity: 'success', summary: 'Das andere Handy hat das Spiel eingetragen', life: 3500 });
-            router.push(`/Live/${liveGame.id}`);
+            toast.add({ severity: 'success', summary: `${who} hat das Spiel eingetragen`, life: 3500 });
+            endHere(`/Live/${liveGame.id}`);
         } else {
-            toast.add({ severity: 'info', summary: 'Das Spiel wurde auf dem anderen Handy abgebrochen', life: 3500 });
-            router.push('/');
+            toast.add({ severity: 'info', summary: `${who} hat das Spiel abgebrochen`, life: 3500 });
+            endHere();
         }
     },
 });
@@ -112,9 +138,16 @@ const liveInfo = computed<KnechtLiveInfo>(() => ({
     status: live.status.value,
     code: live.binding.value?.code ?? null,
     id: live.binding.value?.id ?? null,
-    role: live.binding.value?.role ?? null,
     devices: live.devices.value,
+    deviceId: live.binding.value?.deviceId ?? null,
+    team: live.binding.value?.team ?? null,
 }));
+
+const savingText = computed(() => {
+    const saving = live.savingBy.value;
+    if (!saving || saving === live.binding.value?.deviceId) return undefined;
+    return `${deviceName(live.devices.value.find(device => device.id === saving))} trägt ein …`;
+});
 
 // Nur ein Start gleichzeitig: Beim Oeffnen starten sonst neues Spiel und "Live nachholen" je ein eigenes
 // Live-Spiel, bevor das erste fertig angelegt ist (Startseite zeigte jedes Spiel doppelt, einmal mit 0 : 0)
@@ -123,47 +156,75 @@ const startLive = () => liveStarting ??= (async () => {
     if (!game.value || live.binding.value) return;
     await nextTick();
     const progress = knecht.value?.getProgress() ?? { startTeamIndex: game.value.startTeamIndex, startedAt: null, actions: game.value.actions };
-    const ok = await live.host(game.value.match, progress);
+    const ok = await live.host(game.value.match, progress, { name: profileName.value });
     if (!ok) toast.add({ severity: 'warn', summary: 'Live-Ticker gerade nicht erreichbar – das Spiel läuft trotzdem', life: 3500 });
 })().finally(() => { liveStarting = null; });
 
-const onLiveAction = async (action: 'start' | 'stop' | 'leave' | 'kick') => {
-    if (action === 'kick') {
-        if (!confirm('Zweites Handy trennen? Es wird dort beendet, du zählst hier allein weiter. Der Code ändert sich.')) return;
-        const ok = await live.kick();
-        toast.add(ok
-            ? { severity: 'success', summary: 'Zweites Handy getrennt', detail: `Neuer Code: ${live.binding.value?.code ?? ''}`, life: 4000 }
-            : { severity: 'error', summary: 'Trennen gerade nicht möglich – keine Verbindung', life: 3500 });
-    } else if (action === 'start') {
-        setLiveEnabled(true);
-        startLive();
-    } else if (action === 'stop') {
-        setLiveEnabled(false);
-        live.finish('aborted');
-    } else {
-        // Zweites Handy steigt aus: das Spiel laeuft auf dem anderen weiter, hier wird nichts gespeichert
-        live.leave();
-        clearStoredGame();
-        game.value = null;
-        router.push('/');
+const onLiveAction = async (action: KnechtLiveAction) => {
+    switch (action.type) {
+        case 'start':
+            setLiveEnabled(true);
+            startLive();
+            break;
+        case 'stop':
+            setLiveEnabled(false);
+            live.finish('aborted');
+            break;
+        case 'leave':
+            // Dieses Handy steigt aus: das Spiel laeuft auf den anderen weiter, hier wird nichts gespeichert
+            live.leave();
+            endHere();
+            break;
+        case 'kick': {
+            const name = deviceName(live.devices.value.find(device => device.id === action.deviceId));
+            if (!confirm(`${name} trennen? Seine Spieler trägt dann wieder ein anderes Handy mit ein.`)) return;
+            toast.add(await live.kick(action.deviceId)
+                ? { severity: 'success', summary: `${name} getrennt`, life: 3000 }
+                : { severity: 'error', summary: 'Trennen gerade nicht möglich – keine Verbindung', life: 3500 });
+            break;
+        }
+        case 'bind':
+            try {
+                await live.bind(action.binding);
+            } catch (error) {
+                const taken = error instanceof LiveJoinError && error.reason === 'taken';
+                toast.add({ severity: 'error', summary: taken ? 'Das macht schon ein anderes Handy' : 'Umstellen gerade nicht möglich', life: 3500 });
+            }
+            break;
     }
 };
 
-// Zweites Handy: /Knecht?join=CODE -> Spiel ansehen, Tischseite waehlen, beitreten
-const sideChoice = ref<{ code: string; game: LiveGame } | null>(null);
+// ─── Weiteres Handy: /Knecht?join=CODE -> Spiel ansehen, Spieler oder Tischende waehlen, beitreten ───
+const seatChoice = ref<{ code: string; game: LiveGame } | null>(null);
+
+const seatsOf = (teamIndex: number) => {
+    const choice = seatChoice.value;
+    if (!choice) return [];
+    const team = teamIndex === 0 ? choice.game.match.team1 : choice.game.match.team2;
+    const takenBy = (binding: LiveDeviceBinding) => {
+        const device = choice.game.devices.find(entry => entry.team === binding.team && entry.player === binding.player);
+        return device ? `Schon dabei: ${deviceName(device)}` : null;
+    };
+    const players = team.players.map((player, index) => ({ player: index as number | null, label: player.name, takenBy: takenBy({ team: teamIndex, player: index }) }));
+    // Ein Spieler pro Team: Spieler und Tischende sind dasselbe
+    if (team.players.length === 1) return players;
+    return [...players, { player: null, label: 'Ganzes Tischende', takenBy: takenBy({ team: teamIndex, player: null }) }];
+};
 
 const showJoinError = (error: unknown, code: string) => {
-    const busy = error instanceof LiveJoinError && error.reason === 'busy';
-    toast.add(busy
-        ? { severity: 'error', summary: 'Dieses Spiel zählen schon zwei Handys', detail: 'Ein drittes Handy geht nicht. Das erste Handy kann das andere unter „Live & zweites Handy“ trennen.', life: 6000 }
-        : { severity: 'error', summary: `Kein laufendes Spiel mit dem Code ${code.toUpperCase()}`, life: 4000 });
+    const reason = error instanceof LiveJoinError ? error.reason : 'not-found';
+    toast.add(reason === 'taken'
+        ? { severity: 'error', summary: 'Dafür trägt schon ein anderes Handy ein', detail: 'Bitte etwas anderes wählen.', life: 4000 }
+        : reason === 'full'
+            ? { severity: 'error', summary: 'In diesem Spiel sind schon zu viele Handys', life: 4000 }
+            : { severity: 'error', summary: `Kein laufendes Spiel mit der PIN ${code.toUpperCase()}`, life: 4000 });
 };
 
 const joinGame = async (code: string) => {
     if ((game.value || loadStoredGame()) && !confirm('Das laufende Spiel auf diesem Handy wird verworfen. Dem anderen Spiel beitreten?')) return false;
     joining.value = true;
     try {
-        sideChoice.value = { code, game: await peekLiveGame(code) };
+        seatChoice.value = { code, game: await peekLiveGame(code) };
         return true;
     } catch (error) {
         showJoinError(error, code);
@@ -173,35 +234,47 @@ const joinGame = async (code: string) => {
     }
 };
 
-const chooseSide = async (side: number) => {
-    const choice = sideChoice.value;
-    if (!choice) return;
-    sideChoice.value = null;
+// Beitreten mit fester Wahl (Auswahl-Bildschirm oder aus der Lobby)
+const enterGame = async (code: string, binding: LiveDeviceBinding) => {
     joining.value = true;
     try {
-        const remote = await live.join(choice.code, side);
+        if (live.binding.value) live.leave();
+        const remote = await live.join(code, { name: profileName.value, ...binding });
         const match = remote.match;
         if (remote.startedAt) match.time = remote.startedAt;
-        game.value = { key: ++gameKey, match, startTeamIndex: remote.startTeamIndex, actions: remote.actions, refereeUsed: false, guest: true };
+        game.value = { key: ++gameKey, match, startTeamIndex: remote.startTeamIndex, actions: remote.actions, refereeUsed: false };
         persist();
-        toast.add({ severity: 'success', summary: `Verbunden – dieses Handy zählt für ${getTeamName(match, side)}`, life: 3500 });
-        router.replace('/Knecht');
+        return true;
     } catch (error) {
-        showJoinError(error, choice.code);
-        router.replace(resume() ? '/Knecht' : '/');
+        showJoinError(error, code);
+        return false;
     } finally {
         joining.value = false;
     }
 };
 
+const chooseSeat = async (team: number, player: number | null) => {
+    const choice = seatChoice.value;
+    if (!choice) return;
+    seatChoice.value = null;
+    if (await enterGame(choice.code, { team, player })) {
+        const label = player === null ? getTeamName(choice.game.match, team) : (team === 0 ? choice.game.match.team1 : choice.game.match.team2).players[player]?.name;
+        toast.add({ severity: 'success', summary: `Verbunden – dieses Handy trägt für ${label} ein`, life: 3500 });
+        router.replace('/Knecht');
+    } else {
+        router.replace(resume() ? '/Knecht' : '/');
+    }
+};
+
 const cancelJoin = () => {
-    sideChoice.value = null;
+    seatChoice.value = null;
     router.replace(resume() ? '/Knecht' : '/');
 };
 
 const newGame = (match: Match) => {
     if ((game.value || loadStoredGame()) && !confirm('Das laufende Spiel wird verworfen. Neues Spiel starten?')) return false;
-    if (live.binding.value) live.binding.value.role === 'host' ? live.finish('aborted') : live.leave();
+    // Mit anderen Handys laeuft das alte Spiel dort weiter, allein wird es abgebrochen
+    if (live.binding.value) live.devices.value.length > 1 ? live.leave() : live.finish('aborted');
     game.value = { key: ++gameKey, match: normalizeTeams(match), startTeamIndex: null, actions: [], refereeUsed: false };
     persist();
     if (isLiveEnabled()) startLive();
@@ -212,8 +285,9 @@ const resume = () => {
     const stored = loadStoredGame();
     if (!stored) return false;
     const { match, startTeamIndex, actions, refereeUsed } = stored;
-    game.value = { key: ++gameKey, match, startTeamIndex, actions, refereeUsed, guest: stored.live?.role === 'guest' };
-    if (stored.live) live.resume(stored.live as LiveBinding);
+    game.value = { key: ++gameKey, match, startTeamIndex, actions, refereeUsed };
+    // Bindung aus einer frueheren Version (erstes/zweites Handy) passt nicht mehr: ohne sie weiter, Live startet neu
+    if (isCurrentBinding(stored.live)) live.resume(stored.live);
     return true;
 };
 
@@ -225,12 +299,10 @@ const onChange = (progress: { startTeamIndex: number | null; actions: KnechtActi
 };
 
 // ─── Spiel verlassen ───
+// Abbrechen gilt fuer alle Handys
 const abort = () => {
-    if (live.binding.value?.role === 'host') live.finish('aborted');
-    else live.leave();
-    clearStoredGame();
-    game.value = null;
-    router.push('/');
+    live.finish('aborted');
+    endHere();
 };
 
 const leave = () => {
@@ -238,32 +310,43 @@ const leave = () => {
     router.push('/');
 };
 
-// Revanche: gleiche Teams und gleicher Wettbewerb, neues Spiel
-const toRematch = (match: Match): Match => ({
-    _id: 'placeholder',
-    team1: { ...match.team1, players: match.team1.players.map(player => ({ ...player, score: 0 })) },
-    team2: { ...match.team2, players: match.team2.players.map(player => ({ ...player, score: 0 })) },
-    ...(match.season !== undefined && { season: match.season }),
-    ...(match.league !== undefined && { league: match.league }),
-    ...(match.cupId !== undefined && { cupId: match.cupId, cupRound: match.cupRound }),
-    ...(match.cupColors && { cupColors: match.cupColors }),
-});
+// Mehrere Handys: nur eines traegt ein. Erst beanspruchen, dann speichern (bei Fehler wieder freigeben).
+const saveShared = async (result: Match): Promise<boolean> => {
+    if (!await live.claim()) {
+        toast.add({ severity: 'info', summary: savingText.value ?? 'Ein anderes Handy trägt das Spiel gerade ein', life: 3000 });
+        return false;
+    }
+    let success = false;
+    try {
+        success = await saveKnechtGame(result);
+    } catch {
+        success = false;
+    }
+    if (!success) {
+        await live.release();
+        toast.add({ severity: 'error', summary: 'Spiel nicht gespeichert – bitte nochmal versuchen', life: 4000 });
+    }
+    return success;
+};
 
-const onSaved = (result: Match, rematch: boolean) => {
-    live.finish('done');
-    clearStoredGame();
+const onSaved = async (result: Match, rematch: boolean) => {
     const score = [result.team1, result.team2].map(team => formatPoints(team.players.reduce((sum, player) => sum + player.score, 0)));
     const suffix = isDemoMode ? ' (Demo, nur lokal gespeichert)' : ' eingetragen';
     toast.add({ severity: 'success', summary: `${getTeamName(result, 0)} ${score[0]} : ${score[1]} ${getTeamName(result, 1)}${suffix}`, life: 3500 });
-
     if (rematch) {
         game.value = { key: ++gameKey, match: toRematch(result), startTeamIndex: null, actions: [], refereeUsed: false };
         persist();
-        if (isLiveEnabled()) startLive();
+        if (live.binding.value) {
+            // Gleiche Handys, neues Spiel: Live-Spiel freigeben und zuruecksetzen (neuer Knecht muss erst stehen)
+            await nextTick();
+            await live.restart();
+        } else if (isLiveEnabled()) {
+            startLive();
+        }
         return;
     }
-    game.value = null;
-    router.push(getResultPath(result));
+    live.finish('done');
+    endHere(getResultPath(result));
 };
 
 // ─── Uebergabe aus dem "Spiel eintragen"-Drawer ───
@@ -271,14 +354,21 @@ const takeLaunch = () => {
     const match = consumeLaunch();
     return !!match && newGame(match);
 };
-
 const stopListening = onLaunch(takeLaunch);
 onUnmounted(stopListening);
 
 onMounted(async () => {
     const code = typeof route.query.join === 'string' ? route.query.join : null;
     if (code) {
-        // Erfolgreich angesehen: weiter geht es mit der Seitenwahl (chooseSide / cancelJoin). Die Adresse
+        // Aus der Lobby: der Platz steht schon fest
+        const team = Number(route.query.team);
+        if (route.query.team !== undefined && (team === 0 || team === 1)) {
+            const player = route.query.player === undefined ? null : Number(route.query.player);
+            const joined = await enterGame(code, { team, player: Number.isInteger(player) ? player : null });
+            router.replace(joined || resume() ? '/Knecht' : '/');
+            return;
+        }
+        // Erfolgreich angesehen: weiter geht es mit der Auswahl (chooseSeat / cancelJoin). Die Adresse
         // bleibt bis dahin stehen - ein Wechsel auf /Knecht laedt die Seite neu und die Wahl waere weg.
         if (await joinGame(code)) return;
         router.replace(resume() ? '/Knecht' : '/');
@@ -288,7 +378,7 @@ onMounted(async () => {
     const started = hasLaunch() ? takeLaunch() || resume() : resume();
     if (!started) router.replace('/');
     // Fortgesetztes Spiel ohne Live (z.B. vor dem Update gestartet): Live nachholen
-    else if (!live.binding.value && isLiveEnabled() && !game.value?.guest) startLive();
+    else if (!live.binding.value && isLiveEnabled()) startLive();
 });
 </script>
 
@@ -340,6 +430,28 @@ onMounted(async () => {
     font-weight: 500;
     text-align: left;
     cursor: pointer;
+}
+.kj-option:disabled{
+    opacity: .5;
+    cursor: default;
+}
+.kj-option-text{
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.kj-option-text small{
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--bp-text-muted);
+}
+.kj-team{
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--kj-color);
 }
 .kj-dot{
     flex-shrink: 0;

@@ -10,6 +10,10 @@ import { usePlayerSearch } from './usePlayerSearch';
 import { PUSH_SETTINGS_PATH, usePushNotifications } from './usePushNotifications';
 import { useColorScheme } from './useColorScheme';
 import BellIcon from './BellIcon.vue';
+import Avatar from './Avatar.vue';
+import { useProfile } from '@/components/frontend/multiplayer/useProfile';
+import { useMultiplayerSession } from '@/components/frontend/multiplayer/useMultiplayerSession';
+import { isFeatureOn } from '@/util/featureFlags';
 
 const route = useRoute();
 const { tournamentPickerVisible, openTournamentPicker } = useTournamentPicker();
@@ -18,6 +22,8 @@ const { openPlayerSearch } = usePlayerSearch();
 const { canInstall, isInstalled, installPwa } = usePwaInstall();
 const { isActive: isPushActive } = usePushNotifications();
 const { isDark, toggleColorScheme } = useColorScheme();
+const { profileName } = useProfile();
+const { storedCode } = useMultiplayerSession();
 
 const scrollToTop = () => {
 	if((router as any).path == "/"){
@@ -108,6 +114,19 @@ const logo = computed(() => isDark.value ? logoDark : logoLight);
 				<button type="button" class="ap-round-btn" aria-label="Spieler suchen" @click="openPlayerSearch()">
 					<i class="pi pi-search"></i>
 				</button>
+
+				<!-- Profil: Standard-Spieler dieses Handys, von dort aus Spiel starten -->
+				<router-link
+					v-if="isFeatureOn('mitspielen')"
+					to="/Profil"
+					class="ap-round-btn ap-profile-btn"
+					:class="{ 'ap-round-btn--active': route.path === '/Profil' || route.path.startsWith('/Mitspielen') }"
+					:aria-label="profileName ? `Profil von ${profileName}` : 'Profil'"
+				>
+					<Avatar v-if="profileName" :name="profileName" class="ap-profile-avatar" :lazy="false"/>
+					<i v-else class="pi pi-user"></i>
+					<span v-if="storedCode" class="ap-profile-badge" aria-label="Laufendes Spiel">🎯</span>
+				</router-link>
 			</div>
 		</div>
 
@@ -270,6 +289,26 @@ const logo = computed(() => isDark.value ? logoDark : logoLight);
 }
 .ap-round-btn--active{
 	color: var(--main-color);
+}
+.ap-profile-btn{
+	position: relative;
+	overflow: visible;
+}
+.ap-profile-avatar{
+	width: 100% !important;
+	height: 100% !important;
+	font-size: 13px;
+}
+.ap-round-btn--active .ap-profile-avatar{
+	box-shadow: 0 0 0 2px var(--main-color);
+	border-radius: 50%;
+}
+.ap-profile-badge{
+	position: absolute;
+	right: -4px;
+	bottom: -4px;
+	font-size: 12px;
+	line-height: 1;
 }
 
 /*MOBILE*/

@@ -81,6 +81,8 @@ const LOOKS: Record<KnechtCelebrationKind, Look> = {
     rerack: { title: 'Re-Rack!', subtitle: () => 'Neue Formation', icon: 'reRack', color: '#1F8A70', dark: '#0A3D31', particle: null, count: 0, rings: [] },
     // Gefangen und verwandelt sehen bewusst verschieden aus: Hand (blau) gegen Flugbahn mit Treffer (gold)
     trickshot: { title: 'Gefangen!', subtitle: player => `${player} darf den Trickshot werfen`, icon: 'catch', color: '#2EA3C7', dark: '#0B4A5E', particle: 'spark', count: 10, rings: [1] },
+    miss: { title: 'Daneben', subtitle: player => player, icon: 'miss', color: '#5B6B7A', dark: '#1F262E', particle: null, count: 0, rings: [] },
+    owncup: { title: 'Eigener Becher!', subtitle: player => `${player} · zählt für die Gegner`, icon: 'owncup', color: '#C2410C', dark: '#4A1804', particle: 'debris', count: 12, rings: [1] },
     airball: { title: 'Airball!', subtitle: player => `${player} · über den Tisch`, icon: 'airball', color: '#7C8A99', dark: '#2B333C', particle: null, count: 0, rings: [] },
     equalizer: { title: 'Ausgleich!', subtitle: player => player, icon: 'equalizer', color: '#3E63DD', dark: '#14245E', particle: 'spark', count: 12, rings: [1] },
     lastcup: { title: 'Letzter Becher!', subtitle: player => `${player} räumt ab`, icon: 'lastCup', color: '#E0A800', dark: '#5C4300', particle: 'star', count: 24, rings: [1, 2] },
