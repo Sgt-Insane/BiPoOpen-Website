@@ -106,13 +106,14 @@
                     <template v-else>Live</template>
                 </button>
                 <!-- Handy gehoert einem Spieler/Tischende (Lobby oder per PIN beigetreten): Farben sind schon gewaehlt -->
-                <KnechtStartTeam :match="game.match" :skipColors="typeof live?.team === 'number'" @start="startGame" @cancel="multiDevice ? confirmAbort() : $emit('exit')" />
+                <KnechtStartTeam :match="game.match" :skipColors="typeof live?.team === 'number'" @start="startGame" @cancel="fromLobby ? $emit('lobby') : multiDevice ? confirmAbort() : $emit('exit')" />
             </div>
 
             <!-- Pause -->
             <div v-if="paused" class="kn-overlay">
                 <div class="kn-pause-card">
                     <div class="kn-pause-title">⏸ Pause</div>
+                    <div v-if="multiDevice && pausedBy" class="kn-pause-by">{{ pausedBy }} hat pausiert</div>
                     <div class="kn-pause-score">{{ getTeamName(game.match, 0) }} {{ formatPoints(teamPoints[0]) }} : {{ formatPoints(teamPoints[1]) }} {{ getTeamName(game.match, 1) }}</div>
                     <button type="button" class="kn-menu-button kn-menu-button--primary" @click="paused = false">Weiterspielen</button>
                 </div>
@@ -198,7 +199,7 @@
                     </button>
                     <div class="kn-menu-label">Animationen im {{ mode === 'player' ? 'Spieler' : 'Schiri' }}-Modus</div>
                     <SelectButton :modelValue="animationLevel" :options="ANIMATION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" fluid @update:modelValue="setAnimationLevel" />
-                    <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Bei jeder Aktion' : animationLevel === 'special' ? 'Nur Bombe, Bouncer, Trickshot, Balls Back & Formationen' : 'Keine großen Animationen' }}</div>
+                    <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Bei jeder Aktion' : animationLevel === 'special' ? 'Nur Bombe, Bouncer, Trickshot, Balls Back, Heaten Up, On Fire & Formationen' : 'Keine großen Animationen' }}</div>
 
                     <div class="kn-menu-label">Tisch</div>
                     <!-- Becherfarben gehoeren zum Spiel: gelten auf allen Handys -->
@@ -227,7 +228,7 @@
                     <div class="kn-menu-label">Spiel</div>
                     <button v-if="live" type="button" class="kn-menu-button" @click="sheet = 'live'">
                         <span class="kn-live-dot" :class="{ 'kn-live-dot--off': live.status !== 'live' }"></span>
-                        {{ live.status === 'off' ? 'Live & mehrere Handys' : live.code ? `Live · PIN ${live.code}` : 'Live' }}
+                        {{ live.status === 'off' ? 'Live & mehrere Handys' : live.code ? `Live · PIN ${live.code}` : 'Live' }}<DevBadge :feature="['live', 'anstossen']" />
                     </button>
                     <button type="button" class="kn-menu-button" @click="pause">
                         <i class="pi pi-pause"></i> Pause
@@ -260,6 +261,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import SelectButton from 'primevue/selectbutton';
 import { useToast } from 'primevue/usetoast';
@@ -279,6 +281,7 @@ import KnechtCelebration from './KnechtCelebration.vue';
 import KnechtOwnCup from './KnechtOwnCup.vue';
 import KnechtElbow from './KnechtElbow.vue';
 import KnechtStartTeam from './KnechtStartTeam.vue';
+import { useProfile } from '../multiplayer/useProfile';
 import KnechtGameOver from './KnechtGameOver.vue';
 import KnechtIcon from './KnechtIcon.vue';
 import type { KnechtIconName } from './knechtIcons';
@@ -299,10 +302,12 @@ const props = defineProps<{
     live?: KnechtLiveInfo | null;       // Live-Ticker / mehrere Handys (null = ausgeschaltet)
     saveHandler?: (result: Match, rematch: boolean) => Promise<boolean>;    // mehrere Handys: nur eines traegt ein
     savingText?: string;                // ein anderes Handy traegt gerade ein
+    fromLobby?: boolean;                // aus der Anstoss-Lobby gestartet: Zurueck fuehrt dorthin
 }>();
 
 const emit = defineEmits<{
     exit: [];                                       // abbrechen, Spiel verwerfen
+    lobby: [];                                      // vor dem Start zurueck in die Anstoss-Lobby (fuer alle)
     leave: [];                                      // zur Webseite, Spiel bleibt gespeichert
     saved: [match: Match, rematch: boolean];
     change: [progress: { startTeamIndex: number | null; actions: KnechtAction[]; refereeUsed: boolean }];
@@ -332,6 +337,8 @@ const myPlayer = computed(() => multiDevice.value ? myDevice.value!.player : nul
 const twoPhone = computed(() => phoneSide.value === 0 || phoneSide.value === 1);
 const refereeUsed = ref(props.refereeUsed);
 const paused = ref(false);
+const pausedBy = ref<string | null>(null);    // mehrere Handys: wer pausiert hat
+const { profileName } = useProfile();
 const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
 const editTurn = ref<number | null>(null);
 const openTurnEditor = (turnIndex: number) => {
@@ -390,6 +397,7 @@ const onScreenTurn = () => {
 let lastLandscape: string | null = screen.orientation?.type?.startsWith('landscape') ? screen.orientation.type : null;
 
 const pause = () => {
+    pausedBy.value = profileName.value ?? props.live?.devices?.find(device => device.id === props.live?.deviceId)?.name ?? null;
     paused.value = true;
     sheet.value = null;
 };
@@ -637,11 +645,13 @@ const getProgress = (): LiveProgress => ({
     // Becherfarben koennen sich nach dem Anlegen noch aendern (Startdialog, Menue)
     match: game.match,
     paused: paused.value,
+    pausedBy: paused.value ? pausedBy.value : null,
 });
 
 const applyRemote = (remote: LiveProgress): boolean => {
     // Pause gilt fuer beide Handys (sonst wuerde das andere Handy sie beim naechsten Abgleich wieder aufheben)
     if (typeof remote.paused === 'boolean' && remote.paused !== paused.value) paused.value = remote.paused;
+    if (remote.paused) pausedBy.value = remote.pausedBy ?? null;
     const colors = remote.match?.cupColors;
     if (colors && JSON.stringify(colors) !== JSON.stringify(game.match.cupColors)) game.match.cupColors = [...colors];
     if (remote.startTeamIndex !== null && game.startTeamIndex.value === null) {
@@ -802,6 +812,12 @@ onUnmounted(() => {
     font-size: 26px;
     font-weight: 800;
     color: var(--bp-text-strong);
+}
+.kn-pause-by{
+    margin-top: -4px;
+    font-size: 14px;
+    font-weight: 700;
+    opacity: .75;
 }
 .kn-pause-score{
     font-size: 14px;

@@ -16,6 +16,10 @@ describe('Formationen', () => {
     it('erkennt gespiegelte Formationen mit demselben Namen', () => {
         // Schneise: alle ausser 3-5-8, gespiegelt alle ausser 2-5-9
         expect(findFormation(indices(1, 2, 4, 6, 7, 9, 10))?.name).toBe('Schneise');
+        expect(findFormation(indices(1, 3, 4, 7, 9, 10))?.name).toBe('Sharingan');
+        expect(findFormation(indices(1, 2, 6, 7, 8, 10))?.name).toBe('Sharingan');
+        expect(findFormation(indices(1, 3, 4, 5, 7, 9, 10))?.name).toBe('Windmühle');
+        expect(findFormation(indices(1, 2, 5, 6, 7, 8, 10))?.name).toBe('Windmühle');
         expect(findFormation(indices(1, 3, 4, 6, 7, 8, 10))?.name).toBe('Schneise');
     });
 

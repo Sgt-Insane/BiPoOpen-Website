@@ -16,12 +16,15 @@
                 <div class="ml-team-title">{{ teamName(team) }}</div>
                 <div v-for="player in getTeamPlayers(session.players, team)" :key="player.deviceId" class="ml-player-row">
                     <div class="ml-player" :class="{ 'ml-player--me': player.deviceId === deviceId }">
-                        <Avatar :name="player.name" class="ml-player-avatar" :lazy="false" />
+                        <span class="ml-player-pic">
+                            <Avatar :name="player.name" class="ml-player-avatar" :lazy="false" />
+                            <i v-if="hasPhone(player) && player.ready" v-hint.tap="'Bereit'" class="pi pi-check ml-player-ready" aria-label="Bereit"></i>
+                        </span>
                         <span class="ml-player-name">
                             {{ player.name }}
                             <small v-if="!hasPhone(player)" class="ml-player-nophone">ohne Handy</small>
+                            <small v-else-if="player.deviceId === deviceId" class="ml-player-nophone ml-player-you">Du</small>
                         </span>
-                        <span v-if="player.deviceId === deviceId" class="ml-player-tag">Du</span>
                     </div>
                     <button v-if="!hasPhone(player)" type="button" class="ml-remove" :aria-label="`${player.name} entfernen`" @click="$emit('removeGuest', player.deviceId)">
                         <i class="pi pi-times"></i>
@@ -51,10 +54,13 @@
         </div>
 
         <div v-else class="ml-footer">
-            <button type="button" class="ml-button ml-button--primary" :disabled="!canStart || busy" @click="$emit('prepare')">
+            <!-- Erst alle bereit, dann kann jeder starten -->
+            <button v-if="!meReady" type="button" class="ml-button ml-button--primary" :disabled="busy" @click="$emit('ready')">Bereit</button>
+            <button v-else type="button" class="ml-button ml-button--primary" :disabled="!canStart || !everyoneReady || busy" @click="$emit('prepare')">
                 <i v-if="busy" class="pi pi-spin pi-spinner"></i>
-                <span v-else>{{ canStart ? 'Spiel starten' : 'Warte auf Gegner …' }}</span>
+                <span v-else>{{ startLabel }}</span>
             </button>
+            <button v-if="meReady && !(canStart && everyoneReady)" type="button" class="ml-leave" @click="$emit('ready')">Doch nicht bereit</button>
             <button type="button" class="ml-leave" @click="$emit('leave')">Verlassen</button>
         </div>
     </div>
@@ -65,7 +71,7 @@ import { computed, ref } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import PlayerSearchAutoComplete from '@/components/shared/PlayerSearchAutoComplete.vue';
 import { TEAM_COLORS } from '../biPoKnecht/KnechtUtilFunctions';
-import { MAX_PLAYERS_PER_TEAM, getTeamPlayers, hasPhone, type MpSession } from './multiplayerTypes';
+import { MAX_PLAYERS_PER_TEAM, allReady, getTeamPlayers, hasPhone, isReady, type MpSession } from './multiplayerTypes';
 import type { MpGameOption } from './multiplayerGameOptions';
 
 const props = defineProps<{
@@ -77,12 +83,20 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     swap: []; prepare: []; start: [option: MpGameOption]; cancelOptions: []; leave: []; share: [];
-    addGuest: [team: number, name: string]; removeGuest: [deviceId: string];
+    ready: []; addGuest: [team: number, name: string]; removeGuest: [deviceId: string];
 }>();
 
 const colors = computed(() => props.session.cupColors ?? TEAM_COLORS);
 const teamName = (team: number) => colors.value[team] === TEAM_COLORS[1] ? 'Team Blau' : 'Team Rot';
 const canStart = computed(() => [0, 1].every(team => getTeamPlayers(props.session.players, team).length > 0));
+const meReady = computed(() => !!props.session.players.find(player => player.deviceId === props.deviceId)?.ready);
+const everyoneReady = computed(() => allReady(props.session.players));
+const startLabel = computed(() => {
+    if (!canStart.value) return 'Warte auf Gegner …';
+    const waiting = props.session.players.filter(player => !isReady(player)).map(player => player.name);
+    if (!waiting.length) return 'Spiel starten';
+    return waiting.length === 1 ? `Warte auf ${waiting[0]} …` : `Warte auf ${waiting.length} Spieler …`;
+});
 const hasRoom = (team: number) => getTeamPlayers(props.session.players, team).length < MAX_PLAYERS_PER_TEAM;
 // Zwei Spieler in verschiedenen Teams: beide tauschen. Sonst wechselt man selbst, wenn drueben Platz ist.
 const me = computed(() => props.session.players.find(player => player.deviceId === props.deviceId));
@@ -155,14 +169,18 @@ const onGuestSelect = (event: { value: string }) => {
     font-size: 13px;
     font-weight: 700;
 }
+/* Teams untereinander (wie beim Eintragen), Tausch-Pfeil mittig auf der Naht */
 .ml-teams{
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: start;
+    display: flex;
+    flex-direction: column;
     gap: 8px;
 }
 .ml-swap{
+    position: relative;
+    z-index: 1;
     align-self: center;
+    margin: -22px 0;
+    transform: rotate(90deg);
     width: 40px;
     height: 40px;
     border: none;
@@ -217,17 +235,34 @@ const onGuestSelect = (event: { value: string }) => {
 .ml-player-name{
     flex: 1;
     min-width: 0;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     font-size: 14px;
     font-weight: 700;
     line-height: 1.2;
 }
-.ml-player-tag{
-    padding: 1px 7px;
-    border-radius: 999px;
-    background: var(--ml-team-color);
+.ml-player-pic{
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+}
+/* Bereit: gruener Haken unten rechts am Avatar */
+.ml-player-ready{
+    position: absolute;
+    right: -4px;
+    bottom: -3px;
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bp-surface);
+    border-radius: 50%;
+    background: var(--bp-success);
     color: white;
-    font-size: 11px;
+    font-size: 8px;
+    font-weight: 900;
+}
+.ml-player-you{
+    color: var(--ml-team-color);
     font-weight: 800;
 }
 .ml-empty{

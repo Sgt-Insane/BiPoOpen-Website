@@ -59,7 +59,7 @@
         <div v-if="!rps.playing" class="kn-start-hint">📱 Seite falsch? Einfach das Handy auf dem Tisch umdrehen.</div>
 
         <div class="kn-start-footer">
-            <button type="button" class="kn-start-button kn-start-button-cancel" @click="rps.playing ? stopRps() : step = 'colors'">
+            <button type="button" class="kn-start-button kn-start-button-cancel" @click="rps.playing ? stopRps() : skipColors ? $emit('cancel') : step = 'colors'">
                 Zurück
             </button>
             <button type="button" class="kn-start-button kn-start-button-start" :disabled="rps.playing" @click="$emit('start', selected)">

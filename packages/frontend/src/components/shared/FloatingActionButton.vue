@@ -7,7 +7,7 @@
                 class="FloatingActionButton"
                 :class="{ 'fab-light': light, 'fab-round': !showLabel, 'fab-stacked': stacked }"
                 :aria-label="label"
-                :title="showLabel ? undefined : label"
+                v-hint="showLabel ? undefined : label"
                 @click="emit('click')"
             >
                 <img v-if="image" :src="image" alt="" class="fab-image"/>

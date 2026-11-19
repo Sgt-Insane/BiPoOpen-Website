@@ -1,6 +1,6 @@
 <template>
     <!-- Aktuelles Elo neben einem Namen, ohne gewertetes Spiel nichts -->
-    <span v-if="rating !== null" class="EloChip" :title="`Elo ${formatRating(rating)}`">
+    <span v-if="rating !== null" class="EloChip" v-hint="`Elo ${formatRating(rating)}`">
         {{ formatRating(rating) }}<span class="ec-unit">Elo</span>
     </span>
 </template>

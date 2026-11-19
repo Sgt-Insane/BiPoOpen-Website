@@ -19,6 +19,7 @@ export type LiveGame = {
     savingBy: string | null;    // Handy, das gerade eintraegt
     endedBy: string | null;     // Name des Handys, das eingetragen bzw. abgebrochen hat
     paused?: boolean;           // im Knecht pausiert: nicht im Live-Ticker
+    pausedBy?: string | null;   // wer pausiert hat
     updatedAt: number;
 };
 
@@ -33,7 +34,7 @@ export type LiveBinding = LiveDeviceBinding & {
 
 // match: z.B. getauschte Becherfarben, damit die anderen Handys und der Ticker sie auch sehen
 // paused: Spiel ist pausiert, der Ticker blendet es solange aus
-export type LiveProgress = { startTeamIndex: number | null; startedAt: number | null; actions: KnechtAction[]; match?: Match; paused?: boolean };
+export type LiveProgress = { startTeamIndex: number | null; startedAt: number | null; actions: KnechtAction[]; match?: Match; paused?: boolean; pausedBy?: string | null };
 
 // Beitreten nicht moeglich: Spiel unbekannt/vorbei, Platz schon belegt oder zu viele Handys
 export class LiveJoinError extends Error {

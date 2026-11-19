@@ -1,6 +1,8 @@
 <template>
     <div class="ProfilePage">
-        <PageHeader title="Mein Profil" subtitle="Dein Standard-Profil für Spiele auf diesem Handy"/>
+        <PageHeader title="Mein Profil" subtitle="Dein Standard-Profil für Spiele auf diesem Handy">
+            <template #title-extra><DevBadge feature="profil" /></template>
+        </PageHeader>
 
         <ProfilePicker />
 
@@ -14,6 +16,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { isFeatureOn } from '@/util/featureFlags';
@@ -31,7 +34,7 @@ const router = useRouter();
 
 onMounted(() => {
     // Noch nicht freigegeben (Entwicklermodus, Version 2.1.0)
-    if (!isFeatureOn('mitspielen')) return router.replace('/');
+    if (!isFeatureOn('profil')) return router.replace('/');
 });
 </script>
 

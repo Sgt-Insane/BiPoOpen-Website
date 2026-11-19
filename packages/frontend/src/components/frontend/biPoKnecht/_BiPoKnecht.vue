@@ -8,11 +8,13 @@
             :startTeamIndex="game.startTeamIndex"
             :actions="game.actions"
             :refereeUsed="game.refereeUsed"
-            :live="isFeatureOn('live') || live.binding.value ? liveInfo : null"
+            :live="isFeatureOn('live') || isFeatureOn('anstossen') || live.binding.value ? liveInfo : null"
             :saveHandler="live.binding.value ? saveShared : undefined"
             :savingText="savingText"
             @change="onChange"
+            :fromLobby="!!game.lobby"
             @exit="abort"
+            @lobby="backToLobby"
             @leave="leave"
             @saved="onSaved"
             @live="onLiveAction"
@@ -61,6 +63,7 @@ import type { LiveDeviceBinding } from './liveDevices';
 import type { KnechtLiveInfo, KnechtLiveAction } from './KnechtLivePanel.vue';
 import { isFeatureOn } from '@/util/featureFlags';
 import { useProfile } from '../multiplayer/useProfile';
+import { mpApi } from '../multiplayer/multiplayerApi';
 
 type ActiveGame = {
     key: number;
@@ -68,6 +71,7 @@ type ActiveGame = {
     startTeamIndex: number | null;
     actions: KnechtAction[];
     refereeUsed: boolean;
+    lobby?: string | null;      // PIN der Anstoss-Lobby, aus der das Spiel gestartet wurde
 };
 
 const toast = useToast();
@@ -88,6 +92,7 @@ const persist = () => {
         refereeUsed: game.value.refereeUsed,
         savedAt: new Date().getTime(),
         live: live.binding.value,
+        lobby: game.value.lobby ?? null,
     });
 };
 
@@ -128,6 +133,13 @@ const live = useKnechtLiveSync({
             toast.add({ severity: 'success', summary: `${who} hat das Spiel eingetragen`, life: 3500 });
             endHere(`/Live/${liveGame.id}`);
         } else {
+            // Vor dem ersten Wurf zurueck in die Lobby: alle gehen mit
+            const lobby = game.value?.lobby;
+            if (lobby && !game.value?.actions.length) {
+                toast.add({ severity: 'info', summary: `${who} ist zurück in die Lobby`, life: 3000 });
+                endHere(`/Mitspielen/${lobby}`);
+                return;
+            }
             toast.add({ severity: 'info', summary: `${who} hat das Spiel abgebrochen`, life: 3500 });
             endHere();
         }
@@ -235,14 +247,14 @@ const joinGame = async (code: string) => {
 };
 
 // Beitreten mit fester Wahl (Auswahl-Bildschirm oder aus der Lobby)
-const enterGame = async (code: string, binding: LiveDeviceBinding) => {
+const enterGame = async (code: string, binding: LiveDeviceBinding, lobby: string | null = null) => {
     joining.value = true;
     try {
         if (live.binding.value) live.leave();
         const remote = await live.join(code, { name: profileName.value, ...binding });
         const match = remote.match;
         if (remote.startedAt) match.time = remote.startedAt;
-        game.value = { key: ++gameKey, match, startTeamIndex: remote.startTeamIndex, actions: remote.actions, refereeUsed: false };
+        game.value = { key: ++gameKey, match, startTeamIndex: remote.startTeamIndex, actions: remote.actions, refereeUsed: false, lobby };
         persist();
         return true;
     } catch (error) {
@@ -284,8 +296,8 @@ const newGame = (match: Match) => {
 const resume = () => {
     const stored = loadStoredGame();
     if (!stored) return false;
-    const { match, startTeamIndex, actions, refereeUsed } = stored;
-    game.value = { key: ++gameKey, match, startTeamIndex, actions, refereeUsed };
+    const { match, startTeamIndex, actions, refereeUsed, lobby } = stored;
+    game.value = { key: ++gameKey, match, startTeamIndex, actions, refereeUsed, lobby };
     // Bindung aus einer frueheren Version (erstes/zweites Handy) passt nicht mehr: ohne sie weiter, Live startet neu
     if (isCurrentBinding(stored.live)) live.resume(stored.live);
     return true;
@@ -303,6 +315,25 @@ const onChange = (progress: { startTeamIndex: number | null; actions: KnechtActi
 const abort = () => {
     live.finish('aborted');
     endHere();
+};
+
+// Vor dem Start zurueck in die Anstoss-Lobby: Lobby wieder oeffnen, dann das Live-Spiel beenden
+// (in dieser Reihenfolge, sonst schickt die Lobby die anderen Handys gleich wieder ins alte Spiel)
+const backToLobby = async () => {
+    const code = game.value?.lobby;
+    if (!code) return abort();
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const current = await mpApi.get(code).catch(() => null);
+        if (!current || current.status !== 'started') break;
+        // Zurueck in der Lobby muessen alle wieder "Bereit" druecken
+        const result = await mpApi.update(code, current.version, { status: 'lobby', live: null, players: current.players.map(player => ({ ...player, ready: false })) }).catch(() => null);
+        if (result?.ok) {
+            mpApi.publish(result.session);
+            break;
+        }
+    }
+    live.finish('aborted');
+    endHere(`/Mitspielen/${code}`);
 };
 
 const leave = () => {
@@ -364,7 +395,8 @@ onMounted(async () => {
         const team = Number(route.query.team);
         if (route.query.team !== undefined && (team === 0 || team === 1)) {
             const player = route.query.player === undefined ? null : Number(route.query.player);
-            const joined = await enterGame(code, { team, player: Number.isInteger(player) ? player : null });
+            const lobby = typeof route.query.lobby === 'string' ? route.query.lobby : null;
+            const joined = await enterGame(code, { team, player: Number.isInteger(player) ? player : null }, lobby);
             router.replace(joined || resume() ? '/Knecht' : '/');
             return;
         }

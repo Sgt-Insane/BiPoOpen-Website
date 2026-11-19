@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import router from '@/router.js';
@@ -117,7 +118,7 @@ const logo = computed(() => isDark.value ? logoDark : logoLight);
 
 				<!-- Profil: Standard-Spieler dieses Handys, von dort aus Spiel starten -->
 				<router-link
-					v-if="isFeatureOn('mitspielen')"
+					v-if="isFeatureOn('profil')"
 					to="/Profil"
 					class="ap-round-btn ap-profile-btn"
 					:class="{ 'ap-round-btn--active': route.path === '/Profil' || route.path.startsWith('/Mitspielen') }"
@@ -126,6 +127,7 @@ const logo = computed(() => isDark.value ? logoDark : logoLight);
 					<Avatar v-if="profileName" :name="profileName" class="ap-profile-avatar" :lazy="false"/>
 					<i v-else class="pi pi-user"></i>
 					<span v-if="storedCode" class="ap-profile-badge" aria-label="Laufendes Spiel">🎯</span>
+					<DevBadge feature="profil" corner />
 				</router-link>
 			</div>
 		</div>

@@ -21,6 +21,8 @@
             />
             <p class="pp-hint">Schon gespielt? Dann such dich, damit deine Spiele zu deinem Profil zählen. Kein Login nötig – das Profil bleibt nur auf diesem Handy.</p>
             <div class="pp-actions">
+                <!-- Standard-Profil wieder abwaehlen: das Handy spielt dann ohne festen Spieler -->
+                <button v-if="profileName" v-hint="'Dieses Handy hat dann kein Standard-Profil mehr'" type="button" class="pp-remove" @click="removeProfile">Profil entfernen</button>
                 <button v-if="profileName" type="button" class="pp-button" @click="editing = false">Abbrechen</button>
                 <button type="submit" class="pp-button pp-button--primary" :disabled="!draft.trim()">Speichern</button>
             </div>
@@ -48,6 +50,12 @@ const startEdit = () => {
 const onSelect = (event: { value: string }) => {
     draft.value = event.value;
     save();
+};
+
+const removeProfile = () => {
+    setProfileName(null);
+    draft.value = '';
+    editing.value = true;
 };
 
 const save = () => {
@@ -132,7 +140,18 @@ const save = () => {
 .pp-actions{
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 8px;
+}
+.pp-remove{
+    margin-right: auto;
+    padding: 9px 4px;
+    border: none;
+    background: none;
+    color: var(--bp-text-secondary);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
 }
 .pp-button{
     border: none;

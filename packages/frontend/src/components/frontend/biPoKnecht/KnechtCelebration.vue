@@ -25,6 +25,7 @@
                     <div v-if="formation" class="kc-formation" :class="`kc-formation--${formation.effect}`">
                         <div v-if="formation.effect === 'wall'" class="kc-wall"></div>
                         <div v-if="formation.effect === 'ring'" class="kc-fire-ring"></div>
+                        <div v-if="formation.effect === 'eye'" class="kc-sharingan"><span v-for="i in 3" :key="i" class="kc-tomoe" :style="{ '--i': i }"></span></div>
                         <svg v-if="formation.effect === 'stripe' && stripeLine" class="kc-stripe-line" :viewBox="`0 0 ${RACK_WIDTH} ${RACK_HEIGHT}`">
                             <line :x1="stripeLine.x1" :y1="stripeLine.y1" :x2="stripeLine.x2" :y2="stripeLine.y2" />
                         </svg>
@@ -100,6 +101,8 @@ const FORMATION_COLORS: Record<FormationEffect, [string, string]> = {
     towers: ['#2EA3C7', '#0B4A5E'],
     stripe: ['#1F8A70', '#0A3D31'],
     pop: ['#E5484D', '#7A1418'],
+    eye: ['#C1121F', '#1A0004'],
+    spin: ['#5B6B7A', '#1F262E'],
 };
 
 const formation = computed(() => props.celebration?.kind === 'formation' ? props.celebration.formation ?? null : null);
@@ -659,6 +662,47 @@ const rerackCups = computed(() => {
     0%{ transform: scale(.3); opacity: 0; }
     100%{ transform: scale(1); opacity: 1; }
 }
+/* Sharingan: rotes Auge, drei Tomoe kreisen, stehende Becher schwarz */
+.kc-sharingan{
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: 200px;
+    height: 200px;
+    margin: -100px 0 0 -100px;
+    border: 6px solid #111;
+    border-radius: 50%;
+    background: radial-gradient(circle, #111 0 12%, #E5191F 13% 62%, #111 63% 65%, #E5191F 66%);
+    box-shadow: 0 0 24px rgba(229, 25, 31, .7);
+    animation: kc-fire-ring-in .5s ease-out both, kc-sharingan 1.6s cubic-bezier(.6, 0, .4, 1) .4s infinite;
+}
+.kc-tomoe{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 22px;
+    height: 22px;
+    margin: -11px 0 0 -11px;
+    border-radius: 50% 50% 50% 0;
+    background: #111;
+    transform: rotate(calc(var(--i) * 120deg)) translateY(-62px) rotate(45deg);
+}
+@keyframes kc-sharingan{
+    100%{ rotate: 360deg; }
+}
+.kc-formation--eye .kc-fcup--on{
+    background: #111;
+    box-shadow: 0 5px 0 #000, 0 0 16px rgba(229, 25, 31, .8);
+}
+
+/* Windmuehle: dreht sich nach dem Aufploppen */
+.kc-formation--spin{
+    animation: kc-shuriken 1.1s cubic-bezier(.5, 0, .3, 1) .9s both;
+}
+@keyframes kc-shuriken{
+    100%{ rotate: 360deg; }
+}
+
 /* Arschlochbecher: das Loch in der Mitte pulsiert, die Becher drumherum wackeln */
 .kc-fcup--hole{
     border: none;
@@ -723,7 +767,8 @@ const rerackCups = computed(() => {
 }
 
 @media (prefers-reduced-motion: reduce){
-    .kc-stripes, .kc-ring, .kc-particle, .kc-ball, .kc-rack, .kc-wall, .kc-fire-ring{ display: none; }
+    .kc-stripes, .kc-ring, .kc-particle, .kc-ball, .kc-rack, .kc-wall, .kc-fire-ring, .kc-sharingan{ display: none; }
+    .kc-formation--spin{ animation: none; }
     .kc-fcup{ animation: none !important; }
     .kc-content, .kc-icon, .kc-subtitle, .kc--on-fire .kc-title{ animation: none; }
 }
