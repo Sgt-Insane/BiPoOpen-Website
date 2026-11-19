@@ -8,6 +8,7 @@ export type MpPlayer = {
     team: number;       // 0 | 1
     joinedAt: number;
     phone?: boolean;    // false: Spieler ohne eigenes Handy (ein Handy seines Teams traegt fuer ihn ein)
+    ready?: boolean;    // hat in der Lobby "Bereit" gedrueckt
 };
 
 // lobby: Spieler sammeln, started: Spiel laeuft (live zeigt wohin), aborted: alle weg
@@ -42,3 +43,9 @@ export const getTeamPlayers = (players: MpPlayer[], team: number) =>
     players.filter(player => player.team === team).sort((a, b) => a.joinedAt - b.joinedAt);
 
 export const hasPhone = (player: MpPlayer) => player.phone !== false;
+
+// Spieler ohne Handy zaehlen als bereit (ihr Team-Handy entscheidet)
+export const isReady = (player: MpPlayer) => !hasPhone(player) || !!player.ready;
+export const allReady = (players: MpPlayer[]) => players.length > 0 && players.every(isReady);
+// Teams geaendert: alle muessen nochmal bestaetigen
+export const unready = (players: MpPlayer[]) => players.map(player => ({ ...player, ready: false }));

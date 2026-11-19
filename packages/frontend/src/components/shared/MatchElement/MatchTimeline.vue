@@ -7,7 +7,7 @@
                 <template v-if="match.referee && duration"> · </template>{{ duration }}
             </span>
             <button v-if="showShare" type="button" class="mtl-share" @click="shareOpen = true">
-                <i class="pi pi-share-alt"></i> Story-Overlay
+                <i class="pi pi-share-alt"></i> Story-Overlay<DevBadge feature="shareOverlay" />
             </button>
         </div>
         <BottomSheet v-if="showShare" v-model:visible="shareOpen">
@@ -25,7 +25,7 @@
                             <span class="mtl-elo-name">{{ row.name }}</span>
                             <template v-if="row.elo">
                                 <span class="mtl-elo-delta" :class="row.elo.delta >= 0 ? 'mtl-elo-delta--up' : 'mtl-elo-delta--down'">{{ row.elo.delta >= 0 ? '+' : '−' }}{{ Math.abs(row.elo.delta) }}</span>
-                                <span class="mtl-elo-rating" title="Elo nach dem Spiel">→ {{ row.elo.rating.toLocaleString('de-DE') }} Elo</span>
+                                <span class="mtl-elo-rating" v-hint="'Elo nach dem Spiel'">→ {{ row.elo.rating.toLocaleString('de-DE') }} Elo</span>
                             </template>
                         </div>
                         <div class="mtl-accuracy">
@@ -189,6 +189,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { computed, nextTick, PropType, ref } from 'vue';
 import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import GlossaryText from '@/components/shared/GlossaryText.vue';

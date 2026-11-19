@@ -12,7 +12,7 @@ import { CUP_COUNT } from './knechtEngine';
 //
 // Namen einfach hier aendern oder neue Zeilen ergaenzen.
 
-export type FormationEffect = 'wall' | 'ring' | 'hole' | 'towers' | 'stripe' | 'pop';
+export type FormationEffect = 'wall' | 'ring' | 'hole' | 'towers' | 'stripe' | 'pop' | 'eye' | 'spin';
 
 export type KnechtFormation = {
     name: string;
@@ -29,6 +29,8 @@ export const KNECHT_FORMATIONS: KnechtFormation[] = [
     { name: 'Twin Towers', cups: [2, 3], effect: 'towers' },
     { name: 'Schneise', cups: allExcept(3, 5, 8), effect: 'stripe' },
     { name: 'Friedrich März', cups: allExcept(2, 3, 5), effect: 'pop' },
+    { name: 'Sharingan', cups: [1, 3, 4, 7, 9, 10], effect: 'eye' },     // gespiegelt: 1 2 6 7 8 10
+    { name: 'Windmühle', cups: [1, 3, 4, 5, 7, 9, 10], effect: 'spin' },  // Sharingan + 5, Windmuehle mit drei Fluegeln
 ];
 
 // Spiegelung links <-> rechts aus Sicht des Werfers

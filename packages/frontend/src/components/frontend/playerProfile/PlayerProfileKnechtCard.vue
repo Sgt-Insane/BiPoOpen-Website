@@ -38,7 +38,7 @@
                 <div class="pp-heat-body">
                     <div class="pp-heat-triangle">
                         <div v-for="(row, rowIndex) in HEAT_ROWS" :key="rowIndex" class="pp-heat-row">
-                            <div v-for="number in row" :key="number" class="pp-heat-cup" :style="cupStyle(number)" :title="`Becher ${number}: ${heatValues[number - 1]}`">
+                            <div v-for="number in row" :key="number" class="pp-heat-cup" :style="cupStyle(number)" v-hint.tap="`Becher ${number}: ${heatValues[number - 1]}`">
                                 <span class="pp-heat-number">{{ number }}</span>
                                 <span class="pp-heat-count">{{ heatValues[number - 1] }}</span>
                             </div>

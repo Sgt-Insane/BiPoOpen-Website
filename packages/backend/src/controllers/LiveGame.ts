@@ -38,6 +38,7 @@ const toPublic = (game: any) => ({
     savingBy: game.savingBy ?? null,
     endedBy: game.endedBy ?? null,
     paused: !!game.paused,
+    pausedBy: game.paused ? game.pausedBy ?? null : null,
     updatedAt: game.updatedAt,
 });
 
@@ -225,6 +226,7 @@ const sync = async (req: Request, res: Response) => {
         const update: Record<string, unknown> = { actions: req.body.actions, updatedAt: Date.now() };
         if (req.body.startTeamIndex !== undefined) update.startTeamIndex = req.body.startTeamIndex;
         if (typeof req.body.paused === 'boolean') update.paused = req.body.paused;
+        if (typeof req.body.pausedBy === 'string' || req.body.pausedBy === null) update.pausedBy = typeof req.body.pausedBy === 'string' ? req.body.pausedBy.slice(0, 40) : null;
         if (typeof req.body.startedAt === 'number') update.startedAt = req.body.startedAt;
         if (req.body.match?.team1?.players && req.body.match?.team2?.players) update.match = req.body.match;
         const game = await LiveGame.findOneAndUpdate(

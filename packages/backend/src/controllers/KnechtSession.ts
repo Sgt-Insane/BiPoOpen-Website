@@ -11,7 +11,7 @@ const BUMP_WINDOW = 2000;       // ms, so weit duerfen zwei Stoesse beim Server 
 const BUMP_LIFETIME = 7000;     // ms, danach gilt ein Stoss als ins Leere gegangen
 const UPDATABLE = ['status', 'players', 'cupColors', 'live'] as const;
 
-type SessionPlayer = { deviceId: string; name: string; team: number; joinedAt: number; phone?: boolean };
+type SessionPlayer = { deviceId: string; name: string; team: number; joinedAt: number; phone?: boolean; ready?: boolean };
 
 const toClient = (session: any) => {
     if (!session) return null;

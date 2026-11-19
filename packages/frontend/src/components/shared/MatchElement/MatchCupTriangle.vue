@@ -16,7 +16,7 @@
                                     v-if="phase.falls[number - 1]"
                                     class="mct-cup mct-cup--fell"
                                     :style="{ '--mct-color': getTeamColor(match, phase.falls[number - 1].teamIndex) }"
-                                    :title="describe(phase.falls[number - 1], number)"
+                                    v-hint="describe(phase.falls[number - 1], number)"
                                 >
                                     <span class="mct-minute">{{ phase.falls[number - 1].minute !== null ? `${phase.falls[number - 1].minute}'` : `#${phase.falls[number - 1].order}` }}</span>
                                     <span class="mct-player">{{ initials(phase.falls[number - 1]) }}</span>

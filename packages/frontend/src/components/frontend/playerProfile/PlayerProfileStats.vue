@@ -47,7 +47,7 @@
                     :key="index"
                     class="pp-stats-form-result"
                     :class="result === 'W' ? 'is-win' : 'is-loss'"
-                    :title="result === 'W' ? 'Sieg' : 'Niederlage'"
+                    v-hint.tap="result === 'W' ? 'Sieg' : 'Niederlage'"
                 >{{ result === 'W' ? 'S' : 'N' }}</span>
             </span>
         </div>

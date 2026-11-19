@@ -11,7 +11,7 @@ type Match = { team1?: { players?: unknown[] }; team2?: { players?: unknown[] } 
 type LiveGame = {
     id: string; code: string; match: Match; startTeamIndex: number | null; startedAt: number | null;
     actions: unknown[]; version: number; status: 'live' | 'saving' | 'done' | 'aborted'; createdAt: number; updatedAt: number;
-    devices: Device[]; savingBy: string | null; endedBy: string | null; paused?: boolean;
+    devices: Device[]; savingBy: string | null; endedBy: string | null; paused?: boolean; pausedBy?: string | null;
 };
 
 const STALE_MS = 2 * 60 * 60 * 1000;
@@ -118,6 +118,7 @@ export const devLiveServer = (): Plugin => ({
                 game.actions = body.actions;
                 if (body.startTeamIndex !== undefined) game.startTeamIndex = body.startTeamIndex;
                 if (typeof body.paused === 'boolean') game.paused = body.paused;
+                if (typeof body.pausedBy === 'string' || body.pausedBy === null) game.pausedBy = body.pausedBy;
                 if (typeof body.startedAt === 'number') game.startedAt = body.startedAt;
                 if (body.match?.team1?.players && body.match?.team2?.players) game.match = body.match;
                 touch(game);

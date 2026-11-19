@@ -349,7 +349,7 @@ const BiPoPreset = definePreset(Aura, {
                 .bp-value-up { color: var(--bp-success); }
                 .bp-value-down { color: var(--bp-danger); }
 
-                /* Wert mit Tooltip (v-tooltip.focus + tabindex): gepunktet unterstrichen */
+                /* Wert mit Hinweis beim Antippen (v-hint.tap + tabindex): gepunktet unterstrichen */
                 .bp-tooltip-target {
                     cursor: pointer;
                     outline: none;

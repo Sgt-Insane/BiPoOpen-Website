@@ -34,6 +34,7 @@ const LiveGameSchema = new Schema(
         savingBy: { type: String, default: null },
         endedBy: { type: String, default: null },                 // Name des Handys, das eingetragen/abgebrochen hat
         paused: { type: Boolean, default: false },                // im Knecht pausiert: nicht im Ticker
+        pausedBy: { type: String, default: null },                // wer pausiert hat (Name)
         createdAt: { type: Number, required: true },
         updatedAt: { type: Number, required: true, index: true },
     },

@@ -92,7 +92,7 @@
                                 <div class="nm-name">{{ shot.name }}</div>
                                 <div class="nm-meta">Shot vom {{ formatDate(shot.gameTime ?? shot.createdAt, 'day') }} · {{ describeGame(shot) }}</div>
                             </div>
-                            <button type="button" class="nm-done-date sh-undo" title="Zurücknehmen" @click="markDrunk(shot, false)">{{ formatDate(shot.drunkAt!, 'short') }} ✓</button>
+                            <button type="button" class="nm-done-date sh-undo" v-hint="'Zurücknehmen'" @click="markDrunk(shot, false)">{{ formatDate(shot.drunkAt!, 'short') }} ✓</button>
                         </div>
                     </div>
                 </section>

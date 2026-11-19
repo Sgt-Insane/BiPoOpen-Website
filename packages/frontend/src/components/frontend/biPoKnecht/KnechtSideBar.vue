@@ -6,25 +6,25 @@
 
         <nav class="kn-fab-menu" aria-label="BiPo Knecht">
             <transition-group name="kn-fab-item">
-                <button v-if="open" key="scoreboard" type="button" class="kn-side-button" title="Punktestand" aria-label="Punktestand" @click="pick('scoreboard')">
+                <button v-if="open" key="scoreboard" type="button" class="kn-side-button" v-hint="'Punktestand'" aria-label="Punktestand" @click="pick('scoreboard')">
                     <i class="pi pi-trophy"></i>
                 </button>
             </transition-group>
 
-            <button type="button" class="kn-side-button" :disabled="!canUndo" title="Letzten Wurf rückgängig machen" aria-label="Rückgängig" @click="pick('undo')">
+            <button type="button" class="kn-side-button" :disabled="!canUndo" v-hint="'Letzten Wurf rückgängig machen'" aria-label="Rückgängig" @click="pick('undo')">
                 <i class="pi pi-undo"></i>
             </button>
 
-            <button type="button" class="kn-side-button kn-fab" :title="open ? 'Schließen' : 'Mehr'" :aria-expanded="open" aria-label="Aktionen" @click="open = !open">
+            <button type="button" class="kn-side-button kn-fab" v-hint="open ? 'Schließen' : 'Mehr'" :aria-expanded="open" aria-label="Aktionen" @click="open = !open">
                 <i :class="open ? 'pi pi-times' : 'pi pi-ellipsis-v'"></i>
             </button>
 
-            <button type="button" class="kn-side-button" title="Spielverlauf" aria-label="Spielverlauf" @click="pick('timeline')">
+            <button type="button" class="kn-side-button" v-hint="'Spielverlauf'" aria-label="Spielverlauf" @click="pick('timeline')">
                 <i class="pi pi-clock"></i>
             </button>
 
             <transition-group name="kn-fab-item">
-                <button v-if="open" key="menu" type="button" class="kn-side-button" title="Einstellungen, Sonderfälle & Pause" aria-label="Einstellungen & Sonderfälle" @click="pick('menu')">
+                <button v-if="open" key="menu" type="button" class="kn-side-button" v-hint="'Einstellungen, Sonderfälle & Pause'" aria-label="Einstellungen & Sonderfälle" @click="pick('menu')">
                     <i class="pi pi-cog"></i>
                 </button>
             </transition-group>

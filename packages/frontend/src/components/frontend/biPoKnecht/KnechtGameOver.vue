@@ -28,7 +28,7 @@
                     </div>
                 </div>
                 <button v-if="isFeatureOn('shareOverlay')" type="button" class="kn-over-share" @click="shareOpen = true">
-                    <i class="pi pi-share-alt"></i> Story-Overlay teilen
+                    <i class="pi pi-share-alt"></i> Story-Overlay teilen<DevBadge feature="shareOverlay" />
                 </button>
             </template>
 
@@ -66,7 +66,7 @@
         <div class="kn-over-footer">
             <template v-if="step === 'awards'">
                 <!-- Mehrere Handys: nur den eigenen letzten Eintrag zuruecknehmen -->
-                <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="!undoAllowed" title="Letzten Wurf rückgängig machen" @click="game.undo()">
+                <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="!undoAllowed" v-hint="'Letzten Wurf rückgängig machen'" @click="game.undo()">
                     <i class="pi pi-undo"></i>
                 </button>
                 <button type="button" class="kn-over-button kn-over-button-primary" @click="step = 'summary'">
@@ -75,7 +75,7 @@
             </template>
             <template v-else>
                 <template v-if="canSave">
-                    <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving || !!lockedText" title="Speichern und Revanche" @click="save(true)">
+                    <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving || !!lockedText" v-hint="'Speichern und Revanche'" @click="save(true)">
                         <i class="pi pi-replay"></i>
                     </button>
                     <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving || !!lockedText" @click="save(false)">
@@ -98,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { computed, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { isDemoMode } from '@/util/demoGames';

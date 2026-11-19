@@ -2,7 +2,7 @@
     <!-- Erst waehlen, was man vorhat (ab 2.1.0, vorher direkt das Formular) -->
     <BottomSheet v-if="useChooser" v-model:visible="chooserVisible">
         <template #header>
-            <div class="ag-title">Spiel</div>
+            <div class="ag-title">Spiel<DevBadge feature="anstossen" /></div>
         </template>
         <div class="ag-choose">
             <button v-if="runningGameTitle" type="button" class="ag-knecht" @click="resumeKnecht">
@@ -120,6 +120,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { computed, ref, shallowRef, watch } from 'vue';
 import SelectButton from 'primevue/selectbutton';
 import GameEntryDrawer from './GameEntryDrawer.vue';
@@ -154,7 +155,7 @@ const { addGameVisible, pageContext, presetNames, notifyGameSaved } = useAddGame
 const { profileName } = useProfile();
 
 // ─── Auswahl: anstossen, tracken oder Ergebnis eintragen (ab 2.1.0) ───
-const useChooser = computed(() => isFeatureOn('mitspielen'));
+const useChooser = computed(() => isFeatureOn('anstossen'));
 const step = ref<'choose' | 'track' | 'result'>('choose');
 const chooserVisible = computed({
     get: () => addGameVisible.value && step.value === 'choose',

@@ -1,10 +1,13 @@
 <template>
-    <!-- Kleine Erklaerblase direkt am angetippten Wort (einmal in App.vue) -->
+    <!-- Kleine Erklaerblase direkt am angetippten Wort oder Knopf (einmal in App.vue): Begriffe und v-hint -->
     <transition name="gp">
-        <div v-if="active" ref="bubble" class="GlossaryPopover" :class="{ 'gp--below': position.below }" role="tooltip"
-            :style="{ left: `${position.left}px`, top: `${position.top}px`, '--gp-arrow': `${position.arrow}px` }">
-            <div class="gp-term">{{ GLOSSARY[active.key].term }}</div>
-            <div class="gp-text">{{ GLOSSARY[active.key].text }}</div>
+        <div v-if="active" ref="bubble" class="GlossaryPopover" :class="{ 'gp--below': position.below, 'gp--short': !active.key }" role="tooltip"
+            :style="{ left: `${position.left}px`, top: `${position.top}px`, '--gp-arrow': `${position.arrow}px`, '--gp-width': `${position.width}px` }">
+            <template v-if="active.key">
+                <div class="gp-term">{{ GLOSSARY[active.key].term }}</div>
+                <div class="gp-text">{{ GLOSSARY[active.key].text }}</div>
+            </template>
+            <div v-else class="gp-hint">{{ active.text }}</div>
         </div>
     </transition>
 </template>
@@ -24,17 +27,19 @@ const APPROX_HEIGHT = 110;
 
 // Ueber dem Wort, wenn oben genug Platz ist (unter der App-Leiste), sonst darunter; Pfeil zeigt aufs Wort
 const position = computed(() => {
-    if (!active.value) return { left: 0, top: 0, arrow: 0, below: false };
-    const { rect } = active.value;
-    const width = Math.min(WIDTH, window.innerWidth - 2 * MARGIN);
+    if (!active.value) return { left: 0, top: 0, arrow: 0, below: false, width: WIDTH };
+    const { rect, key, text } = active.value;
+    // Kurzer Hinweis: Breite grob aus der Textlaenge (13px fett), damit Blase und Pfeil mittig sitzen
+    const width = Math.min(key ? WIDTH : Math.max(60, (text?.length ?? 0) * 7.2 + 26), WIDTH, window.innerWidth - 2 * MARGIN);
     const center = rect.left + rect.width / 2;
     const left = Math.min(Math.max(MARGIN, center - width / 2), window.innerWidth - width - MARGIN);
-    const below = rect.top - APPROX_HEIGHT < 64;
+    const below = rect.top - (key ? APPROX_HEIGHT : 50) < 64;
     return {
         left,
         top: below ? rect.top + rect.height + 8 : rect.top - 8,
         arrow: Math.min(Math.max(14, center - left), width - 14),
         below,
+        width,
     };
 });
 
@@ -42,7 +47,7 @@ const position = computed(() => {
 const onPointerDown = (event: PointerEvent) => {
     if (!active.value) return;
     const target = event.target as HTMLElement;
-    if (bubble.value?.contains(target) || target.closest('.GlossaryWord')) return;
+    if (bubble.value?.contains(target) || target.closest('.GlossaryWord, .bp-hint')) return;
     close();
 };
 const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
@@ -106,6 +111,15 @@ watch(() => route.fullPath, close);
     font-size: 13px;
     line-height: 1.4;
     opacity: .9;
+}
+/* Kurzer Hinweis (v-hint): so breit wie der Text */
+.gp--short{
+    width: var(--gp-width);
+}
+.gp-hint{
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
 }
 .gp-enter-active, .gp-leave-active{
     transition: opacity .15s ease;

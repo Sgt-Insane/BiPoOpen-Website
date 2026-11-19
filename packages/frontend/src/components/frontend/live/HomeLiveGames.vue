@@ -1,7 +1,7 @@
 <template>
     <!-- Live-Ticker auf der Startseite: laufende Knecht-Spiele, nur wenn gerade eins laeuft -->
     <section v-if="games.length" class="HomeLiveGames">
-        <h2 class="hl-title"><span class="hl-dot"></span> Live</h2>
+        <h2 class="hl-title"><span class="hl-dot"></span> Live<DevBadge feature="live" /></h2>
         <router-link v-for="entry in views" :key="entry.id" :to="`/Live/${entry.id}`" class="hl-card">
             <div class="hl-teams">
                 <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="hl-team">
@@ -19,6 +19,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { listLiveGames, type LiveGame } from '@/components/frontend/biPoKnecht/knechtLive';
 import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';

@@ -124,12 +124,12 @@
                 <i class="pi pi-angle-right"></i>
             </button>
             <!-- Mehrere Handys: Lobby per Anstossen, oder einem laufenden Knecht-Spiel mit Code beitreten -->
-            <div v-if="launch && entry === 'both' && (isFeatureOn('live') || isFeatureOn('mitspielen'))" class="ge-more">
-                <button v-if="isFeatureOn('mitspielen') && entry === 'both'" type="button" class="ge-join" @click="onBump()">
-                    <i class="pi pi-mobile"></i> Jeder mit eigenem Handy? <b>Zum Anstoßen 🍻</b>
+            <div v-if="launch && entry === 'both' && isFeatureOn('anstossen')" class="ge-more">
+                <button type="button" class="ge-join" @click="onBump()">
+                    <i class="pi pi-mobile"></i> Jeder mit eigenem Handy? <b>Zum Anstoßen 🍻</b><DevBadge feature="anstossen" />
                 </button>
-                <button v-if="isFeatureOn('live')" type="button" class="ge-join" @click="onJoin()">
-                    <i class="pi pi-sign-in"></i> Spiel läuft schon? <b>Mit PIN beitreten</b>
+                <button type="button" class="ge-join" @click="onJoin()">
+                    <i class="pi pi-sign-in"></i> Spiel läuft schon? <b>Mit PIN beitreten</b><DevBadge feature="anstossen" />
                 </button>
             </div>
 
@@ -153,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 /**
  * Gemeinsamer Drawer zum Eintragen/Bearbeiten eines Spiels (offene Spiele, Liga, Pokal, Turnier).
  * Standard: Spielersuche pro Platz. Abweichende Auswahl kommt von aussen:

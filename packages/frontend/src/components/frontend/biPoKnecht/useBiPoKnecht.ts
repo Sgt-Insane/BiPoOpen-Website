@@ -86,7 +86,7 @@ export const getCelebrations = (before: KnechtState, next: KnechtState, action: 
 // Kurze Animationen (laufen oft, sollen beim schnellen Eintragen nicht bremsen)
 const QUICK_KINDS: KnechtCelebrationKind[] = ['hit', 'airball', 'equalizer', 'miss'];
 // Bei "Besondere" nur diese, bei "Alle" jede Aktion
-const SPECIAL_KINDS: KnechtCelebrationKind[] = ['bomb', 'bouncer', 'trickshot-hit', 'ballsback', 'formation'];
+const SPECIAL_KINDS: KnechtCelebrationKind[] = ['bomb', 'bouncer', 'trickshot-hit', 'ballsback', 'heating-up', 'on-fire', 'formation'];
 
 const BALL_DURATION = 1500;
 

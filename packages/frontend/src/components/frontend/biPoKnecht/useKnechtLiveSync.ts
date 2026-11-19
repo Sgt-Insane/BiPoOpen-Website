@@ -32,8 +32,8 @@ type Options = {
     onKicked: () => void;
 };
 
-const keyOf = (progress: LiveProgress) => JSON.stringify([progress.startTeamIndex, progress.startedAt, progress.actions, progress.match?.cupColors ?? null, !!progress.paused]);
-const progressOf = (game: LiveGame): LiveProgress => ({ startTeamIndex: game.startTeamIndex, startedAt: game.startedAt, actions: game.actions, match: game.match, paused: !!game.paused });
+const keyOf = (progress: LiveProgress) => JSON.stringify([progress.startTeamIndex, progress.startedAt, progress.actions, progress.match?.cupColors ?? null, !!progress.paused, progress.paused ? progress.pausedBy ?? null : null]);
+const progressOf = (game: LiveGame): LiveProgress => ({ startTeamIndex: game.startTeamIndex, startedAt: game.startedAt, actions: game.actions, match: game.match, paused: !!game.paused, pausedBy: game.pausedBy ?? null });
 const isPrefix = (prefix: unknown[], list: unknown[]) =>
     prefix.length <= list.length && prefix.every((entry, index) => JSON.stringify(entry) === JSON.stringify(list[index]));
 const sameColors = (a?: Match, b?: Match) => JSON.stringify(a?.cupColors ?? null) === JSON.stringify(b?.cupColors ?? null);
@@ -90,7 +90,7 @@ export const useKnechtLiveSync = (options: Options) => {
             const merged: LiveProgress = {
                 ...remote,
                 actions: [...server.actions, ...local.actions.slice(base.actions.length)],
-                paused: !!local.paused !== !!base.paused ? !!local.paused : !!server.paused,
+                ...(!!local.paused !== !!base.paused ? { paused: !!local.paused, pausedBy: local.pausedBy ?? null } : { paused: !!server.paused, pausedBy: server.pausedBy ?? null }),
                 match: !sameColors(local.match, base.match) && server.match ? { ...server.match, cupColors: local.match?.cupColors } : server.match,
             };
             if (options.applyRemote(merged)) {

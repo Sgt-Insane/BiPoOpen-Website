@@ -40,7 +40,7 @@
                         v-fit-text="fitTextGroup"
                         class="mt-team-name"
                         :class="{ 'cursor-pointer': team && team.players.length === 1 }"
-                        :title="teamName"
+                        v-hint="teamName"
                         @click="team && team.players.length === 1 && openPlayerProfile?.(team.players[0].name)"
                     >
                         {{ teamName }}

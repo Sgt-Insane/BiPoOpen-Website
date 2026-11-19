@@ -11,6 +11,7 @@ const SessionPlayerSchema = new Schema(
         team: { type: Number, required: true },     // 0 | 1
         joinedAt: { type: Number, required: true },
         phone: { type: Boolean, default: true },    // false: Spieler ohne eigenes Handy (ein anderes Handy traegt fuer ihn ein)
+        ready: { type: Boolean, default: false },   // hat in der Lobby "Bereit" gedrueckt
     },
     { _id: false }
 );

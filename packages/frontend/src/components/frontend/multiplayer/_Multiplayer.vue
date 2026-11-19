@@ -1,6 +1,7 @@
 <template>
     <div class="MultiplayerPage">
         <PageHeader title="Anstoßen" subtitle="Jeder spielt mit seinem eigenen Handy">
+            <template #title-extra><DevBadge feature="anstossen" /></template>
             <template v-if="session" #actions>
                 <span class="mp-status" :class="{ 'mp-status--offline': offline }">
                     <span class="mp-status-dot"></span>{{ offline ? 'Offline' : 'Verbunden' }}
@@ -40,6 +41,7 @@
             @share="share"
             @addGuest="addGuest"
             @removeGuest="removeGuest"
+            @ready="toggleReady"
         />
 
         <MpConnect
@@ -63,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 // Anstoss-Lobby: Handys aneinanderstossen (oder Code), Teams und Farben waehlen, Spieler ohne Handy dazunehmen.
 // "Spiel starten" legt ein Live-Spiel an (wie "+ Spiel" → "Spiel tracken"); jedes Handy der Lobby tritt
 // dort als sein Spieler bei. Wer spaeter kommt, tritt mit dem Code bei (Lobby-Code oder Code im Knecht).
@@ -84,7 +87,7 @@ import { useBump } from './useBump';
 import { useMultiplayerSession } from './useMultiplayerSession';
 import { getGameOptions, type MpGameOption } from './multiplayerGameOptions';
 import { mpApi } from './multiplayerApi';
-import { MAX_PLAYERS_PER_TEAM, MpError, getTeamPlayers, type MpSession } from './multiplayerTypes';
+import { MAX_PLAYERS_PER_TEAM, MpError, allReady, getTeamPlayers, unready, type MpSession } from './multiplayerTypes';
 
 useGrayPage();
 
@@ -150,7 +153,7 @@ const goToGame = (current: MpSession) => {
         return true;
     }
     const player = getTeamPlayers(current.players, me.team).findIndex(entry => entry.deviceId === deviceId);
-    router.push({ path: '/Knecht', query: { join: current.live.code, team: String(me.team), player: String(Math.max(0, player)) } });
+    router.push({ path: '/Knecht', query: { join: current.live.code, team: String(me.team), player: String(Math.max(0, player)), lobby: current.code } });
     return true;
 };
 
@@ -203,21 +206,26 @@ const onProfileSaved = () => { enterFromRoute(); };
 const swapSides = () => commit(current => {
     if (current.status !== 'lobby') return null;
     if (current.players.length === 2 && current.players[0].team !== current.players[1].team)
-        return { players: current.players.map(entry => ({ ...entry, team: 1 - entry.team })) };
+        return { players: unready(current.players.map(entry => ({ ...entry, team: 1 - entry.team }))) };
     const player = current.players.find(entry => entry.deviceId === deviceId);
     if (!player || getTeamPlayers(current.players, 1 - player.team).length >= MAX_PLAYERS_PER_TEAM) return null;
-    return { players: current.players.map(entry => entry.deviceId === deviceId ? { ...entry, team: 1 - entry.team, joinedAt: Date.now() } : entry) };
+    return { players: unready(current.players.map(entry => entry.deviceId === deviceId ? { ...entry, team: 1 - entry.team, joinedAt: Date.now() } : entry)) };
 });
 
 const addGuest = (team: number, name: string) => commit(current => {
     if (current.status !== 'lobby' || getTeamPlayers(current.players, team).length >= MAX_PLAYERS_PER_TEAM) return null;
     if (current.players.some(player => player.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return null;
     const guest = { deviceId: `np-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, name, team, joinedAt: Date.now(), phone: false };
-    return { players: [...current.players, guest] };
+    return { players: unready([...current.players, guest]) };
 });
 
 const removeGuest = (playerId: string) => commit(current => current.status === 'lobby' && current.players.some(player => player.deviceId === playerId && player.phone === false)
-    ? { players: current.players.filter(player => player.deviceId !== playerId) }
+    ? { players: unready(current.players.filter(player => player.deviceId !== playerId)) }
+    : null);
+
+// Bereit / doch nicht bereit
+const toggleReady = () => commit(current => current.status === 'lobby' && current.players.some(player => player.deviceId === deviceId)
+    ? { players: current.players.map(player => player.deviceId === deviceId ? { ...player, ready: !player.ready } : player) }
     : null);
 
 const gameOptions = ref<MpGameOption[] | null>(null);
@@ -225,7 +233,7 @@ const loadingOptions = ref(false);
 
 // Offen, Liga oder Cup? Gibt es nur das offene Spiel, geht es direkt los.
 const prepareStart = async () => {
-    if (!session.value) return;
+    if (!session.value || !allReady(session.value.players)) return;
     loadingOptions.value = true;
     try {
         const options = await getGameOptions(session.value.players);
@@ -244,7 +252,7 @@ const startGame = async (option: MpGameOption) => {
     if (loadStoredGame() && !confirm('Auf diesem Handy läuft noch ein Knecht-Spiel. Es wird verworfen. Neues Spiel starten?')) return;
     starting.value = true;
     try {
-        const claimed = await commit(latest => latest.status === 'lobby' ? { status: 'started', live: null } : null);
+        const claimed = await commit(latest => latest.status === 'lobby' && allReady(latest.players) ? { status: 'started', live: null } : null);
         if (claimed !== 'applied') {
             toast.add({ severity: 'info', summary: 'Ein anderes Handy startet gerade', life: 3000 });
             return;
@@ -256,7 +264,7 @@ const startGame = async (option: MpGameOption) => {
             const progress = { startTeamIndex: null, startedAt: null, actions: [] };
             const { game, binding } = await createLiveGame(match, progress, { name: profileName.value, team: myTeam.value, player });
             clearStoredGame();
-            storeGame({ match: game.match, startTeamIndex: null, actions: [], refereeUsed: false, savedAt: Date.now(), live: binding });
+            storeGame({ match: game.match, startTeamIndex: null, actions: [], refereeUsed: false, savedAt: Date.now(), live: binding, lobby: current.code });
             await commit(() => ({ live: { id: game.id, code: binding.code } }));
         } catch {
             await commit(latest => latest.status === 'started' && !latest.live ? { status: 'lobby' } : null);
@@ -280,7 +288,7 @@ const stopEnded = onEnded((_, reason) => {
 });
 
 onMounted(async () => {
-    if (!isFeatureOn('mitspielen')) {
+    if (!isFeatureOn('anstossen')) {
         router.replace('/');
         return;
     }
