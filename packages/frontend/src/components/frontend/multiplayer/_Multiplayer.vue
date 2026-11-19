@@ -21,8 +21,9 @@
             </div>
         </transition>
 
-        <div v-if="loading || starting" class="mp-loading">
-            <i class="pi pi-spin pi-spinner"></i> {{ starting ? 'Spiel wird gestartet …' : 'Lade …' }}
+        <!-- Auch waehrend des Wechsels ins Spiel: sonst blitzt kurz die Anstoss-Seite auf (Lobby schon geschlossen) -->
+        <div v-if="loading || starting || enteringGame" class="mp-loading">
+            <i class="pi pi-spin pi-spinner"></i> {{ starting || enteringGame ? 'Spiel wird gestartet …' : 'Lade …' }}
         </div>
 
         <ProfilePicker v-else-if="!profileName" @saved="onProfileSaved" />
@@ -32,11 +33,10 @@
             :session="session"
             :deviceId="deviceId"
             :options="gameOptions"
-            :busy="loadingOptions"
+            :loadingOptions="loadingOptions"
+            :busy="busy"
             @swap="swapSides"
-            @prepare="prepareStart"
-            @start="startGame"
-            @cancelOptions="gameOptions = null"
+            @chooseKind="chooseKind"
             @leave="leaveLobby"
             @share="share"
             @addGuest="addGuest"
@@ -66,10 +66,10 @@
 
 <script setup lang="ts">
 import DevBadge from '@/components/shared/DevBadge.vue';
-// Anstoss-Lobby: Handys aneinanderstossen (oder Code), Teams und Farben waehlen, Spieler ohne Handy dazunehmen.
-// "Spiel starten" legt ein Live-Spiel an (wie "+ Spiel" → "Spiel tracken"); jedes Handy der Lobby tritt
-// dort als sein Spieler bei. Wer spaeter kommt, tritt mit dem Code bei (Lobby-Code oder Code im Knecht).
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+// Anstoss-Lobby: Handys aneinanderstossen (oder Code), Teams waehlen, Spieler ohne Handy dazunehmen, Spielart waehlen
+// (offen, Liga, Cup). Sind alle bereit, legt ein Handy das Live-Spiel an (wie "+ Spiel" → "Spiel tracken"); jedes
+// Handy der Lobby tritt dort als sein Spieler bei. Wer spaeter kommt, tritt mit dem Code bei (Lobby- oder Knecht-Code).
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useGrayPage } from '@/components/shared/useGrayPage';
@@ -83,9 +83,9 @@ import MpConnect from './MpConnect.vue';
 import MpLobby from './MpLobby.vue';
 import BeerCup from './BeerCup.vue';
 import { useProfile } from './useProfile';
-import { useBump } from './useBump';
+import { pendingBumpPermission, useBump } from './useBump';
 import { useMultiplayerSession } from './useMultiplayerSession';
-import { getGameOptions, type MpGameOption } from './multiplayerGameOptions';
+import { buildOpenMatch, getGameOptions, type MpGameKind, type MpGameOption } from './multiplayerGameOptions';
 import { mpApi } from './multiplayerApi';
 import { MAX_PLAYERS_PER_TEAM, MpError, allReady, getTeamPlayers, unready, type MpSession } from './multiplayerTypes';
 
@@ -101,6 +101,7 @@ const {
 } = useMultiplayerSession();
 
 const loading = ref(true);
+const enteringGame = ref(false);
 const busy = ref(false);
 const starting = ref(false);
 
@@ -146,6 +147,7 @@ const run = async (action: () => Promise<unknown>, fallback: string) => {
 // Mitglied der Lobby: mit dem eigenen Platz. Sonst: Auswahl, fuer wen dieses Handy eintraegt.
 const goToGame = (current: MpSession) => {
     if (!current.live) return false;
+    enteringGame.value = true;
     const me = current.players.find(player => player.deviceId === deviceId);
     clear();
     if (!me) {
@@ -188,9 +190,25 @@ const share = async () => {
     } catch { /* abgebrochen */ }
 };
 
+// "+ Spiel" → "Anstoßen": immer eine neue Suche. Eine noch offene alte Lobby wird verlassen
+// (sie wird dort extra mit "Fortsetzen" angeboten), ein laufendes Spiel bleibt im Knecht.
+const startFresh = route.query.anstossen === '1';
 const enterFromRoute = async () => {
     const code = String(route.params.Code ?? '').replace(/\D/g, '');
     if (!profileName.value) return;
+    if (startFresh && !code) {
+        window.history.replaceState({ ...window.history.state, as: '/Mitspielen', url: '/Mitspielen' }, '', '/Mitspielen');
+        const old = storedCode.value;
+        if (old) {
+            const existing = await mpApi.get(old).catch(() => null);
+            clear();
+            if (existing?.status === 'lobby') {
+                const left = await mpApi.leave(old, deviceId).catch(() => null);
+                if (left) mpApi.publish(left);
+            }
+        }
+        return;
+    }
     if (code) {
         if (await resume(code)) return;
         await run(() => enterCode(code), 'Beitreten hat nicht geklappt');
@@ -199,7 +217,11 @@ const enterFromRoute = async () => {
     }
 };
 
-const onProfileSaved = () => { enterFromRoute(); };
+// Profil gespeichert (Antippen): Sensor gleich mit freischalten, sonst muesste man erst raus und wieder rein
+const onProfileSaved = () => {
+    bumpSensor.start();
+    enterFromRoute();
+};
 
 // ─── Lobby ───
 // Pfeil in der Mitte: zwei Spieler tauschen die Seiten, sonst wechselt nur man selbst (wenn drueben Platz ist)
@@ -223,41 +245,87 @@ const removeGuest = (playerId: string) => commit(current => current.status === '
     ? { players: unready(current.players.filter(player => player.deviceId !== playerId)) }
     : null);
 
-// Bereit / doch nicht bereit
-const toggleReady = () => commit(current => current.status === 'lobby' && current.players.some(player => player.deviceId === deviceId)
-    ? { players: current.players.map(player => player.deviceId === deviceId ? { ...player, ready: !player.ready } : player) }
-    : null);
-
-const gameOptions = ref<MpGameOption[] | null>(null);
-const loadingOptions = ref(false);
-
-// Offen, Liga oder Cup? Gibt es nur das offene Spiel, geht es direkt los.
-const prepareStart = async () => {
-    if (!session.value || !allReady(session.value.players)) return;
-    loadingOptions.value = true;
-    try {
-        const options = await getGameOptions(session.value.players);
-        if (options.length === 1) await startGame(options[0]);
-        else gameOptions.value = options;
-    } finally {
-        loadingOptions.value = false;
-    }
+// Bereit / doch nicht bereit. Laeuft auf diesem Handy noch ein Knecht-Spiel, wird schon hier gefragt
+// (sind alle bereit, startet das Spiel von selbst).
+const toggleReady = () => {
+    const me = session.value?.players.find(player => player.deviceId === deviceId);
+    if (me && !me.ready && loadStoredGame() && !confirm('Auf diesem Handy läuft noch ein Knecht-Spiel. Es wird beim Start verworfen. Bereit?')) return;
+    return commit(current => current.status === 'lobby' && current.players.some(player => player.deviceId === deviceId)
+        ? { players: current.players.map(player => player.deviceId === deviceId ? { ...player, ready: !player.ready } : player) }
+        : null);
 };
 
+// ─── Spielart: offen (Standard), Liga oder Cup ───
+// Was moeglich ist, haengt von den Spielern ab (1 gegen 1, beide in Liga-Teams mit offenem Spiel / offener Paarung)
+const teamsKey = computed(() => {
+    const players = session.value?.players ?? [];
+    return [0, 1].map(team => getTeamPlayers(players, team).map(player => player.name.toLocaleLowerCase()).join('|')).join('/');
+});
+const gameOptions = ref<MpGameOption[]>([]);
+const loadingOptions = ref(false);
+let optionsRun = 0;
+const loadOptions = async () => {
+    const players = session.value?.players ?? [];
+    const run = ++optionsRun;
+    // Sofort: offenes Spiel. Liga/Cup kommen dazu, sobald die Daten da sind.
+    gameOptions.value = [{ kind: 'open', label: 'Offenes Spiel', detail: 'Zählt für die Weltrangliste', match: buildOpenMatch(players) }];
+    loadingOptions.value = true;
+    try {
+        const options = await getGameOptions(players);
+        if (run === optionsRun) gameOptions.value = options;
+    } catch {
+        /* nur offen */
+    } finally {
+        if (run === optionsRun) loadingOptions.value = false;
+    }
+};
+watch(teamsKey, () => { if (session.value) loadOptions(); }, { immediate: true });
+
+const chooseKind = (kind: MpGameKind) => commit(current => current.status === 'lobby' && (current.gameKind ?? 'open') !== kind
+    ? { gameKind: kind, players: unready(current.players) }
+    : null);
+
+// Gewaehlte Spielart passt nicht mehr (andere Spieler): zurueck auf offen
+watch([gameOptions, loadingOptions, () => session.value?.gameKind], () => {
+    const kind = session.value?.gameKind ?? 'open';
+    if (kind === 'open' || loadingOptions.value || session.value?.status !== 'lobby') return;
+    if (!gameOptions.value.some(option => option.kind === kind)) chooseKind('open');
+});
+
+// ─── Start von selbst, sobald alle bereit sind ───
+// Das Host-Handy legt sofort an, die anderen nur, wenn es nach kurzer Zeit noch nicht passiert ist (z.B. Host offline).
+// Die Lobby wird dabei beansprucht (commit): nie legt mehr als ein Handy ein Spiel an.
+const AUTO_START_BACKUP_MS = 3000;
+let autoStartTimer: ReturnType<typeof setTimeout> | null = null;
+const canAutoStart = (current: MpSession | null) => !!current && current.status === 'lobby' && allReady(current.players)
+    && [0, 1].every(team => getTeamPlayers(current.players, team).length > 0)
+    && current.players.some(player => player.deviceId === deviceId);
+watch([session, loadingOptions], () => {
+    if (!canAutoStart(session.value) || loadingOptions.value) {
+        if (autoStartTimer) clearTimeout(autoStartTimer);
+        autoStartTimer = null;
+        return;
+    }
+    if (autoStartTimer || starting.value) return;
+    autoStartTimer = setTimeout(() => {
+        autoStartTimer = null;
+        if (canAutoStart(session.value) && !loadingOptions.value) startGame();
+    }, session.value!.hostId === deviceId ? 300 : AUTO_START_BACKUP_MS);
+});
+
 // Start: Lobby fuer sich beanspruchen (nur ein Handy legt das Spiel an), Live-Spiel anlegen, Code in die Lobby
-const startGame = async (option: MpGameOption) => {
-    gameOptions.value = null;
+const startGame = async () => {
     const current = session.value;
     if (!current || starting.value) return;
-    if (loadStoredGame() && !confirm('Auf diesem Handy läuft noch ein Knecht-Spiel. Es wird verworfen. Neues Spiel starten?')) return;
+    const option = gameOptions.value.find(entry => entry.kind === (current.gameKind ?? 'open'));
+    if (!option) return;
     starting.value = true;
     try {
-        const claimed = await commit(latest => latest.status === 'lobby' && allReady(latest.players) ? { status: 'started', live: null } : null);
-        if (claimed !== 'applied') {
-            toast.add({ severity: 'info', summary: 'Ein anderes Handy startet gerade', life: 3000 });
-            return;
-        }
-        const match = normalizeTeams({ ...option.match, ...(current.cupColors && { cupColors: current.cupColors }) });
+        const claimed = await commit(latest => canAutoStart(latest) && (latest.gameKind ?? 'open') === option.kind ? { status: 'started', live: null } : null);
+        // Ein anderes Handy war schneller (oder jemand ist doch nicht bereit): nichts zu tun
+        if (claimed !== 'applied') return;
+        const base = option.kind === 'open' ? buildOpenMatch(current.players) : option.match;
+        const match = normalizeTeams({ ...base, ...(current.cupColors && { cupColors: current.cupColors }) });
         // Liga/Cup: ein Team = ein Spieler
         const player = option.kind === 'open' ? Math.max(0, myPlayerIndex.value) : 0;
         try {
@@ -267,10 +335,12 @@ const startGame = async (option: MpGameOption) => {
             storeGame({ match: game.match, startTeamIndex: null, actions: [], refereeUsed: false, savedAt: Date.now(), live: binding, lobby: current.code });
             await commit(() => ({ live: { id: game.id, code: binding.code } }));
         } catch {
-            await commit(latest => latest.status === 'started' && !latest.live ? { status: 'lobby' } : null);
+            // Zurueck in die Lobby, alle muessen nochmal bestaetigen (sonst versucht es sofort wieder)
+            await commit(latest => latest.status === 'started' && !latest.live ? { status: 'lobby', players: unready(latest.players) } : null);
             toast.add({ severity: 'error', summary: 'Start hat nicht geklappt – bitte nochmal', life: 3500 });
             return;
         }
+        enteringGame.value = true;
         clear();
         router.push('/Knecht');
     } finally {
@@ -292,8 +362,10 @@ onMounted(async () => {
         router.replace('/');
         return;
     }
-    // Android braucht keine Erlaubnis: sofort lauschen. iPhone: erst nach "Anstossen aktivieren".
+    // Android braucht keine Erlaubnis: sofort lauschen. iPhone: erst nach "Anstossen aktivieren" - oder sofort, wenn
+    // "+ Spiel" → "Anstoßen" die Erlaubnis schon geholt hat (die Anfrage laeuft evtl. noch).
     if (!bumpSensor.needsPermission) bumpSensor.start();
+    else pendingBumpPermission()?.then(granted => { if (granted) bumpSensor.start(); });
     try {
         await enterFromRoute();
         if (session.value?.status === 'started' && session.value.live) goToGame(session.value);
@@ -304,6 +376,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
     stopEnded();
+    if (autoStartTimer) clearTimeout(autoStartTimer);
     // Lobby laeuft weiter, die Seite fragt nur nicht mehr nach
     if (session.value) suspend();
 });

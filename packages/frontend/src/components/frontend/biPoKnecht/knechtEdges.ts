@@ -53,5 +53,39 @@ export const classifyMiss = (tap: Point, geometry: RackGeometry): { spot: Point;
 // Winkel in Grad (0 = vorne, positiv = rechts) -> eine von 8 Seiten
 export const getEdgeSide = (angle: number): EdgeSide => SIDES[Math.round((((angle % 360) + 360) % 360) / 45) % 8];
 
-export const formatEdge = (edge: EdgeHit) =>
-    `${edge.double ? 'Doppelkante' : 'Kante'} · Becher ${edge.cup + 1}`;
+// Wie oft der Ball an der Kante war (aeltere Eintraege: Kante oder Doppelkante)
+export const getEdgeCount = (edge: EdgeHit) => edge.count ?? edge.contacts?.length ?? (edge.double ? 2 : 1);
+
+// Kontaktstellen der Reihe nach (aeltere Eintraege: angle und second)
+export const getEdgeContacts = (edge: EdgeHit) => edge.contacts ?? [
+    ...(edge.angle !== undefined ? [{ cup: edge.cup, angle: edge.angle }] : []),
+    ...(edge.second ? [edge.second] : []),
+];
+
+// Weitere Kontaktstelle (Knecht Pro): die erste legt Becher und Seite fest, ab der zweiten ist es eine Doppel-/Mehrfachkante
+export const addEdgeContact = (edge: EdgeHit, contact: { cup: number; angle: number }): EdgeHit => {
+    const contacts = [...getEdgeContacts(edge), contact];
+    const [first, second] = contacts;
+    return {
+        ...edge,
+        cup: first.cup,
+        side: getEdgeSide(first.angle),
+        angle: first.angle,
+        contacts,
+        count: contacts.length,
+        double: contacts.length >= 2 || undefined,
+        second: second ?? undefined,
+    };
+};
+
+// Kontakte loeschen: nur noch Becher und grobe Seite aus dem ersten Tipp
+export const resetEdge = (edge: EdgeHit): EdgeHit => ({ cup: edge.cup, side: edge.side, ...(edge.spinOut && { spinOut: true }) });
+
+const edgeName = (count: number) => count >= 3 ? `${count}× Kante` : count === 2 ? 'Doppelkante' : 'Kante';
+
+export const formatEdge = (edge: EdgeHit) => edge.spinOut
+    ? `Rein und wieder raus · Becher ${edge.cup + 1}`
+    : `${edgeName(getEdgeCount(edge))} · Becher ${edge.cup + 1}`;
+
+// Treffer, der vorher an der Kante war
+export const formatHitEdge = (edge: EdgeHit) => `über die ${edgeName(getEdgeCount(edge))}`;

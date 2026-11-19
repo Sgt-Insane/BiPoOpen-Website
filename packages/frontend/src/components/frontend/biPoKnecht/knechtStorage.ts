@@ -16,6 +16,7 @@ export type StoredKnechtGame = {
     savedAt: number;
     live?: LiveBinding | null;      // Live-Ticker / mehrere Handys: Schreibrecht fuer das Live-Spiel
     lobby?: string | null;          // aus der Anstoss-Lobby gestartet: deren PIN (Zurueck vor dem ersten Wurf)
+    paused?: boolean;               // pausiert verlassen: bleibt beim Fortsetzen pausiert, bis man aufs Display tippt
 };
 
 export const loadStoredGame = (): StoredKnechtGame | null => {

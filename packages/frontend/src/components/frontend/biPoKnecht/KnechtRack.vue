@@ -45,7 +45,11 @@
 
         <!-- Vor und neben den Bechern: Nullwurf -->
         <div class="kn-front">
-            <span v-if="isTarget && !game.pick.value" class="kn-zone-label kn-zone-label-miss"><KnechtIcon name="miss" /> Nullwurf · neben die Becher tippen</span>
+            <span v-if="isTarget && !game.pick.value" class="kn-zone-label kn-zone-label-miss">
+                <template v-if="bounceStep === 'spot'"><KnechtIcon name="bouncer" /> Bouncer · tippe, wo der Ball aufkam</template>
+                <template v-else-if="bounceStep === 'cup'"><KnechtIcon name="bouncer" /> Bouncer · in welchen Becher? (daneben = Nullwurf)</template>
+                <template v-else><KnechtIcon name="miss" /> Nullwurf · neben die Becher tippen</template>
+            </span>
             <slot name="front"></slot>
         </div>
 
@@ -78,7 +82,14 @@ const props = defineProps<{
     rotated?: boolean;                              // Spielermodus: fuer das Team am anderen Tischende gedreht
     owners?: Map<number, CupRemoval> | null;        // mehrere Handys: wer welchen Becher abgeraeumt hat
     showDrinkers?: boolean;                         // eigene Becher: wer sie trinken muss
+    pro?: boolean;                                  // Knecht Pro: Bouncer in zwei Tipps (Aufprall, dann Becher)
 }>();
+
+// Knecht Pro, Bouncer aktiv: erst die Aufprallstelle, dann der Becher
+const bounceStep = computed(() => {
+    if (!props.pro || !props.game.bouncerArmed.value || props.game.pick.value) return null;
+    return props.game.bounceSpot.value ? 'cup' : 'spot';
+});
 
 const getOwner = (cup: number) => standing.value.has(cup) ? null : props.owners?.get(cup) ?? null;
 const getPlayer = (team: number, player: number) => {
@@ -151,6 +162,8 @@ const onCupClick = (cup: number, event: MouseEvent) => {
     const pick = props.game.pick.value;
     const tappable = pick ? pick.candidates.includes(cup) || pick.cup === cup : props.game.hittableCups.value.has(cup);
     if (!tappable) return onTableClick(event);
+    // Knecht Pro: Bouncer braucht erst die Aufprallstelle - ein Tipp auf einen Becher zaehlt dann als Aufprall dort
+    if (bounceStep.value === 'spot') return onTableClick(event);
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (props.game.tapCup(cup)) {
         props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width * BALL_TO_CUP);
@@ -179,6 +192,13 @@ const onTableClick = (event: MouseEvent) => {
     const geometry = getGeometry();
     const tap = getTapPoint(event);
     const detail: { spot?: { x: number; y: number }; edge?: EdgeHit } = geometry ? classifyMiss(tap, geometry) : {};
+    // Knecht Pro: erster Tipp beim Bouncer = Aufprallstelle (kein Nullwurf)
+    if (bounceStep.value === 'spot') {
+        props.game.setBounceSpot(detail.spot ?? { x: 0, y: 0 });
+        props.game.markBall('miss', tap.x, tap.y, getBallSize());
+        vibrate('table');
+        return;
+    }
     if (props.game.throwMiss('miss', detail)) {
         props.game.markBall('miss', tap.x, tap.y, getBallSize());
         vibrate(detail.edge ? 'edge' : 'table');

@@ -213,7 +213,9 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     const FANFARE_EVENTS: BannerEvent[] = ['on-fire', 'overtime', 'win', 'nachwurf'];
 
     // Erst das Geraeusch des Wurfs, bei besonderen Momenten danach die Fanfare
-    const playFeedback = (next: KnechtState, action: KnechtAction) => {
+    // quiet: ohne Ton (z.B. Knecht Pro: der Fang folgt auf einen Nullwurf, der schon seinen Ton hatte)
+    const playFeedback = (next: KnechtState, action: KnechtAction, quiet = false) => {
+        if (quiet) { showBanner(next.banner); return; }
         if (next.banner === 'bomb' || action.type === 'deathcup') sound.playBomb();
         else if (action.type === 'throw' && action.outcome === 'hit') sound.playHit();
         else if (action.type === 'throw' && action.outcome === 'airball') sound.playAirball();
@@ -223,7 +225,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     };
 
     // ─── Aktionen ───
-    const dispatch = (action: KnechtAction) => {
+    const dispatch = (action: KnechtAction, quiet = false) => {
         let next: KnechtState;
         const before = state.value;
         const throwingTeam = before.activeTeamIndex;
@@ -241,8 +243,9 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         snapshots.set(newActions.length, next);
         actions.value = newActions;
         bouncerArmed.value = false;
+        bounceSpot.value = null;
         pick.value = null;
-        playFeedback(next, action);
+        playFeedback(next, action, quiet);
         // Bombe/Bouncer lief schon vor der Becherwahl: nicht noch einmal zeigen
         const list = celebrationsFor(before, next, action, newActions[newActions.length - 2]).filter(entry => entry.kind !== shownBeforePick);
         shownBeforePick = null;
@@ -286,6 +289,14 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     const now = () => new Date().getTime();
 
     const bouncerArmed = ref(false);
+    // Knecht Pro: Bouncer in zwei Tipps - erst wo der Ball auf dem Tisch aufkam, dann der Becher
+    const bounceSpot = ref<{ x: number; y: number } | null>(null);
+    // Aufprall auf dem Tisch ist zu hoeren (wie ein Ball auf dem Tisch)
+    const setBounceSpot = (spot: { x: number; y: number }) => {
+        if (!bouncerArmed.value || pick.value) return;
+        bounceSpot.value = spot;
+        sound.playMiss();
+    };
     const pick = ref<CupPick | null>(null);
     // Animation, die schon beim Start der Becherwahl lief (Bombe, Bouncer)
     let shownBeforePick: KnechtCelebrationKind | null = null;
@@ -293,10 +304,13 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
 
     const toggleBouncer = () => {
         if (!pick.value) bouncerArmed.value = !bouncerArmed.value;
+        bounceSpot.value = null;
     };
 
-    const throwHit = (cup: number, bouncer: boolean, extraCups: number[] = []) =>
-        dispatch({ type: 'throw', player: selectedPlayer.value, outcome: 'hit', cup, bouncer, extraCups, time: now() });
+    const throwHit = (cup: number, bouncer: boolean, extraCups: number[] = []) => {
+        const spot = bouncer ? bounceSpot.value : null;
+        return dispatch({ type: 'throw', player: selectedPlayer.value, outcome: 'hit', cup, bouncer, extraCups, time: now(), ...(spot && { spot: { ...spot } }) });
+    };
 
     // Becher angetippt: Treffer, oder Zusatzbecher waehrend der Auswahl. true, wenn ein Wurf eingetragen wurde.
     const tapCup = (cup: number): boolean => {
@@ -329,7 +343,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         return dispatch({ type: 'throw', player: selectedPlayer.value, outcome, time: now(), ...(outcome === 'miss' ? detail : {}) });
     };
 
-    const trickshot = (catcher: number) => dispatch({ type: 'trickshot', player: selectedPlayer.value, catcher, time: now() });
+    const trickshot = (catcher: number, quiet = false) => dispatch({ type: 'trickshot', player: selectedPlayer.value, catcher, time: now() }, quiet);
     // Gefangen, aber noch nicht geworfen: der Trickshot-Knopf bleibt aktiv und nimmt ihn beim erneuten Tippen zurueck
     const trickshotPending = computed(() => actions.value.at(-1)?.type === 'trickshot');
     const reRack = () => dispatch({ type: 'reRack', time: now() });
@@ -363,6 +377,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         if (!actions.value.length) return;
         actions.value = actions.value.slice(0, -1);
         bouncerArmed.value = false;
+        bounceSpot.value = null;
         banner.value = null;
         clearCelebrations();
     };
@@ -402,6 +417,8 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         banner,
         celebration,
         bouncerArmed,
+        bounceSpot,
+        setBounceSpot,
         toggleBouncer,
         pick,
         hittableCups,

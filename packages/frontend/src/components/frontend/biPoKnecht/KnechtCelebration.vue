@@ -22,7 +22,7 @@
                 <!-- Titel wie beim Bowling -->
                 <div class="kc-content">
                     <!-- Formation: kleines Becher-Dreieck mit Nummern, stehende Becher ploppen auf -->
-                    <div v-if="formation" class="kc-formation" :class="`kc-formation--${formation.effect}`">
+                    <div v-if="formation" class="kc-formation" :class="`kc-formation--${formation.effect}`" :style="spinStyle">
                         <div v-if="formation.effect === 'wall'" class="kc-wall"></div>
                         <div v-if="formation.effect === 'ring'" class="kc-fire-ring"></div>
                         <div v-if="formation.effect === 'eye'" class="kc-sharingan"><span v-for="i in 3" :key="i" class="kc-tomoe" :style="{ '--i': i }"></span></div>
@@ -147,6 +147,14 @@ const formationCups = computed(() => {
         };
     });
 });
+// Windmuehle: dreht sich um Becher 5. Stehen 1 und 2, im Uhrzeigersinn, sonst (1 und 3) andersherum.
+const spinStyle = computed(() => {
+    if (formation.value?.effect !== 'spin') return undefined;
+    const hub = cupCenter(5);
+    const clockwise = formation.value.cups.includes(1) && formation.value.cups.includes(2);
+    return { transformOrigin: `${hub.x}px ${hub.y}px`, '--kc-spin': clockwise ? '360deg' : '-360deg' };
+});
+
 // Schneise: Linie durch die fehlenden Becher
 const stripeLine = computed(() => {
     const missing = ROWS.flat().filter(number => !formation.value?.cups.includes(number)).map(cupCenter);
@@ -700,7 +708,7 @@ const rerackCups = computed(() => {
     animation: kc-shuriken 1.1s cubic-bezier(.5, 0, .3, 1) .9s both;
 }
 @keyframes kc-shuriken{
-    100%{ rotate: 360deg; }
+    100%{ rotate: var(--kc-spin, 360deg); }
 }
 
 /* Arschlochbecher: das Loch in der Mitte pulsiert, die Becher drumherum wackeln */

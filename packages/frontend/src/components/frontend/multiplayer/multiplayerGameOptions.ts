@@ -4,12 +4,12 @@ import { getLeagueTeamLogo } from '../league/LeaguePlayersData';
 import { getCupGames, getCupRoundGames, getLeagueCup, getPairingResult, getPlannedRoundNames } from '../league/cup/LeagueCupUtilFunctions';
 import { normalizeTeams } from '../biPoKnecht/KnechtUtilFunctions';
 import { getCurrentLeagueTeam } from './useProfile';
-import { getTeamPlayers, type MpPlayer } from './multiplayerTypes';
+import { getTeamPlayers, type MpGameKind, type MpPlayer } from './multiplayerTypes';
 
 // Welche Spiele die Spieler der Lobby gerade machen koennen: immer ein offenes Spiel,
 // im 1 gegen 1 zusaetzlich ein noch offenes Liga-Spiel bzw. eine offene Pokal-Paarung ihrer Teams.
 
-export type MpGameKind = 'open' | 'league' | 'cup';
+export type { MpGameKind };
 export type MpGameOption = { kind: MpGameKind; label: string; detail: string; match: Match };
 
 const toTeam = (name: string, logo?: string): Team => ({

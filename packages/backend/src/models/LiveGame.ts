@@ -33,8 +33,9 @@ const LiveGameSchema = new Schema(
         devices: { type: [LiveDeviceSchema], default: [] },
         savingBy: { type: String, default: null },
         endedBy: { type: String, default: null },                 // Name des Handys, das eingetragen/abgebrochen hat
-        paused: { type: Boolean, default: false },                // im Knecht pausiert: nicht im Ticker
+        paused: { type: Boolean, default: false },                // im Knecht pausiert (oder alle Handys weg): im Ticker als pausiert
         pausedBy: { type: String, default: null },                // wer pausiert hat (Name)
+        pauseReady: { type: [String], default: [] },              // mehrere Handys: wer nach der Pause "Bereit" gedrueckt hat (Handy-ids)
         createdAt: { type: Number, required: true },
         updatedAt: { type: Number, required: true, index: true },
     },

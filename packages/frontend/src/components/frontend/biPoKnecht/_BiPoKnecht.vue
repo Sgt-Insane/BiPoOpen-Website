@@ -8,6 +8,7 @@
             :startTeamIndex="game.startTeamIndex"
             :actions="game.actions"
             :refereeUsed="game.refereeUsed"
+            :initialPaused="!!game.paused"
             :live="isFeatureOn('live') || isFeatureOn('anstossen') || live.binding.value ? liveInfo : null"
             :saveHandler="live.binding.value ? saveShared : undefined"
             :savingText="savingText"
@@ -72,12 +73,13 @@ type ActiveGame = {
     actions: KnechtAction[];
     refereeUsed: boolean;
     lobby?: string | null;      // PIN der Anstoss-Lobby, aus der das Spiel gestartet wurde
+    paused?: boolean;           // pausiert (bleibt beim Fortsetzen pausiert)
 };
 
 const toast = useToast();
 const route = useRoute();
 const { consumeLaunch, hasLaunch, onLaunch } = useKnechtLaunch();
-const { profileName } = useProfile();
+const { profileName, deviceId } = useProfile();
 
 const game = ref<ActiveGame | null>(null);
 let gameKey = 0;
@@ -93,6 +95,7 @@ const persist = () => {
         savedAt: new Date().getTime(),
         live: live.binding.value,
         lobby: game.value.lobby ?? null,
+        paused: !!game.value.paused,
     });
 };
 
@@ -106,10 +109,12 @@ const endHere = (path = '/') => {
 const knecht = ref<{ getProgress: () => LiveProgress; applyRemote: (progress: LiveProgress) => boolean } | null>(null);
 const joining = ref(false);
 
-// Revanche auf einem anderen Handy: neues Spiel mit denselben Handys
+// Revanche auf einem anderen Handy: neues Spiel mit denselben Handys. Nur nach einem gespielten Spiel: direkt nach dem
+// Anwurf kann noch ein Serverstand ohne Anwurf ankommen (z.B. ein anderes Handy ist gerade beigetreten) - das ist
+// keine Revanche (sonst blitzte kurz wieder der Startbildschirm auf).
 const applyRemote = (progress: LiveProgress) => {
     const current = game.value;
-    if (current && progress.match && progress.startTeamIndex === null && !progress.actions.length && current.startTeamIndex !== null) {
+    if (current && progress.match && progress.startTeamIndex === null && !progress.actions.length && current.startTeamIndex !== null && current.actions.length > 0) {
         game.value = { key: ++gameKey, match: progress.match, startTeamIndex: null, actions: [], refereeUsed: false };
         persist();
         toast.add({ severity: 'success', summary: 'Revanche! Das letzte Spiel ist eingetragen', life: 3500 });
@@ -272,15 +277,22 @@ const chooseSeat = async (team: number, player: number | null) => {
     if (await enterGame(choice.code, { team, player })) {
         const label = player === null ? getTeamName(choice.game.match, team) : (team === 0 ? choice.game.match.team1 : choice.game.match.team2).players[player]?.name;
         toast.add({ severity: 'success', summary: `Verbunden – dieses Handy trägt für ${label} ein`, life: 3500 });
-        router.replace('/Knecht');
+        leaveJoinUrl(true);
     } else {
-        router.replace(resume() ? '/Knecht' : '/');
+        leaveJoinUrl(resume());
     }
+};
+
+// Nach dem Beitreten nur die Adresse aendern (/Knecht?join=... -> /Knecht), nicht die Route: die Seite haengt an der
+// vollen Adresse und wuerde sonst komplett neu aufgebaut (Spielfeld blitzte kurz weg, Schnick-Schnack begann von vorn).
+const leaveJoinUrl = (stay: boolean) => {
+    if (!stay) return router.replace('/');
+    window.history.replaceState({ ...window.history.state, as: '/Knecht', url: '/Knecht' }, '', '/Knecht');
 };
 
 const cancelJoin = () => {
     seatChoice.value = null;
-    router.replace(resume() ? '/Knecht' : '/');
+    leaveJoinUrl(resume());
 };
 
 const newGame = (match: Match) => {
@@ -296,14 +308,14 @@ const newGame = (match: Match) => {
 const resume = () => {
     const stored = loadStoredGame();
     if (!stored) return false;
-    const { match, startTeamIndex, actions, refereeUsed, lobby } = stored;
-    game.value = { key: ++gameKey, match, startTeamIndex, actions, refereeUsed, lobby };
+    const { match, startTeamIndex, actions, refereeUsed, lobby, paused } = stored;
+    game.value = { key: ++gameKey, match, startTeamIndex, actions, refereeUsed, lobby, paused };
     // Bindung aus einer frueheren Version (erstes/zweites Handy) passt nicht mehr: ohne sie weiter, Live startet neu
     if (isCurrentBinding(stored.live)) live.resume(stored.live);
     return true;
 };
 
-const onChange = (progress: { startTeamIndex: number | null; actions: KnechtAction[]; refereeUsed: boolean }) => {
+const onChange = (progress: { startTeamIndex: number | null; actions: KnechtAction[]; refereeUsed: boolean; paused: boolean }) => {
     if (!game.value) return;
     Object.assign(game.value, progress);
     persist();
@@ -319,11 +331,45 @@ const abort = () => {
 
 // Vor dem Start zurueck in die Anstoss-Lobby: Lobby wieder oeffnen, dann das Live-Spiel beenden
 // (in dieser Reihenfolge, sonst schickt die Lobby die anderen Handys gleich wieder ins alte Spiel)
+// Lobby gibt es nicht mehr (z.B. abgelaufen oder Server neu gestartet): neue Lobby mit denselben Teams anlegen.
+// Spieler ohne eigenes Handy (nicht unter den Handys im Spiel) kommen als "ohne Handy" mit.
+const recreateLobby = async (match: Match): Promise<string | null> => {
+    const name = profileName.value;
+    if (!name) return null;
+    try {
+        const created = await mpApi.create(deviceId, name);
+        const myTeam = live.binding.value?.team ?? 0;
+        const phones = new Set(live.devices.value.map(device => device.name?.toLocaleLowerCase()).filter(Boolean));
+        const now = Date.now();
+        const guests = [0, 1].flatMap(team => (team === 0 ? match.team1 : match.team2).players
+            .filter(player => player.name.toLocaleLowerCase() !== name.toLocaleLowerCase() && !phones.has(player.name.toLocaleLowerCase()))
+            .map((player, index) => ({ deviceId: `np-${now.toString(36)}-${team}${index}`, name: player.name, team, joinedAt: now + 1 + team * 10 + index, phone: false })));
+        const players = [{ ...created.players[0], team: myTeam, ready: false }, ...guests];
+        const result = await mpApi.update(created.code, created.version, { players, ...(match.cupColors && { cupColors: match.cupColors }) });
+        if (result.ok) mpApi.publish(result.session);
+        return created.code;
+    } catch {
+        return null;
+    }
+};
+
 const backToLobby = async () => {
-    const code = game.value?.lobby;
+    let code = game.value?.lobby;
     if (!code) return abort();
+    const existing = await mpApi.get(code).catch(() => null);
+    if (!existing || existing.status === 'aborted' || !existing.players.some(player => player.deviceId === deviceId)) {
+        const match = game.value!.match;
+        live.finish('aborted');
+        code = await recreateLobby(match);
+        if (!code) {
+            toast.add({ severity: 'warn', summary: 'Die Lobby gibt es nicht mehr', life: 3500 });
+            return endHere('/Mitspielen');
+        }
+        toast.add({ severity: 'info', summary: 'Die alte Lobby war weg – neue Lobby mit denselben Teams', life: 3500 });
+        return endHere(`/Mitspielen/${code}`);
+    }
     for (let attempt = 0; attempt < 3; attempt++) {
-        const current = await mpApi.get(code).catch(() => null);
+        const current = attempt === 0 ? existing : await mpApi.get(code).catch(() => null);
         if (!current || current.status !== 'started') break;
         // Zurueck in der Lobby muessen alle wieder "Bereit" druecken
         const result = await mpApi.update(code, current.version, { status: 'lobby', live: null, players: current.players.map(player => ({ ...player, ready: false })) }).catch(() => null);
@@ -397,13 +443,13 @@ onMounted(async () => {
             const player = route.query.player === undefined ? null : Number(route.query.player);
             const lobby = typeof route.query.lobby === 'string' ? route.query.lobby : null;
             const joined = await enterGame(code, { team, player: Number.isInteger(player) ? player : null }, lobby);
-            router.replace(joined || resume() ? '/Knecht' : '/');
+            leaveJoinUrl(joined || resume());
             return;
         }
         // Erfolgreich angesehen: weiter geht es mit der Auswahl (chooseSeat / cancelJoin). Die Adresse
         // bleibt bis dahin stehen - ein Wechsel auf /Knecht laedt die Seite neu und die Wahl waere weg.
         if (await joinGame(code)) return;
-        router.replace(resume() ? '/Knecht' : '/');
+        leaveJoinUrl(resume());
         return;
     }
     // Neues Spiel abgelehnt: das laufende geht weiter

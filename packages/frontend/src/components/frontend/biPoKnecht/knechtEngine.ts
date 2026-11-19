@@ -629,7 +629,17 @@ const applyActionInPlace = (state: KnechtState, action: KnechtAction) => {
     state.banner = null;
     state.events = [];
     switch (action.type) {
-        case 'throw': applyThrow(state, action); break;
+        case 'throw': {
+            const turnsBefore = state.turns.length;
+            applyThrow(state, action);
+            // Knecht Pro: Treffer ueber die Kante - die Kante gehoert zum Treffer (nur Statistik)
+            // Bouncer: wo der Ball auf dem Tisch aufkam (bounceSpot)
+            if (action.outcome === 'hit' && (action.edge || action.spot)) {
+                const turn = state.turns.slice(turnsBefore).find(entry => entry.type !== 'miss' && entry.type !== 'airball');
+                if (turn) turn.data = { ...turn.data, ...(action.edge && { edge: action.edge }), ...(action.spot && { bounceSpot: action.spot }) } as Turn['data'];
+            }
+            break;
+        }
         case 'trickshot': applyTrickshot(state, action); break;
         case 'reRack': applyReRack(state, action); break;
         case 'turnStart':
