@@ -320,10 +320,12 @@ const BiPoPreset = definePreset(Aura, {
                 }
 
                 /* Name mit Avatar */
+                /* text-align: die zentrierte td-Regel schlaegt sonst die Frozen-Spalte, umgebrochene Namen stuenden mittig */
                 .bp-name-cell {
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
+                    text-align: start;
                 }
                 .bp-name {
                     overflow: hidden;

@@ -176,6 +176,7 @@ declare global {
     type LeaguePlayer = {
         name: string;
         logo: string;
+        shortName?: string; // Abkuerzung sehr langer Teamnamen, nur in der Ligatabelle
     }
 
     // Player Profile Types

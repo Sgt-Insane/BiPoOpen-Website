@@ -54,7 +54,9 @@ const TurnSchema = new Schema(
       ],
       required: true
     },
-    data: { type: Schema.Types.Mixed, required: true }, // flexibel für alle Turn-Datenstrukturen
+    // flexibel für alle Turn-Datenstrukturen. Nicht required: Mongoose entfernt leere Objekte ({} bei miss/airball)
+    // beim Speichern, sonst liesse sich ein Spiel mit Wuerfen danach nie wieder speichern (z.B. Teamname aendern).
+    data: { type: Schema.Types.Mixed },
     time: { type: Number, required: true }
   },
   { _id: false }

@@ -21,7 +21,7 @@
                 <div class="bp-name-cell">
                     <Avatar :name="slotProps.data.name" :avatarImage="getPlayerLogo(slotProps.data.name)" shape="square"/>
                     <div class="min-w-0">
-                        <span class="bp-name">{{ slotProps.data.name }}</span>
+                        <span class="bp-name">{{ getDisplayName(slotProps.data.name) }}</span>
                         <div v-if="slotProps.data.withdrawn" class="league-withdrawn-hint">zurückgezogen</div>
                     </div>
                 </div>
@@ -150,9 +150,13 @@ const getRowClass = (row: PlayerWithStats) => {
     return getZoneClass(index) !== getZoneClass(index + 1) ? 'bp-row-divider' : '';
 };
 
-const getPlayerLogo = (playerName: string) => {
-    return [...props.leaguePlayers, ...props.withdrawnPlayers].find(player => player.name === playerName)?.logo;
-};
+const findLeaguePlayer = (playerName: string) =>
+    [...props.leaguePlayers, ...props.withdrawnPlayers].find(player => player.name === playerName);
+
+const getPlayerLogo = (playerName: string) => findLeaguePlayer(playerName)?.logo;
+
+// Sehr lange Teamnamen in der schmalen Namensspalte abgekuerzt, ausgeschrieben im Drawer
+const getDisplayName = (playerName: string) => findLeaguePlayer(playerName)?.shortName ?? playerName;
 
 // Immer FORM_LENGTH Felder, noch nicht gespielte bleiben als leere Platzhalter vorne
 const FORM_LENGTH = 5;
@@ -202,6 +206,23 @@ const labels = useTableLabels();
 }
 .league-form-win { background: #1F9D55; }
 .league-form-loss { background: #D64545; }
+
+/* Team-Logos groesser als die Avatare der anderen Tabellen (theme.ts), der Name dafuer etwas kleiner */
+.league-standings :deep(.p-datatable-tbody .p-avatar) {
+    --bp-avatar-size: 2.75rem;
+}
+.league-standings :deep(.bp-name) {
+    font-size: 0.875rem;
+}
+@media (width <= 900px) {
+    /* Waechst stufenlos mit der Breite: 32px bei 360px Viewport bis max. 44px ab 500px */
+    .league-standings :deep(.p-datatable-tbody .p-avatar) {
+        --bp-avatar-size: clamp(2rem, calc(2rem + (100vw - 360px) * 0.0857), 2.75rem);
+    }
+    .league-standings :deep(.bp-name) {
+        font-size: 0.75rem;
+    }
+}
 
 /* Mobil: kleinere Trend-Felder, damit der Trend ohne Wischen sichtbar ist */
 @media (width <= 900px) {

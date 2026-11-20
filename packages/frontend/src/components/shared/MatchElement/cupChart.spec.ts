@@ -38,6 +38,11 @@ describe('Becherverlauf: besondere Momente', () => {
         expect(moments.map(moment => [moment.playerIndex, moment.count])).toEqual([[0, 2], [1, 1]]);
     });
 
+    it('zeigt Re-Racks als Moment des Teams, das es verlangt hat', () => {
+        const match = makeMatch([turn('hit', 0, 0, 10), turn('hit', 1, 0, 20)], [{ kind: 'reRack', teamIndex: 1, afterTurnIndex: 1, time: START + 15_000 } as MatchEvent]);
+        expect(getCupChartMoments(match).map(moment => [moment.title, moment.teamIndex, moment.rowKey])).toEqual([['Re-Rack', 1, 0]]);
+    });
+
     it('nimmt Nachwurf und Ausgleich nicht als Moment', () => {
         const match = makeMatch([turn('hit', 0, 0, 10), turn('hit', 1, 0, 20)], [{ kind: 'nachwurf', teamIndex: 1, afterTurnIndex: 1 } as MatchEvent]);
         expect(getCupChartMoments(match)).toEqual([]);
