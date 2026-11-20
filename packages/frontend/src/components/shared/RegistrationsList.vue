@@ -35,7 +35,7 @@
                         </div>
                         <div style="flex: 1; min-width: 0;">
                             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                <span style="font-weight: bold; font-size: 15px; color: var(--main-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <span style="font-weight: bold; font-size: 15px; color: var(--main-color); white-space: nowrap; overflow: hidden; min-width: 0;" v-fit-text>
                                     #{{ registrations.length - index }} {{ reg.teamName }}
                                 </span>
                             </div>

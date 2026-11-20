@@ -9,7 +9,7 @@
             <li v-for="team in topTeams" :key="team.name" class="sl-row">
                 <span class="sl-place">{{ team.placement! + 1 }}</span>
                 <img v-if="logos[team.name]" class="sl-logo" :src="logos[team.name]" alt="">
-                <span class="sl-name">{{ team.name }}</span>
+                <span class="sl-name" v-fit-text>{{ team.name }}</span>
                 <span class="sl-record">{{ team.wins }}–{{ team.looses }} · {{ formatDiff(team.hitDifferenceNumber) }}</span>
             </li>
         </ol>
@@ -80,7 +80,6 @@ const formatDiff = (diff: number) => (diff > 0 ? `+${diff}` : `${diff}`);
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 .sl-record{
     white-space: nowrap;

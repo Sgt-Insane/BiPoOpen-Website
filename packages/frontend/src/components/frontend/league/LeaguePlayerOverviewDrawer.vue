@@ -4,7 +4,7 @@
             <div v-if="selectedPlayer" class="lpo-head">
                 <Avatar :name="selectedPlayer.name" :avatarImage="selectedPlayer.logo" shape="square" class="lpo-head-avatar" />
                 <div class="lpo-head-text">
-                    <div class="lpo-title">{{ selectedPlayer.name }}</div>
+                    <div class="lpo-title" v-fit-text>{{ selectedPlayer.name }}</div>
                     <div v-if="subtitle" class="lpo-subtitle">{{ subtitle }}</div>
                 </div>
             </div>
@@ -42,7 +42,7 @@
                         <span class="lpo-col-opponent">
                             <span class="lpo-rank">{{ opponent.placement }}</span>
                             <Avatar :name="opponent.name" :avatarImage="opponent.logo" shape="square" class="lpo-avatar" />
-                            <span class="lpo-name">{{ opponent.name }}</span>
+                            <span class="lpo-name" v-fit-text>{{ opponent.name }}</span>
                         </span>
                         <span v-for="(leg, roundIndex) in opponent.legs" :key="roundIndex" class="lpo-col-result">
                             <span class="lpo-result" :class="leg ? (leg.won ? 'lpo-result--win' : 'lpo-result--loss') : 'lpo-result--open'">
@@ -189,7 +189,6 @@ const addGame = (opponentName: string) => {
     font-weight: 800;
     color: var(--bp-text-strong);
     line-height: 1.2;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 .lpo-subtitle {
@@ -297,7 +296,6 @@ const addGame = (opponentName: string) => {
     font-size: 14px;
     font-weight: 700;
     color: var(--bp-text-strong);
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 

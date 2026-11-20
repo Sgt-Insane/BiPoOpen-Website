@@ -3,15 +3,19 @@ import App from '@/App.vue'
 import router from '@/router.js';
 import PrimeVue from 'primevue/config';
 import ToastService from 'primevue/toastservice';
-import Tooltip from 'primevue/tooltip';
+import { hintDirective } from '@/util/hintDirective';
+import { vFitText } from '@/components/shared/fitText';
 import BiPoPreset from '@/theme';
 import "bootstrap/dist/css/bootstrap.min.css"
 import "primeicons/primeicons.css"
 import "material-icons/iconfont/material-icons.css"
-import { registerSW } from 'virtual:pwa-register';
+import { setupPwaUpdates } from '@/util/pwaUpdate';
+import { cleanupLegacyStorage } from '@/util/legacyStorageCleanup';
 import '@/components/shared/useColorScheme';
+import '@/components/shared/winter/winterTheme';
 
-registerSW({ immediate: true });
+setupPwaUpdates();
+cleanupLegacyStorage();
 
 const app = createApp(App);
 
@@ -36,6 +40,9 @@ app.use(PrimeVue, {
 });
 
 app.use(ToastService);
-app.directive('tooltip', Tooltip);
+// Erklaerung beim Drueberfahren (PC) bzw. Gedrueckthalten (Handy), siehe util/hintDirective.ts
+app.directive('hint', hintDirective);
+// Nie mit … kuerzen: zu langer Text wird kleiner (und bricht notfalls um), siehe components/shared/fitText.ts
+app.directive('fit-text', vFitText);
 app.use(router);
 app.mount('#app');

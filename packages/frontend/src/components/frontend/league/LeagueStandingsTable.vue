@@ -54,7 +54,7 @@
             <template #body="slotProps">
                 <template v-if="slotProps.data.withdrawn">–</template>
                 <span v-else
-                    v-tooltip.top.focus="`${slotProps.data.hitDifference} Treffer`"
+                    v-hint.tap="`${slotProps.data.hitDifference} Treffer`"
                     tabindex="0"
                     class="bp-tooltip-target"
                     :class="getDiffClass(slotProps.data.hitDifferenceNumber)"
@@ -73,7 +73,7 @@
                         :key="index"
                         class="league-form-item"
                         :class="result === 'W' ? 'league-form-win' : result === 'L' ? 'league-form-loss' : ''"
-                        :title="result === 'W' ? 'Sieg' : result === 'L' ? 'Niederlage' : undefined"
+                        v-hint.tap="result === 'W' ? 'Sieg' : result === 'L' ? 'Niederlage' : undefined"
                     >{{ result === 'W' ? 'S' : result === 'L' ? 'N' : '' }}</span>
                 </div>
             </template>
@@ -215,9 +215,6 @@ const labels = useTableLabels();
 /* Mobil: lange Namen brechen in eine zweite Zeile um statt abgekuerzt zu werden */
 @media (width <= 900px) {
     .league-standings :deep(.bp-name) {
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
         line-height: 1.2;
         white-space: normal;
         overflow-wrap: anywhere;

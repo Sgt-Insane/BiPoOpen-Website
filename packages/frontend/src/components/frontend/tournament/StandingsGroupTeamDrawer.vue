@@ -26,7 +26,7 @@
             <div v-if="teamMatches.length === 0" class="mt-[10px]">Keine Spiele vorhanden</div>
 
             <div v-for="match in teamMatches" :key="match._id" style="margin-top: 10px;">
-                <MatchElement :match="match" showDate/>
+                <MatchElement :match="match" timestamp="date"/>
             </div>
         </div>
     </BottomSheet>

@@ -41,7 +41,7 @@
         <Column :header="labels.diff">
             <template #body="slotProps">
                 <span
-                    v-tooltip.top.focus="`${slotProps.data.hitDifference} Treffer`"
+                    v-hint.tap="`${slotProps.data.hitDifference} Treffer`"
                     tabindex="0"
                     class="bp-tooltip-target"
                     :class="getDiffClass(slotProps.data.hitDifferenceNumber)"

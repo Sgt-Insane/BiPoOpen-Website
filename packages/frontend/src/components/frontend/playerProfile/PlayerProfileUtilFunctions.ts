@@ -15,28 +15,6 @@ const TREND_PERIOD_DAYS: Record<Exclude<TrendPeriod, 'all'>, number> = {
     '1y': 365,
 };
 
-const PLAYER_NAMES_CACHE_KEY = 'bipo-player-names-cache-v3';
-const PLAYER_NAMES_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-let cachedPlayerNames: string[] | null = null;
-let playerNamesRequest: Promise<string[]> | null = null;
-let cachedPlayerMatchCounts: Record<string, number> | null = null;
-let playerMatchCountsRequest: Promise<Record<string, number>> | null = null;
-
-// Nach dem Eintragen eines Spiels: neue Spieler und Spielzahlen neu berechnen.
-// Serien, Badges und Elo haengen am Datenstand (gameDataCache) und rechnen sich mit neuen Daten selbst neu.
-export const clearPlayerCaches = () => {
-    cachedPlayerNames = null;
-    cachedPlayerMatchCounts = null;
-
-    if (typeof window !== 'undefined') {
-        try {
-            window.localStorage.removeItem(PLAYER_NAMES_CACHE_KEY);
-        } catch {
-            // Ignore storage errors.
-        }
-    }
-};
-
 const formatName = (name: string) =>
     name.split(" ").map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join(" ");
 
@@ -80,73 +58,13 @@ const getPlayerNamesFromData = memoize((data: GameData) => {
     return { names: Array.from(allNames).sort(), matchCounts };
 });
 
-export const getAllPlayerNames = async (): Promise<string[]> => {
-    if (cachedPlayerNames) return cachedPlayerNames;
-    if (playerNamesRequest) return playerNamesRequest;
+// Namen und Spielzahlen kommen direkt aus dem aktuellen Datenstand (gameDataCache), kein eigener Cache:
+// die Suche laedt die Spieldaten fuer das Elo ohnehin, so passen Spielzahl und Elo immer zusammen.
+export const getAllPlayerNames = async (): Promise<string[]> =>
+    getPlayerNamesFromData(await getGameData()).names;
 
-    if (typeof window !== 'undefined') {
-        try {
-            const rawCache = window.localStorage.getItem(PLAYER_NAMES_CACHE_KEY);
-            if (rawCache) {
-                const parsed = JSON.parse(rawCache) as {
-                    timestamp: number;
-                    names: string[];
-                    matchCounts: Record<string, number>;
-                };
-                if (
-                    parsed &&
-                    Array.isArray(parsed.names) &&
-                    parsed.matchCounts &&
-                    typeof parsed.timestamp === 'number' &&
-                    Date.now() - parsed.timestamp < PLAYER_NAMES_CACHE_TTL_MS
-                ) {
-                    cachedPlayerNames = parsed.names;
-                    cachedPlayerMatchCounts = parsed.matchCounts;
-                    return cachedPlayerNames;
-                }
-            }
-        } catch {
-            // Ignore cache parse/storage errors and continue with network fetch.
-        }
-    }
-
-    playerNamesRequest = (async () => {
-        const { names, matchCounts } = getPlayerNamesFromData(await getGameData());
-        cachedPlayerNames = names;
-        cachedPlayerMatchCounts = matchCounts;
-
-        if (typeof window !== 'undefined') {
-            try {
-                window.localStorage.setItem(
-                    PLAYER_NAMES_CACHE_KEY,
-                    JSON.stringify({ timestamp: Date.now(), names, matchCounts })
-                );
-            } catch {
-                // Ignore storage quota/private mode errors.
-            }
-        }
-
-        return names;
-    })();
-
-    try {
-        return await playerNamesRequest;
-    } finally {
-        playerNamesRequest = null;
-    }
-};
-
-export const getPlayerMatchCounts = async (): Promise<Record<string, number>> => {
-    if (cachedPlayerMatchCounts) return cachedPlayerMatchCounts;
-    if (playerMatchCountsRequest) return playerMatchCountsRequest;
-
-    playerMatchCountsRequest = getAllPlayerNames().then(() => cachedPlayerMatchCounts ?? {});
-    try {
-        return await playerMatchCountsRequest;
-    } finally {
-        playerMatchCountsRequest = null;
-    }
-};
+export const getPlayerMatchCounts = async (): Promise<Record<string, number>> =>
+    getPlayerNamesFromData(await getGameData()).matchCounts;
 
 ////////////////////////
 // SPIELE JE SPIELER  //

@@ -59,9 +59,6 @@ defineProps<{
     line-height: 1.1;
     color: white;
     text-shadow: 0 2px 14px rgba(0, 0, 0, 0.25);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
     overflow: hidden;
 }
 .hs-subtitle{

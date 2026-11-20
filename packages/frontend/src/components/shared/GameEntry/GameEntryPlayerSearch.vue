@@ -3,7 +3,7 @@
         <!-- Gewaehlter Spieler -->
         <div v-if="modelValue" class="gp-chip">
             <Avatar :name="modelValue" shape="circle" class="gp-avatar" />
-            <span class="gp-chip-name">{{ modelValue }}</span>
+            <span class="gp-chip-name" v-fit-text>{{ modelValue }}</span>
             <EloChip :rating="getElo(modelValue)" />
             <button type="button" class="gp-icon-button" :aria-label="`${modelValue} entfernen`" @click="emit('clear')">
                 <i class="pi pi-times"></i>
@@ -44,7 +44,7 @@
                     @click="select(name)"
                 >
                     <Avatar :name="name" shape="circle" class="gp-avatar" />
-                    <span class="gp-result-name">{{ name }}</span>
+                    <span class="gp-result-name" v-fit-text>{{ name }}</span>
                     <EloChip :rating="getElo(name)" />
                 </button>
 
@@ -199,7 +199,6 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--bp-text-strong);
     font-size: 15px;
@@ -269,7 +268,6 @@ defineExpose({ focus: () => inputEl.value?.focus() });
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 .gp-result-new{

@@ -11,10 +11,10 @@
             <MatchElement
                 v-for="(entry, index) in displayed"
                 :key="entry.match._id || index"
-                :match="withLeagueTeamLogos(entry.match)"
-                :chipLabel="SOURCE_LABELS[entry.source] ?? entry.source"
+                :match="entry.match"
+                :gameType="SOURCE_TYPES[entry.source] ?? 'open'"
                 showChip
-                showDate
+                timestamp="date"
                 showElo
                 class="pp-history-match"
             >
@@ -40,18 +40,18 @@ import { computed, ref } from 'vue';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
-import { withLeagueTeamLogos } from '@/components/frontend/league/LeaguePlayersData';
 
 // Neueste zuerst
 const props = defineProps<{ matchHistory: MatchHistoryEntry[] }>();
 
-const SOURCE_LABELS: Record<string, string> = {
-    'Offene Spiele 1v1': 'Offenes Spiel',
-    'Offene Spiele 2v2': 'Offenes Spiel',
-    'Offene Spiele sonstige': 'Offenes Spiel',
-    'BiPo League': 'Liga',
-    'BiPo League Cup': 'Cup',
-    'BiPo Open Turniere': 'BiPo Open',
+// Liga-Altdaten haben kein season-Feld, deshalb die Spielart aus der Quelle
+const SOURCE_TYPES: Record<string, 'open' | 'league' | 'cup' | 'tournament'> = {
+    'Offene Spiele 1v1': 'open',
+    'Offene Spiele 2v2': 'open',
+    'Offene Spiele sonstige': 'open',
+    'BiPo League': 'league',
+    'BiPo League Cup': 'cup',
+    'BiPo Open Turniere': 'tournament',
 };
 
 const INITIAL_COUNT = 5;

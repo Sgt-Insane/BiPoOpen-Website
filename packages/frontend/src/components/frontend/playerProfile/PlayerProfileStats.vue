@@ -47,7 +47,7 @@
                     :key="index"
                     class="pp-stats-form-result"
                     :class="result === 'W' ? 'is-win' : 'is-loss'"
-                    :title="result === 'W' ? 'Sieg' : 'Niederlage'"
+                    v-hint.tap="result === 'W' ? 'Sieg' : 'Niederlage'"
                 >{{ result === 'W' ? 'S' : 'N' }}</span>
             </span>
         </div>
@@ -79,7 +79,7 @@
         <div v-for="category in categories" :key="category.name" class="pp-category">
             <div class="pp-category-head">
                 <span class="pp-category-dot" :style="{ background: category.color }"></span>
-                <span class="pp-category-name">{{ category.label }}</span>
+                <span class="pp-category-name" v-fit-text>{{ category.label }}</span>
                 <span class="pp-category-meta">
                     {{ category.wins }} / {{ category.matches }} · Ø {{ category.trackedMatches > 0 ? formatDecimal(category.averageHits) : '–' }}
                 </span>
@@ -316,7 +316,6 @@ const categories = computed(() => props.data.categories
     min-width: 0;
     font-weight: 700;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 .pp-category-meta {

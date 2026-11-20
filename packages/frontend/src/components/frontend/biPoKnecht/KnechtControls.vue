@@ -13,7 +13,7 @@
             @click="game.toggleBouncer()"
         >
             <KnechtIcon name="bouncer" />
-            <span>{{ game.bouncerArmed.value ? 'Bouncer aktiv' : 'Bouncer' }}</span>
+            <span>{{ bouncerLabel }}</span>
         </button>
 
         <button
@@ -21,7 +21,7 @@
             class="kn-control kn-control-trickshot"
             :class="{ 'kn-control--armed': trickshotActive || game.trickshotPending.value }"
             :aria-pressed="trickshotActive || game.trickshotPending.value"
-            :disabled="!!game.pick.value"
+            :disabled="!!game.pick.value || trickshotLocked"
             @click="$emit('trickshot')"
         >
             <KnechtIcon name="trickshot" />
@@ -35,11 +35,20 @@ import { computed } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
-const props = defineProps<{ game: BiPoKnechtGame; trickshotActive?: boolean }>();
+// pro: Knecht Pro. Trickshot erst, wenn der Ball auf den Tisch ging (catchReady), dann heisst Antippen "gefangen".
+const props = defineProps<{ game: BiPoKnechtGame; trickshotActive?: boolean; pro?: boolean; catchReady?: boolean }>();
 defineEmits<{ trickshot: [] }>();
+
+const trickshotLocked = computed(() => !!props.pro && !props.catchReady && !props.trickshotActive && !props.game.trickshotPending.value);
+const bouncerLabel = computed(() => {
+    if (!props.game.bouncerArmed.value) return 'Bouncer';
+    if (!props.pro) return 'Bouncer aktiv';
+    return props.game.bounceSpot.value ? 'Bouncer: welcher Becher?' : 'Bouncer: wo kam er auf?';
+});
 
 const trickshotLabel = computed(() => {
     if (props.trickshotActive) return 'Trickshot: Fänger wählen';
+    if (props.pro && props.catchReady && !props.game.trickshotPending.value) return 'Gefangen? Trickshot';
     return props.game.trickshotPending.value ? 'Trickshot aktiv' : 'Trickshot';
 });
 

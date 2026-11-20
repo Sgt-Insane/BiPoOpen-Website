@@ -1,8 +1,9 @@
 import type { Directive } from 'vue';
 
-// v-fit-text: einzeiliger Text wird so weit verkleinert, bis er in die Breite passt (statt … oder Umbruch).
-// Ausgangsgroesse ist die font-size aus dem CSS, kleiner als MIN_FONT_PX wird es nicht (dann greift das … im CSS).
-// Das Element braucht eine begrenzte Breite (z.B. flex: 1; min-width: 0), white-space: nowrap und overflow: hidden.
+// v-fit-text: einzeiliger Text wird so weit verkleinert, bis er in die Breite passt. In der ganzen App wird nie mit …
+// gekuerzt: passt der Text selbst in MIN_FONT_PX nicht, bricht er um (in der kleinen Schrift).
+// Ausgangsgroesse ist die font-size aus dem CSS. Das Element braucht eine begrenzte Breite (z.B. flex: 1; min-width: 0)
+// und white-space: nowrap. Global registriert (main.ts), also ohne Import nutzbar.
 //
 // v-fit-text="group": alle Elemente einer Gruppe bekommen dieselbe Groesse, die des laengsten Textes
 // (z.B. beide Teamnamen eines Spiels). Ohne Gruppe passt sich jedes Element fuer sich an.
@@ -16,6 +17,8 @@ export const createFitTextGroup = (): FitTextGroup => ({ elements: new Set(), sc
 // Groesse, bei der der Text passt, null = passt in der CSS-Groesse. Laesst das Element in dieser Groesse zurueck.
 const getFittingSize = (el: HTMLElement): number | null => {
     el.style.fontSize = '';
+    el.style.whiteSpace = '';
+    el.style.overflowWrap = '';
     const available = el.clientWidth;
     if (!available || el.scrollWidth <= available) return null;
 
@@ -34,7 +37,14 @@ const fitGroup = (group: FitTextGroup) => {
     const elements = [...group.elements];
     const sizes = elements.map(getFittingSize).filter((size): size is number => size !== null);
     const fontSize = sizes.length ? `${Math.min(...sizes)}px` : '';
-    elements.forEach(el => el.style.fontSize = fontSize);
+    elements.forEach(el => {
+        el.style.fontSize = fontSize;
+        // Selbst in der kleinsten Schrift zu lang: umbrechen statt abschneiden
+        if (el.scrollWidth > el.clientWidth) {
+            el.style.whiteSpace = 'normal';
+            el.style.overflowWrap = 'anywhere';
+        }
+    });
 };
 
 // Mehrere Ausloeser (Resize beider Namen, Update) in einem Durchgang, noch vor dem Zeichnen

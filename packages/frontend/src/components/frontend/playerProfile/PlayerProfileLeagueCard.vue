@@ -4,7 +4,7 @@
             <Avatar :name="latest.teamName" :avatarImage="teamLogo" shape="square" :lazy="false" class="pp-league-logo"/>
             <div class="min-w-0 flex-1">
                 <div class="pp-league-hint">Spielt in der BiPo League für</div>
-                <div class="pp-league-name">{{ latest.teamName }}</div>
+                <div class="pp-league-name" v-fit-text>{{ latest.teamName }}</div>
             </div>
             <i class="pi pi-chevron-right pp-league-chevron"></i>
         </router-link>
@@ -19,8 +19,8 @@
             <span class="pp-league-placement">
                 {{ standing.divisionLabel }} ·
                 <b v-if="standing.placement">Platz {{ standing.placement }}</b>
-                <template v-if="standing.withdrawn"> · zurückgezogen</template>
                 <template v-else>noch kein Spiel</template>
+                <template v-if="standing.withdrawn"> · zurückgezogen</template>
             </span>
             <span v-if="standing.champion" class="pp-league-tag pp-league-tag--champion">Meister</span>
             <span v-else-if="standing.seasonSlug === CURRENT_SEASON_SLUG && !standing.withdrawn" class="pp-league-tag">läuft</span>
@@ -85,7 +85,6 @@ const getLeaguePath = (standing: LeagueStanding) => `/League/${standing.seasonSl
     font-size: 16px;
     font-weight: 700;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 

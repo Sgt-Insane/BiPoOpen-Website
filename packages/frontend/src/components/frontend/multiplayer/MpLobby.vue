@@ -1,0 +1,433 @@
+<template>
+    <div class="MpLobby">
+        <div class="ml-code-card">
+            <div class="ml-code-label">Lobby-PIN</div>
+            <div class="ml-code">{{ session.code }}</div>
+            <button v-hint="'Weitere Spieler stoßen mit einem Handy der Runde an oder geben die PIN ein – auch nach dem Start'" type="button" class="ml-share" @click="$emit('share')"><i class="pi pi-share-alt"></i> Einladen</button>
+        </div>
+
+        <div class="ml-teams">
+            <template v-for="team in [0, 1]" :key="team">
+            <!-- Seiten tauschen: bei zwei Spielern tauschen beide, sonst wechselt nur man selbst -->
+            <button v-if="team === 1" v-hint="swapLabel" type="button" class="ml-swap" :disabled="!canSwap" @click="$emit('swap')">
+                <i class="pi pi-arrow-right-arrow-left"></i>
+            </button>
+            <div class="ml-team" :style="{ '--ml-team-color': colors[team] }">
+                <div class="ml-team-title">{{ teamName(team) }}</div>
+                <div v-for="player in getTeamPlayers(session.players, team)" :key="player.deviceId" class="ml-player-row">
+                    <div class="ml-player">
+                        <span class="ml-player-pic">
+                            <Avatar :name="player.name" class="ml-player-avatar" :lazy="false" />
+                            <i v-if="hasPhone(player) && player.ready" v-hint.tap="'Bereit'" class="pi pi-check ml-player-ready" aria-label="Bereit"></i>
+                        </span>
+                        <span class="ml-player-name">
+                            {{ player.name }}
+                            <small v-if="!hasPhone(player)" class="ml-player-nophone">ohne Handy</small>
+                            <small v-else-if="player.deviceId === deviceId" class="ml-player-nophone ml-player-you">Du</small>
+                        </span>
+                    </div>
+                    <button v-if="!hasPhone(player)" type="button" class="ml-remove" :aria-label="`${player.name} entfernen`" @click="$emit('removeGuest', player.deviceId)">
+                        <i class="pi pi-times"></i>
+                    </button>
+                </div>
+                <div v-if="!getTeamPlayers(session.players, team).length" class="ml-empty">Wartet auf Spieler …</div>
+
+                <!-- Spieler ohne eigenes Handy: kleine Option, ein Handy des Teams traegt fuer ihn ein -->
+                <form v-if="guestTeam === team" class="ml-guest" @submit.prevent="addGuest">
+                    <PlayerSearchAutoComplete v-model="guestName" placeholder="Name …" className="ml-guest-input" @item-select="onGuestSelect" />
+                    <button type="submit" class="ml-guest-add" :disabled="!guestName.trim()" aria-label="Hinzufügen"><i class="pi pi-check"></i></button>
+                </form>
+                <button v-else-if="hasRoom(team)" v-hint="'Ein Handy seines Teams trägt für ihn ein'" type="button" class="ml-add" @click="openGuest(team)">+ Ohne Handy</button>
+            </div>
+            </template>
+        </div>
+
+        <!-- Was gespielt wird: Standard offen. Liga/Cup nur, wenn die beiden Teams dort noch ein offenes Spiel haben. -->
+        <div v-if="canStart" class="ml-kind">
+            <div class="ml-kind-title">Was spielt ihr?</div>
+            <div v-if="options.length > 1" class="ml-kind-choices" role="radiogroup">
+                <button v-for="option in options" :key="option.kind" type="button" role="radio" class="ml-kind-choice" :class="`ml-kind-choice--${option.kind}`"
+                    :aria-checked="option.kind === selected.kind" :disabled="starting" @click="option.kind !== selected.kind && $emit('chooseKind', option.kind)">
+                    {{ option.kind === 'open' ? 'Offen' : option.kind === 'league' ? 'Liga' : 'Cup' }}
+                </button>
+            </div>
+            <div class="ml-kind-detail" :class="`ml-kind-detail--${selected.kind}`">
+                <b>{{ selected.label }}</b> · {{ selected.detail }}
+                <i v-if="loadingOptions" class="pi pi-spin pi-spinner ml-kind-loading" aria-label="Lade offene Liga- und Cup-Spiele"></i>
+            </div>
+        </div>
+
+        <div class="ml-footer">
+            <!-- Sind alle bereit, geht es von selbst los -->
+            <button v-if="!meReady" type="button" class="ml-button ml-button--primary" :disabled="busy || starting" @click="$emit('ready')">Bereit</button>
+            <div v-else class="ml-button ml-button--primary ml-button--status" aria-live="polite">
+                <i v-if="starting" class="pi pi-spin pi-spinner"></i>
+                <span>{{ startLabel }}</span>
+            </div>
+            <button v-if="meReady && !starting" type="button" class="ml-leave" @click="$emit('ready')">Doch nicht bereit</button>
+            <button type="button" class="ml-leave" :disabled="starting" @click="$emit('leave')">Verlassen</button>
+        </div>
+    </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import Avatar from '@/components/shared/Avatar.vue';
+import PlayerSearchAutoComplete from '@/components/shared/PlayerSearchAutoComplete.vue';
+import { TEAM_COLORS } from '../biPoKnecht/KnechtUtilFunctions';
+import { MAX_PLAYERS_PER_TEAM, allReady, getTeamPlayers, hasPhone, isReady, type MpSession } from './multiplayerTypes';
+import type { MpGameKind, MpGameOption } from './multiplayerGameOptions';
+
+const props = defineProps<{
+    session: MpSession;
+    deviceId: string;
+    options: MpGameOption[];        // was die Spieler gerade spielen koennen (immer mindestens offen)
+    loadingOptions: boolean;
+    busy: boolean;
+}>();
+
+const emit = defineEmits<{
+    swap: []; chooseKind: [kind: MpGameKind]; leave: []; share: [];
+    ready: []; addGuest: [team: number, name: string]; removeGuest: [deviceId: string];
+}>();
+
+const colors = computed(() => props.session.cupColors ?? TEAM_COLORS);
+const teamName = (team: number) => colors.value[team] === TEAM_COLORS[1] ? 'Team Blau' : 'Team Rot';
+const canStart = computed(() => [0, 1].every(team => getTeamPlayers(props.session.players, team).length > 0));
+const meReady = computed(() => !!props.session.players.find(player => player.deviceId === props.deviceId)?.ready);
+const everyoneReady = computed(() => allReady(props.session.players));
+const selected = computed(() => props.options.find(option => option.kind === (props.session.gameKind ?? 'open')) ?? props.options[0]);
+// Alle bereit (und beide Teams besetzt): das Spiel wird gerade angelegt
+const starting = computed(() => props.session.status === 'started' || (canStart.value && everyoneReady.value));
+const startLabel = computed(() => {
+    if (!canStart.value) return 'Warte auf Gegner …';
+    const waiting = props.session.players.filter(player => !isReady(player)).map(player => player.name);
+    if (!waiting.length) return 'Spiel startet …';
+    return waiting.length === 1 ? `Warte auf ${waiting[0]} …` : `Warte auf ${waiting.length} Spieler …`;
+});
+const hasRoom = (team: number) => getTeamPlayers(props.session.players, team).length < MAX_PLAYERS_PER_TEAM;
+// Zwei Spieler in verschiedenen Teams: beide tauschen. Sonst wechselt man selbst, wenn drueben Platz ist.
+const me = computed(() => props.session.players.find(player => player.deviceId === props.deviceId));
+const swapsBoth = computed(() => props.session.players.length === 2 && new Set(props.session.players.map(player => player.team)).size === 2);
+const canSwap = computed(() => swapsBoth.value || (!!me.value && hasRoom(1 - me.value.team)));
+const swapLabel = computed(() => swapsBoth.value ? 'Seiten tauschen' : 'Ins andere Team wechseln');
+
+const guestTeam = ref<number | null>(null);
+const guestName = ref('');
+const openGuest = (team: number) => {
+    guestTeam.value = team;
+    guestName.value = '';
+};
+const addGuest = () => {
+    const name = guestName.value.trim();
+    if (!name || guestTeam.value === null) return;
+    emit('addGuest', guestTeam.value, name);
+    guestTeam.value = null;
+};
+const onGuestSelect = (event: { value: string }) => {
+    guestName.value = event.value;
+    addGuest();
+};
+</script>
+
+<style scoped>
+.MpLobby{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.ml-code-card{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 16px;
+    border-radius: 20px;
+    background: var(--bp-surface);
+    border: 1px solid var(--bp-border);
+    text-align: center;
+}
+.ml-code-label{
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--bp-text-muted);
+}
+.ml-code{
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: .25em;
+    margin-right: -.25em;
+    color: var(--bp-text-strong);
+    font-variant-numeric: tabular-nums;
+}
+.ml-code-hint{
+    max-width: 320px;
+    font-size: 13px;
+    color: var(--bp-text-secondary);
+}
+.ml-share{
+    margin-top: 8px;
+    border: none;
+    border-radius: 999px;
+    padding: 7px 14px;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-strong);
+    font-size: 13px;
+    font-weight: 700;
+}
+/* Teams untereinander (wie beim Eintragen), Tausch-Pfeil mittig auf der Naht */
+.ml-teams{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.ml-swap{
+    position: relative;
+    z-index: 1;
+    align-self: center;
+    margin: -22px 0;
+    transform: rotate(90deg);
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+    font-size: 15px;
+}
+.ml-swap:disabled{ opacity: .4; }
+.ml-team{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 12px;
+    border-radius: 18px;
+    background: var(--bp-surface);
+    border-top: 4px solid var(--ml-team-color);
+}
+.ml-team-title{
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--ml-team-color);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+.ml-player{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px;
+    border: 2px solid var(--ml-team-color);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--ml-team-color) 8%, var(--bp-surface));
+    color: var(--bp-text-strong);
+    text-align: left;
+}
+.ml-player:disabled{ opacity: 1; }
+.ml-player-avatar{
+    width: 30px !important;
+    height: 30px !important;
+    flex-shrink: 0;
+    font-size: 11px;
+}
+.ml-player-name{
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.ml-player-pic{
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+}
+/* Bereit: gruener Haken unten rechts am Avatar */
+.ml-player-ready{
+    position: absolute;
+    right: -4px;
+    bottom: -3px;
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bp-surface);
+    border-radius: 50%;
+    background: var(--bp-success);
+    color: white;
+    font-size: 8px;
+    font-weight: 900;
+}
+/* "Du": fett in Teamfarbe, hebt sich von "ohne Handy" ab */
+.ml-player-nophone.ml-player-you{
+    color: var(--ml-team-color);
+    font-size: 12px;
+    font-weight: 900;
+}
+.ml-empty{
+    padding: 10px 4px;
+    font-size: 13px;
+    color: var(--bp-text-muted);
+    animation: ml-wait 1.6s ease-in-out infinite;
+}
+@keyframes ml-wait{ 50%{ opacity: .4; } }
+.ml-hint{
+    margin: -4px 0 0;
+    font-size: 12px;
+    color: var(--bp-text-secondary);
+}
+.ml-kind{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 18px;
+    background: var(--bp-surface);
+}
+.ml-kind-title{
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--bp-text-muted);
+}
+.ml-kind-choices{
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+    background: var(--bp-fill-soft);
+}
+.ml-kind-choice{
+    flex: 1;
+    padding: 9px 8px;
+    border: none;
+    border-radius: 10px;
+    background: none;
+    color: var(--bp-text-secondary);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 800;
+}
+.ml-kind-choice[aria-checked="true"]{
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
+}
+.ml-kind-choice--league[aria-checked="true"]{ color: #2AA3B8; }
+.ml-kind-choice--cup[aria-checked="true"]{ color: #EA5160; }
+.ml-kind-detail{
+    padding-left: 8px;
+    border-left: 4px solid var(--bp-text-muted);
+    font-size: 13px;
+    color: var(--bp-text-secondary);
+}
+.ml-kind-detail b{ color: var(--bp-text-strong); }
+.ml-kind-detail--league{ border-left-color: #2AA3B8; }
+.ml-kind-detail--cup{ border-left-color: #EA5160; }
+.ml-kind-loading{
+    margin-left: 4px;
+    font-size: 11px;
+}
+.ml-footer{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+.ml-footer .ml-button--primary{
+    width: 100%;
+    max-width: 320px;
+}
+.ml-leave{
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    color: var(--bp-text-secondary);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+}
+.ml-button{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 999px;
+    padding: 13px 18px;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-strong);
+    font-weight: 800;
+    font-size: 15px;
+}
+.ml-button--primary{
+    flex: 1;
+    background: var(--main-color);
+    color: white;
+}
+.ml-button:disabled{ opacity: .55; }
+.ml-button--status{ opacity: .85; }
+.ml-leave:disabled{ opacity: .4; }
+.ml-player-row{
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+.ml-player-row .ml-player{ flex: 1; }
+.ml-player-nophone{
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bp-text-muted);
+}
+.ml-remove{
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--bp-text-muted);
+}
+.ml-add{
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 4px 2px;
+    color: var(--bp-text-secondary);
+    font-size: 13px;
+    font-weight: 700;
+}
+.ml-guest{
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+}
+.ml-guest :deep(.ml-guest-input),
+.ml-guest :deep(.p-autocomplete),
+.ml-guest :deep(input){
+    width: 100%;
+    min-width: 0;
+}
+.ml-guest > :first-child{
+    flex: 1;
+    min-width: 0;
+}
+.ml-guest-add{
+    flex-shrink: 0;
+    width: 40px;
+    border: none;
+    border-radius: 12px;
+    background: var(--ml-team-color);
+    color: white;
+}
+.ml-guest-add:disabled{ opacity: .5; }
+</style>

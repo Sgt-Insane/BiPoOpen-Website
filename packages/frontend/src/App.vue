@@ -6,6 +6,8 @@ import TournamentPickerDrawer from '@/components/shared/TournamentPickerDrawer.v
 import AddGameDrawer from '@/components/shared/GameEntry/AddGameDrawer.vue';
 import PlayerSearchDrawer from '@/components/shared/PlayerSearchDrawer.vue';
 import GlossaryPopover from '@/components/shared/GlossaryPopover.vue';
+import WinterSnow from '@/components/shared/winter/WinterSnow.vue';
+import { winterThemeActive, prefersReducedMotion } from '@/components/shared/winter/winterTheme';
 import Toast from 'primevue/toast';
 import { Analytics } from '@vercel/analytics/vue';
 import { SpeedInsights } from '@vercel/speed-insights/vue';
@@ -26,6 +28,8 @@ provide('openPlayerProfile', openPlayerProfile);
 // Detailseiten (z.B. Benachrichtigungen) haben mobil keinen App-Header, nur ihren Zurueck-Pfeil
 const route = useRoute();
 const isDetailPage = computed(() => route.meta.detailPage === true);
+
+const showSnow = winterThemeActive && !prefersReducedMotion();
 
 onBeforeMount(async() => {
 	// Configure Axios
@@ -82,6 +86,9 @@ onBeforeMount(async() => {
 
 	<!-- App footer -->
 	<AppFooter/>
+
+	<!-- Winter-Theme: leichter Schneefall -->
+	<WinterSnow v-if="showSnow"/>
 
 	<!-- Mobile bottom navigation + tournament picker + "Spiel eintragen" (Plus in der Navigation) -->
 	<AppBottomNav/>

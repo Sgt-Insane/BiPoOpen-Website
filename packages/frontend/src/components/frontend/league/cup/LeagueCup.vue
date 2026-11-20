@@ -49,7 +49,7 @@
                     <div class="lc-team-grid">
                         <div v-for="teamName in potTeams" :key="teamName" class="lc-team">
                             <Avatar :name="teamName" :avatarImage="getLeagueTeamLogo(teamName, season.slug)" shape="square" class="lc-team-avatar" />
-                            <span class="lc-team-name">{{ teamName }}</span>
+                            <span class="lc-team-name" v-fit-text>{{ teamName }}</span>
                         </div>
                     </div>
                 </div>
@@ -72,7 +72,7 @@
                     <div class="lc-team-grid">
                         <div v-for="teamName in selectedRound.byes" :key="teamName" class="lc-team">
                             <Avatar :name="teamName" :avatarImage="getLeagueTeamLogo(teamName, season.slug)" shape="square" class="lc-team-avatar" />
-                            <span class="lc-team-name">{{ teamName }}</span>
+                            <span class="lc-team-name" v-fit-text>{{ teamName }}</span>
                         </div>
                     </div>
                 </div>
@@ -93,7 +93,7 @@
                             />
                         </div>
                     </template>
-                    <MatchElement v-else v-for="match in playedGames" :key="match._id" :match="withLeagueTeamLogos(match)" :avatarShape="'square'"/>
+                    <MatchElement v-else v-for="match in playedGames" :key="match._id" :match="match" gameType="cup"/>
                 </div>
 
                 <div v-if="openPairings.length" class="lc-group">
@@ -111,7 +111,7 @@
                             />
                         </div>
                     </template>
-                    <MatchElement v-else v-for="match in openPairingMatches" :key="match.team1.players[0].name" :match="match" :avatarShape="'square'"/>
+                    <MatchElement v-else v-for="match in openPairingMatches" :key="match.team1.players[0].name" :match="match" gameType="cup"/>
                 </div>
             </template>
         </template>
@@ -127,7 +127,7 @@ import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
 import FinalFourSeries from '../FinalFourSeries.vue';
 import { useStickyTop } from '@/components/shared/useStickyStack';
 import { LeagueSeason } from '../LeagueSeasonsData';
-import { getLeagueTeamLogo, withLeagueTeamLogos } from '../LeaguePlayersData';
+import { getLeagueTeamLogo } from '../LeaguePlayersData';
 import {
     getCupGames,
     getCupRoundGames,
@@ -328,7 +328,6 @@ const potTeamCount = computed(() =>
 }
 .lc-team-name{
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 

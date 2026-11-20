@@ -6,6 +6,7 @@ import mkcert from 'vite-plugin-mkcert';
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { devLiveServer } from './devLiveServer'
+import { devMpServer } from './devMpServer'
 
 export default defineConfig(({ command }) => {
   return {
@@ -15,6 +16,8 @@ export default defineConfig(({ command }) => {
       tailwindcss(),
       // Live-Spiele im Demo-Modus (nur lokaler Dev-Server, siehe devLiveServer.ts)
       devLiveServer(),
+      // Anstoss-Lobbys im Demo-Modus (siehe devMpServer.ts)
+      devMpServer(),
 
       // PWA plugin configuration
       VitePWA({
@@ -34,16 +37,9 @@ export default defineConfig(({ command }) => {
           globPatterns: [
             '**/*.{html,js,css,woff2}'
           ],
+          // Seitenaufrufe liefert der Service Worker aus dem Precache (index.html, navigateFallback).
+          // Neue Versionen kommen ueber das Update des Service Workers (src/util/pwaUpdate.ts).
           runtimeCaching: [
-            {
-              // Network-First for HTML navigations
-              urlPattern: ({ request }) => request.mode === 'navigate',
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'pages-cache',
-                networkTimeoutSeconds: 5
-              }
-            },
             {
               // Cache images on demand (not precached)
               urlPattern: ({ request }) => request.destination === 'image',
@@ -63,7 +59,9 @@ export default defineConfig(({ command }) => {
               method: 'GET',
               options: {
                 cacheName: 'backend-api-cache',
-                networkTimeoutSeconds: 5,
+                // Alter Stand nur, wenn das Netz wirklich weg ist oder haengt, nicht schon bei einem
+                // langsamen Kaltstart des Backends (sonst sieht man veraltete Spiele und Spielzahlen)
+                networkTimeoutSeconds: 15,
                 expiration: {
                   maxEntries: 100,
                   maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days

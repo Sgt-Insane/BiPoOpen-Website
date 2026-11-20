@@ -7,7 +7,8 @@
                     <button type="button" class="lg-back" aria-label="Zurück" @click="goBack()">
                         <i class="pi pi-chevron-left"></i>
                     </button>
-                    <span v-if="game && !finished" class="lg-badge"><span class="lg-dot"></span> LIVE</span>
+                    <span v-if="game && !finished && view?.paused" class="lg-badge lg-badge--paused"><span class="lg-pause" aria-hidden="true"><span></span><span></span></span> PAUSIERT</span>
+                    <span v-else-if="game && !finished" class="lg-badge"><span class="lg-dot"></span> LIVE</span>
                     <span v-else-if="game" class="lg-badge lg-badge--done">{{ game.status === 'aborted' ? 'Abgebrochen' : 'Beendet' }}</span>
                     <span v-if="view?.minute !== null && view" class="lg-minute">{{ view.minute }}'</span>
                 </div>
@@ -15,7 +16,7 @@
                 <template v-if="view">
                     <div class="lg-score">
                         <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="lg-team" :style="{ '--lg-team-color': getTeamColor(view.match, teamIndex) }">
-                            <span class="lg-team-name">{{ view.teamNames[teamIndex] }}</span>
+                            <span class="lg-team-name" v-fit-text>{{ view.teamNames[teamIndex] }}</span>
                             <span class="lg-team-score">{{ view.score[teamIndex] }}</span>
                         </div>
                     </div>
@@ -151,6 +152,27 @@ const goBack = () => {
     font-weight: 800;
     letter-spacing: .08em;
 }
+/* Pausiert: rundes Pause-Symbol in der Seitenfarbe (wie im Live-Ticker) */
+.lg-badge--paused{
+    padding-left: 3px;
+    background: rgba(255, 255, 255, .15);
+}
+.lg-pause{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--main-color);
+}
+.lg-pause span{
+    width: 3px;
+    height: 9px;
+    border-radius: 1px;
+    background: white;
+}
 .lg-badge--done{
     background: rgba(255, 255, 255, .15);
     letter-spacing: 0;
@@ -187,7 +209,6 @@ const goBack = () => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 18px;
     font-weight: 800;

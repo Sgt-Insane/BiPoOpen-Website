@@ -11,10 +11,10 @@ describe('Auszeichnungen', () => {
     it('gibt einen Titel dem Spieler, auf den er am besten passt, nicht dem zuerst geprueften', () => {
         const awards = getAwards([
             player('A', { throws: 10, hits: 6, points: 6, bestStreak: 4 }),
-            player('B', { throws: 10, hits: 7, points: 7, bestStreak: 6 }),
+            player('B', { throws: 10, hits: 6, points: 6, bestStreak: 6 }),
         ]);
-        expect(awards[1].title).toBe('Scharfschütze');
-        expect(awards[0].title).not.toBe('Scharfschütze');
+        expect(awards[1]?.title).toBe('Scharfschütze');
+        expect(awards[0]?.title).not.toBe('Scharfschütze');
     });
 
     it('vergibt "Zielwasser vergessen" nicht, wenn alle schwach getroffen haben', () => {
@@ -24,21 +24,42 @@ describe('Auszeichnungen', () => {
             player('C', { throws: 12, hits: 2, points: 2 }),
             player('D', { throws: 12, hits: 3, points: 3 }),
         ]);
-        expect(awards.map(award => award.title)).not.toContain('Zielwasser vergessen');
+        expect(awards.map(award => award?.title)).not.toContain('Zielwasser vergessen');
     });
 
-    it('nennt nur ueberdurchschnittliche Werfer "Solider Werfer"', () => {
+    it('vergibt ohne besonderes Ereignis keine Auszeichnung', () => {
         const awards = getAwards([
-            player('Gut', { throws: 10, hits: 5, points: 5 }),
-            player('Top', { throws: 10, hits: 5, points: 6 }),
-            player('Schwach', { throws: 10, hits: 2, points: 2 }),
-            player('Mittel', { throws: 10, hits: 3, points: 3 }),
+            player('A', { throws: 10, hits: 5, points: 5, bestStreak: 2 }),
+            player('B', { teamIndex: 1, throws: 10, hits: 4, points: 4, bestStreak: 2 }),
         ]);
-        const byName = Object.fromEntries(awards.map((award, index) => [['Gut', 'Top', 'Schwach', 'Mittel'][index], award.title]));
-        expect(byName.Top).toBe('Becherräumer');
-        expect(byName.Gut).toBe('Solider Werfer');
-        expect(byName.Schwach).not.toBe('Solider Werfer');
-        expect(byName.Mittel).not.toBe('Solider Werfer');
+        expect(awards).toEqual([null, null]);
+    });
+
+    it('lobt im Team, wer fast alle Becher allein abraeumt', () => {
+        const awards = getAwards([
+            player('A', { teamIndex: 0, throws: 12, hits: 8, points: 8 }),
+            player('B', { teamIndex: 0, playerIndex: 1, throws: 12, hits: 2, points: 2 }),
+            player('C', { teamIndex: 1, throws: 12, hits: 3, points: 3 }),
+        ]);
+        expect(awards[0]).toMatchObject({ title: 'Alleinunterhalter', detail: '8 von 10 Bechern fürs Team' });
+    });
+
+    it('nennt den letzten Becher nur eiskalt, wenn es knapp war', () => {
+        const close = getAwards([
+            player('A', { teamIndex: 0, throws: 12, hits: 5, points: 10, lastCups: 1 }),
+            player('B', { teamIndex: 1, throws: 12, hits: 4, points: 9 }),
+        ]);
+        expect(close[0]).toMatchObject({ title: 'Eiskalt', detail: 'Letzten Becher zum 10 : 9 versenkt' });
+        const clear = getAwards([
+            player('A', { teamIndex: 0, throws: 12, hits: 5, points: 10, lastCups: 1 }),
+            player('B', { teamIndex: 1, throws: 12, hits: 4, points: 4 }),
+        ]);
+        expect(clear[0]?.title).not.toBe('Eiskalt');
+    });
+
+    it('zeichnet schon einen einzelnen Bouncer aus', () => {
+        const awards = getAwards([player('A', { throws: 10, hits: 4, points: 4, bouncers: 1 }), player('B', { teamIndex: 1, throws: 10, hits: 4, points: 4 })]);
+        expect(awards[0]?.title).toBe('Bouncer-König');
     });
 
     it('gibt allen ohne Becher "Nackt"', () => {
@@ -46,7 +67,7 @@ describe('Auszeichnungen', () => {
             player('A', { throws: 8, hits: 0, points: 0 }),
             player('B', { throws: 8, hits: 0, points: 0 }),
             player('C', { throws: 8, hits: 6, points: 6 }),
-        ]).map(award => award.title);
+        ]).map(award => award?.title);
         expect(titles.slice(0, 2)).toEqual(['Nackt', 'Nackt']);
     });
 
@@ -56,9 +77,9 @@ describe('Auszeichnungen', () => {
             player('B', { teamIndex: 0, playerIndex: 1, throws: 12, hits: 0, points: 0 }),
             player('C', { teamIndex: 1, throws: 12, hits: 4, points: 4 }),
         ]);
-        expect(duo[0].title).toBe('10/10');
+        expect(duo[0]?.title).toBe('10/10');
         const solo = getAwards([player('A', { teamIndex: 0, throws: 14, hits: 10, points: 10 }), player('C', { teamIndex: 1, throws: 12, hits: 4, points: 4 })]);
-        expect(solo[0].title).not.toBe('10/10');
+        expect(solo[0]?.title).not.toBe('10/10');
     });
 
     it('gibt bei einem Deathcup-Sieg kein 10/10, auch wenn die Punkte reichen', () => {
@@ -67,15 +88,16 @@ describe('Auszeichnungen', () => {
             player('B', { teamIndex: 0, playerIndex: 1, throws: 6, hits: 0, points: 0 }),
             player('C', { teamIndex: 1, throws: 6, hits: 3, points: 3 }),
         ]);
-        expect(awards.map(award => award.title)).not.toContain('10/10');
+        expect(awards.map(award => award?.title)).not.toContain('10/10');
     });
 
-    it('lobt immer die laengste Serie des Spiels', () => {
+    it('lobt die laengste Serie des Spiels ab 4 Treffern in Folge', () => {
         const awards = getAwards([
-            player('A', { throws: 10, hits: 6, points: 6, bestStreak: 3, bombs: 1 }),
-            player('B', { throws: 10, hits: 5, points: 5, bestStreak: 2 }),
+            player('A', { throws: 10, hits: 6, points: 6, bestStreak: 4 }),
+            player('B', { teamIndex: 1, throws: 10, hits: 5, points: 5, bestStreak: 3 }),
         ]);
-        expect(awards[0]).toMatchObject({ title: 'Scharfschütze', detail: 'Längste Serie im Spiel: 3 Treffer in Folge' });
+        expect(awards[0]).toMatchObject({ title: 'Scharfschütze', detail: 'Längste Serie im Spiel: 4 Treffer in Folge' });
+        expect(awards[1]).toBeNull();
     });
 
     it('zeichnet ein Spiel ohne Fehlwurf aus', () => {
@@ -88,7 +110,7 @@ describe('Auszeichnungen', () => {
             player('A', { throws: 8, hits: 4, points: 4, bombs: 1 }),
             player('B', { throws: 8, hits: 4, points: 4, bombs: 2 }),
         ]);
-        expect(awards[1].title).toBe('Bombenleger');
-        expect(awards[0].title).not.toBe('Bombenleger');
+        expect(awards[1]?.title).toBe('Bombenleger');
+        expect(awards[0]?.title).not.toBe('Bombenleger');
     });
 });

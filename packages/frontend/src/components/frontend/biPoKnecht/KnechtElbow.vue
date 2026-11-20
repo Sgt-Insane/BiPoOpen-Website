@@ -7,7 +7,7 @@
                 <div class="kn-elbow-team-name">{{ getTeamName(game.match, teamIndex) }}</div>
                 <button v-for="(player, playerIndex) in getTeam(game.match, teamIndex).players" :key="playerIndex"
                     type="button" class="kn-elbow-player" @click="choose(teamIndex, playerIndex)">
-                    <span class="kn-elbow-name">{{ player.name }}</span>
+                    <span class="kn-elbow-name" v-fit-text>{{ player.name }}</span>
                     <span class="kn-elbow-cards">
                         <span v-for="call in calls(teamIndex, playerIndex)" :key="call" class="kn-elbow-card" :class="call === 1 ? 'kn-elbow-card--yellow' : 'kn-elbow-card--red'"></span>
                     </span>
@@ -103,7 +103,6 @@ const choose = (team: number, player: number) => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 15px;
     font-weight: 700;

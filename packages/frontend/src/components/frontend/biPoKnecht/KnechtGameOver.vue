@@ -17,8 +17,10 @@
             <!-- Schritt 1: Auszeichnungen -->
             <template v-if="step === 'awards'">
                 <div class="kn-over-section-title">Auszeichnungen</div>
+                <!-- Auszeichnungen gibt es nur fuer Besonderes, nicht jeder Spieler bekommt eine -->
                 <div class="kn-awards">
-                    <div v-for="(award, index) in awards" :key="index" class="kn-award" :style="{ '--kn-team-color': getTeamColor(match, stats[index].teamIndex) }">
+                    <div v-if="!awardEntries.length" class="kn-award-none">Diesmal keine besonderen Momente – nächstes Spiel!</div>
+                    <div v-for="{ award, index } in awardEntries" :key="index" class="kn-award" :style="{ '--kn-team-color': getTeamColor(match, stats[index].teamIndex) }">
                         <span class="kn-award-icon">{{ award.icon }}</span>
                         <span class="kn-award-text">
                             <span class="kn-award-title">{{ award.title }}</span>
@@ -28,7 +30,7 @@
                     </div>
                 </div>
                 <button v-if="isFeatureOn('shareOverlay')" type="button" class="kn-over-share" @click="shareOpen = true">
-                    <i class="pi pi-share-alt"></i> Story-Overlay teilen
+                    <i class="pi pi-share-alt"></i> Story-Overlay teilen<DevBadge feature="shareOverlay" />
                 </button>
             </template>
 
@@ -65,7 +67,8 @@
 
         <div class="kn-over-footer">
             <template v-if="step === 'awards'">
-                <button type="button" class="kn-over-button kn-over-button-secondary" @click="game.undo()">
+                <!-- Mehrere Handys: nur den eigenen letzten Eintrag zuruecknehmen -->
+                <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="!undoAllowed" v-hint="'Letzten Wurf rückgängig machen'" @click="game.undo()">
                     <i class="pi pi-undo"></i>
                 </button>
                 <button type="button" class="kn-over-button kn-over-button-primary" @click="step = 'summary'">
@@ -74,12 +77,13 @@
             </template>
             <template v-else>
                 <template v-if="canSave">
-                    <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving" title="Speichern und Revanche" @click="save(true)">
+                    <button type="button" class="kn-over-button kn-over-button-secondary" :disabled="saving || !!lockedText" v-hint="'Speichern und Revanche'" @click="save(true)">
                         <i class="pi pi-replay"></i>
                     </button>
-                    <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving" @click="save(false)">
-                        <i v-if="saving" class="pi pi-spin pi-spinner"></i>
-                        <span v-else>{{ saveLabel }}</span>
+                    <button type="button" class="kn-over-button kn-over-button-primary" :disabled="saving || !!lockedText" @click="save(false)">
+                        <i v-if="saving || lockedText" class="pi pi-spin pi-spinner"></i>
+                        <span v-if="lockedText">{{ lockedText }}</span>
+                        <span v-else-if="!saving">{{ saveLabel }}</span>
                     </button>
                 </template>
                 <div v-else class="kn-over-guest">Das andere Handy (hat das Spiel gestartet) trägt es ein.</div>
@@ -96,6 +100,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { computed, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { isDemoMode } from '@/util/demoGames';
@@ -107,12 +112,21 @@ import { getTeamPoints } from './knechtEngine';
 import { formatSeconds, getThrowTimes } from './knechtThrowTimes';
 import {
     getTeamColor, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getPlayerName, getSaveLabel, getTeamName, saveKnechtGame,
+    type KnechtAward,
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
 import { isFeatureOn } from '@/util/featureFlags';
 
-const props = withDefaults(defineProps<{ game: BiPoKnechtGame; refereeUsed: boolean; canSave?: boolean }>(), { canSave: true });
+const props = withDefaults(defineProps<{
+    game: BiPoKnechtGame;
+    refereeUsed: boolean;
+    canSave?: boolean;
+    undoAllowed?: boolean;  // mehrere Handys: letzter Eintrag stammt von diesem Handy
+    // Mehrere Handys: Speichern ueber das Live-Spiel, damit nur ein Handy eintraegt
+    saveHandler?: (result: Match, rematch: boolean) => Promise<boolean>;
+    lockedText?: string;    // anderes Handy traegt gerade ein
+}>(), { canSave: true, undoAllowed: true });
 const emit = defineEmits<{ saved: [match: Match, rematch: boolean] }>();
 
 const toast = useToast();
@@ -132,7 +146,9 @@ const state = computed(() => props.game.state.value);
 const winner = computed(() => state.value.winnerTeamIndex ?? 0);
 const teamPoints = computed(() => getTeamPoints(state.value));
 const stats = computed(() => getPlayerStats(match, state.value));
-const awards = computed(() => getAwards(stats.value));
+const awardEntries = computed(() => getAwards(stats.value)
+    .map((award, index) => ({ award, index }))
+    .filter((entry): entry is { award: KnechtAward; index: number } => !!entry.award));
 const duration = computed(() => formatDuration(match.time, state.value.turns.at(-1)?.time));
 const saveLabel = getSaveLabel(match.time ?? 0);
 // Knecht Pro: Wurfzeiten, falls "Zug starten" genutzt wurde
@@ -156,13 +172,14 @@ const save = async (rematch: boolean) => {
     const result = buildKnechtMatch(match, state.value, props.refereeUsed ? referee.value : undefined);
     let success = false;
     try {
-        success = await saveKnechtGame(result);
+        success = props.saveHandler ? await props.saveHandler(result, rematch) : await saveKnechtGame(result);
     } catch {
         success = false;
     }
     saving.value = false;
 
     if (!success) {
+        if (props.saveHandler) return;     // Hinweis kommt vom saveHandler
         toast.add({ severity: 'error', summary: 'Spiel nicht gespeichert – bitte nochmal versuchen', life: 4000 });
         return;
     }
@@ -268,6 +285,14 @@ const save = async (rematch: boolean) => {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+.kn-award-none{
+    padding: 14px;
+    border-radius: 16px;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-muted);
+    font-size: 14px;
+    text-align: center;
 }
 .kn-award{
     display: flex;

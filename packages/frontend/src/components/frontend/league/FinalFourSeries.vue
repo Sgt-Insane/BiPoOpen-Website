@@ -14,7 +14,7 @@
                             :grayscale="isSeriesLoser(0)"
                             class="ff-avatar"
                         />
-                        <span class="ff-team-name">{{ getTeamName(seriesMatch.team1, team1Placeholder) }}</span>
+                        <span class="ff-team-name" v-fit-text>{{ getTeamName(seriesMatch.team1, team1Placeholder) }}</span>
                         <span v-if="seriesScoresVisible" class="ff-team-score">{{ seriesResult.team1Wins }}</span>
                     </div>
                     <div class="ff-team" :class="{ 'ff-team--loose': isSeriesLoser(1) }">
@@ -26,7 +26,7 @@
                             :grayscale="isSeriesLoser(1)"
                             class="ff-avatar"
                         />
-                        <span class="ff-team-name">{{ getTeamName(seriesMatch.team2, team2Placeholder) }}</span>
+                        <span class="ff-team-name" v-fit-text>{{ getTeamName(seriesMatch.team2, team2Placeholder) }}</span>
                         <span v-if="seriesScoresVisible" class="ff-team-score ff-team-score--second">{{ seriesResult.team2Wins }}</span>
                     </div>
                 </div>
@@ -39,8 +39,8 @@
             <div v-for="(gameMatch, index) in seriesResult.games" :key="gameMatch._id || index" class="ff-series-game">
                 <div class="ff-series-game-title">Spiel {{ index + 1 }}</div>
                 <MatchElement
-                    :match="withLeagueTeamLogos(gameMatch)"
-                    :avatarShape="avatarShape"
+                    :match="gameMatch"
+                    gameType="league"
                     :team1Placeholder="team1Placeholder"
                     :team2Placeholder="team2Placeholder"
                 />
@@ -54,7 +54,6 @@
 import { computed, ref } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
-import { withLeagueTeamLogos } from './LeaguePlayersData';
 
 const props = defineProps({
     team1: { type: Object as () => Team | undefined, default: undefined },
@@ -196,7 +195,6 @@ const toggleExpanded = () => {
     min-width: 0;
     flex: 1;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 

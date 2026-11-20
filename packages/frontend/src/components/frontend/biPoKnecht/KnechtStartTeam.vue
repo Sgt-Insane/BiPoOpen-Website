@@ -7,7 +7,7 @@
             <div class="kn-colors">
                 <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="kn-color-card" :style="{ '--kn-team-color': getTeamColor(match, teamIndex) }">
                     <span class="kn-color-cups" aria-hidden="true"><span></span></span>
-                    <span class="kn-color-team">{{ getTeamName(match, teamIndex) }}</span>
+                    <span class="kn-color-team" v-fit-text>{{ getTeamName(match, teamIndex) }}</span>
                     <span class="kn-color-name">{{ colorName(teamIndex) }}</span>
                 </div>
             </div>
@@ -26,7 +26,7 @@
             <div class="kn-rps-status">{{ rps.status }}</div>
             <div class="kn-rps-hands">
                 <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="kn-rps-team" :style="{ '--kn-team-color': getTeamColor(match, teamIndex) }">
-                    <span class="kn-rps-name">{{ getTeamName(match, teamIndex) }}</span>
+                    <span class="kn-rps-name" v-fit-text>{{ getTeamName(match, teamIndex) }}</span>
                     <span class="kn-rps-hand" :class="{ 'kn-rps-hand--shaking': rps.shaking, 'kn-rps-hand--winner': rps.winner === teamIndex }">
                         {{ rps.hands[teamIndex] }}
                     </span>
@@ -48,7 +48,7 @@
                 <Avatar :name="getTeamName(match, teamIndex)" :avatarImage="getTeam(match, teamIndex).logo" :shape="getTeam(match, teamIndex).logo ? 'square' : 'circle'" class="kn-start-avatar" />
                 <span class="kn-start-text">
                     <span class="kn-start-team">{{ getTeamName(match, teamIndex) }}</span>
-                    <span v-if="getPlayerLine(teamIndex) !== getTeamName(match, teamIndex)" class="kn-start-players">{{ getPlayerLine(teamIndex) }}</span>
+                    <span v-if="getPlayerLine(teamIndex) !== getTeamName(match, teamIndex)" class="kn-start-players" v-fit-text>{{ getPlayerLine(teamIndex) }}</span>
                 </span>
                 <span class="kn-start-check"><i v-if="selected === teamIndex" class="pi pi-check"></i></span>
             </button>
@@ -59,7 +59,7 @@
         <div v-if="!rps.playing" class="kn-start-hint">📱 Seite falsch? Einfach das Handy auf dem Tisch umdrehen.</div>
 
         <div class="kn-start-footer">
-            <button type="button" class="kn-start-button kn-start-button-cancel" @click="rps.playing ? stopRps() : step = 'colors'">
+            <button type="button" class="kn-start-button kn-start-button-cancel" @click="rps.playing ? stopRps() : skipColors ? $emit('cancel') : step = 'colors'">
                 Zurück
             </button>
             <button type="button" class="kn-start-button kn-start-button-start" :disabled="rps.playing" @click="$emit('start', selected)">
@@ -75,11 +75,12 @@ import { onBeforeUnmount, reactive, ref } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import { TEAM_COLORS, getTeamColor, getTeam, getTeamName, swapCupColors } from './KnechtUtilFunctions';
 
-const props = defineProps<{ match: Match }>();
+// skipColors: Farben stehen schon fest (z.B. in der Anstoss-Lobby gewaehlt)
+const props = defineProps<{ match: Match; skipColors?: boolean }>();
 const emit = defineEmits<{ start: [teamIndex: number]; cancel: [] }>();
 
 const selected = ref(0);
-const step = ref<'colors' | 'start'>('colors');
+const step = ref<'colors' | 'start'>(props.skipColors ? 'start' : 'colors');
 const colorName = (teamIndex: number) => getTeamColor(props.match, teamIndex) === TEAM_COLORS[0] ? 'Rote Becher' : 'Blaue Becher';
 
 const getPlayerLine = (teamIndex: number) => getTeam(props.match, teamIndex).players.map(player => player.name).join(' & ');
@@ -187,7 +188,6 @@ onBeforeUnmount(stopRps);
 .kn-color-team{
     max-width: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 15px;
     font-weight: 800;
@@ -234,7 +234,6 @@ onBeforeUnmount(stopRps);
 }
 .kn-start-players{
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 13px;
     color: var(--bp-text-muted);
@@ -296,7 +295,6 @@ onBeforeUnmount(stopRps);
 .kn-rps-name{
     overflow: hidden;
     max-width: 100%;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12px;
     font-weight: 800;

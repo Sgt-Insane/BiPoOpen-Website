@@ -104,9 +104,9 @@
 
                 <div v-for="([home, away], index) in pairings" :key="index" class="ld-pairing">
                     <img :src="home.logo" alt="" />
-                    <div class="ld-pairing-name">{{ home.name }}</div>
+                    <div class="ld-pairing-name" v-fit-text>{{ home.name }}</div>
                     <div class="ld-vs ld-pairing-vs">vs</div>
-                    <div class="ld-pairing-name ld-pairing-name-away">{{ away.name }}</div>
+                    <div class="ld-pairing-name ld-pairing-name-away" v-fit-text>{{ away.name }}</div>
                     <img :src="away.logo" alt="" />
                 </div>
             </template>
@@ -617,7 +617,6 @@ button.ld-chip:hover{
     color: var(--bp-text-strong);
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 .ld-pairing-name-away{
     text-align: right;

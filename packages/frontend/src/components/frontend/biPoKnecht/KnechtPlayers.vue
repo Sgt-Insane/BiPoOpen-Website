@@ -6,12 +6,12 @@
     >
         <div class="kn-players-header">
             <Avatar v-if="team.logo" :name="teamName" :avatarImage="team.logo" shape="square" class="kn-team-logo" />
-            <span class="kn-team-name">{{ teamName }}</span>
+            <span class="kn-team-name" v-fit-text>{{ teamName }}</span>
             <span v-if="isActive" class="kn-turn-badge"><GlossaryWord v-if="turnBadge === 'Nachwurf'" term="gentleman">Nachwurf</GlossaryWord><template v-else>{{ turnBadge }}</template></span>
             <!-- Airballs bis zum naechsten Shot -->
-            <span v-if="airballsTowardsShot > 0" class="kn-shot-pill" :title="`${airballsTowardsShot} von 3 Airballs bis zum Shot`">🥃 {{ airballsTowardsShot }}/3</span>
+            <span v-if="airballsTowardsShot > 0" class="kn-shot-pill" v-hint="`${airballsTowardsShot} von 3 Airballs bis zum Shot`">🥃 {{ airballsTowardsShot }}/3</span>
             <!-- Serie auch sichtbar, wenn das Team gerade nicht wirft (Liste eingeklappt) -->
-            <span v-for="hot in hotPlayers" :key="hot.playerIndex" class="kn-fire-pill" :class="`kn-fire-pill--${hot.fire}`" :title="`${hot.name}: ${hot.fire === 'on-fire' ? 'On Fire' : 'Heaten Up'}`">
+            <span v-for="hot in hotPlayers" :key="hot.playerIndex" class="kn-fire-pill" :class="`kn-fire-pill--${hot.fire}`" v-hint="`${hot.name}: ${hot.fire === 'on-fire' ? 'On Fire' : 'Heaten Up'}`">
                 <KnechtIcon :name="hot.fire === 'on-fire' ? 'onfire' : 'heating'" />
                 <span>{{ hot.name }}</span>
             </span>
@@ -30,12 +30,12 @@
             >
                 <Avatar :name="player.name" :avatarImage="team.players.length === 1 ? team.logo : undefined" class="kn-player-avatar" />
                 <span class="kn-player-text">
-                    <span class="kn-player-name">
+                    <span class="kn-player-name" v-fit-text>
                         {{ player.name }}
-                        <span v-if="getFire(playerIndex) === 'on-fire'" class="kn-fire" title="On Fire"><KnechtIcon name="onfire" /><KnechtIcon name="onfire" /></span>
-                        <span v-else-if="getFire(playerIndex) === 'heating-up'" class="kn-fire" title="Heaten Up"><KnechtIcon name="heating" /></span>
+                        <span v-if="getFire(playerIndex) === 'on-fire'" class="kn-fire" v-hint="'On Fire'"><KnechtIcon name="onfire" /><KnechtIcon name="onfire" /></span>
+                        <span v-else-if="getFire(playerIndex) === 'heating-up'" class="kn-fire" v-hint="'Heaten Up'"><KnechtIcon name="heating" /></span>
                     </span>
-                    <span class="kn-player-stats">{{ getPlayerLine(playerIndex) }}</span>
+                    <span class="kn-player-stats" v-fit-text>{{ getPlayerLine(playerIndex) }}</span>
                 </span>
             </button>
         </div>
@@ -212,7 +212,6 @@ const getPlayerLine = (playerIndex: number) => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12px;
     font-weight: 800;
@@ -301,7 +300,6 @@ const getPlayerLine = (playerIndex: number) => {
 }
 .kn-player-name{
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 14px;
     font-weight: 700;
@@ -313,7 +311,6 @@ const getPlayerLine = (playerIndex: number) => {
 }
 .kn-player-stats{
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 11px;
     color: var(--bp-text-muted);

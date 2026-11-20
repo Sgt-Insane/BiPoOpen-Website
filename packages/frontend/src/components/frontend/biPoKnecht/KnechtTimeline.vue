@@ -16,7 +16,7 @@
             >
                 <span class="kn-tl-icon"><KnechtIcon :name="entry.icon" /></span>
                 <span class="kn-tl-text">
-                    <span class="kn-tl-player">{{ entry.player }}</span>
+                    <span class="kn-tl-player" v-fit-text>{{ entry.player }}</span>
                     <span class="kn-tl-label">{{ entry.label }}</span>
                 </span>
                 <span class="kn-tl-meta">
@@ -169,7 +169,6 @@ const entries = computed<Entry[]>(() => {
 }
 .kn-tl-player{
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 14px;
     font-weight: 700;

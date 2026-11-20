@@ -118,7 +118,7 @@
                         <span class="mc-pairing-status">{{ pairingEntry.result.winner ? `Weiter: ${pairingEntry.result.winner}` : 'offen' }}</span>
                     </div>
                     <MatchElement v-for="match in pairingEntry.result.games" :key="match._id"
-                        :match="withLeagueTeamLogos(match)" :isBackend="true" :avatarShape="'square'" @edit="openEditGame(match)"
+                        :match="match" gameType="cup" :isBackend="true" @edit="openEditGame(match)"
                     />
                 </div>
             </div>
@@ -154,7 +154,7 @@ import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
 import GameEntryDrawer from '@/components/shared/GameEntry/GameEntryDrawer.vue';
 import CupPairingSelect from '@/components/frontend/league/cup/CupPairingSelect.vue';
 import { applySidesToMatch, matchToSides, sidesToNewMatch, type GameEntrySide } from '@/components/shared/GameEntry/gameEntry';
-import { getLeagueTeamLogo, withLeagueTeamLogos } from '@/components/frontend/league/LeaguePlayersData';
+import { getLeagueTeamLogo } from '@/components/frontend/league/LeaguePlayersData';
 import { addLeagueGame, getAllLeagueGames, updateLeagueGame, deleteLeagueGame } from '@/components/frontend/league/LeagueUtilFunctions';
 import { CURRENT_SEASON_SLUG, LEAGUE_SEASONS, getSeason } from '@/components/frontend/league/LeagueSeasonsData';
 import {

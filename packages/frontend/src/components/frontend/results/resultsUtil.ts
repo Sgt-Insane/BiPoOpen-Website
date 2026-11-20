@@ -1,5 +1,4 @@
 import { isCupGame } from '@/components/frontend/league/LeagueUtilFunctions';
-import { withLeagueTeamLogos } from '@/components/frontend/league/LeaguePlayersData';
 
 export type GameType = 'league' | 'cup' | 'open';
 export type GameFilter = 'all' | GameType;
@@ -19,7 +18,7 @@ export const isGameFilter = (value: unknown): value is GameFilter =>
 // Offene Spiele und Liga/Cup in einer Liste, neuestes zuerst. Liga-Teams bekommen ihr Logo.
 export const combineResults = (openGames: Match[], leagueGames: Match[]): ResultEntry[] => [
     ...openGames.map(match => ({ match, type: 'open' as GameType, time: match.time ?? 0 })),
-    ...leagueGames.map(match => ({ match: withLeagueTeamLogos(match), type: (isCupGame(match) ? 'cup' : 'league') as GameType, time: match.time ?? 0 })),
+    ...leagueGames.map(match => ({ match, type: (isCupGame(match) ? 'cup' : 'league') as GameType, time: match.time ?? 0 })),
 ].sort((a, b) => b.time - a.time);
 
 export const matchesFilter = (entry: ResultEntry, filter: GameFilter) =>
@@ -54,13 +53,3 @@ export const formatResultDay = (time: number) => {
     return `${WEEKDAYS[date.getDay()]}, ${day}${year}`;
 };
 
-export const getResultDayKey = (time: number) => {
-    const date = new Date(time);
-    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-};
-
-// Uhrzeit im Spiel, das Datum steht schon in der Tagesueberschrift
-export const formatResultClock = (time: number) => {
-    const date = new Date(time);
-    return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
-};

@@ -27,6 +27,13 @@
                 >
                     <KnechtIcon v-if="getCupMark(cup)" :name="getCupMark(cup)!" class="kn-cup-mark" />
                     <!-- In dieser Runde getroffen: der Ball liegt im Becher; kleines Abzeichen, falls ein Treffer hier eine Bombe waere -->
+                    <!-- Mit mehreren Handys: wer den Becher abgeraeumt hat (und auf der eigenen Seite: wer trinkt) -->
+                    <template v-else-if="getOwner(cup)">
+                        <Avatar :name="getPlayer(getOwner(cup)!.thrower.teamIndex, getOwner(cup)!.thrower.playerIndex).name" :avatarImage="getPlayer(getOwner(cup)!.thrower.teamIndex, getOwner(cup)!.thrower.playerIndex).logo" class="kn-cup-owner" :lazy="false" />
+                        <span v-if="pending.has(cup)" class="kn-cup-owner-ball"></span>
+                        <span v-if="showDrinkers" class="kn-cup-drinker" :title="`${getPlayer(teamIndex, getOwner(cup)!.drinker).name} trinkt`">🍺 {{ getInitials(getPlayer(teamIndex, getOwner(cup)!.drinker).name) }}</span>
+                        <span v-if="isBombTarget(cup)" class="kn-cup-bomb-badge" title="Treffer hier = Bombe"><KnechtIcon name="bomb" /></span>
+                    </template>
                     <template v-else-if="pending.has(cup)">
                         <span class="kn-cup-ball"></span>
                         <span v-if="isBombTarget(cup)" class="kn-cup-bomb-badge" title="Treffer hier = Bombe"><KnechtIcon name="bomb" /></span>
@@ -38,7 +45,11 @@
 
         <!-- Vor und neben den Bechern: Nullwurf -->
         <div class="kn-front">
-            <span v-if="isTarget && !game.pick.value" class="kn-zone-label kn-zone-label-miss"><KnechtIcon name="miss" /> Nullwurf · neben die Becher tippen</span>
+            <span v-if="isTarget && !game.pick.value" class="kn-zone-label kn-zone-label-miss">
+                <template v-if="bounceStep === 'spot'"><KnechtIcon name="bouncer" /> Bouncer · tippe, wo der Ball aufkam</template>
+                <template v-else-if="bounceStep === 'cup'"><KnechtIcon name="bouncer" /> Bouncer · in welchen Becher? (daneben = Nullwurf)</template>
+                <template v-else><KnechtIcon name="miss" /> Nullwurf · neben die Becher tippen</template>
+            </span>
             <slot name="front"></slot>
         </div>
 
@@ -54,6 +65,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
+import Avatar from '@/components/shared/Avatar.vue';
+import type { CupRemoval } from './knechtCupOwners';
 import { classifyMiss, type RackGeometry } from './knechtEdges';
 import { vibrate } from './knechtHaptics';
 import { CUP_ROWS, getStandingCups } from './knechtEngine';
@@ -67,7 +80,24 @@ const props = defineProps<{
     direction: 'up' | 'down' | 'left' | 'right';    // Richtung der Tischkante hinter den Bechern
     isTarget: boolean;                              // auf diese Becher wird gerade geworfen
     rotated?: boolean;                              // Spielermodus: fuer das Team am anderen Tischende gedreht
+    owners?: Map<number, CupRemoval> | null;        // mehrere Handys: wer welchen Becher abgeraeumt hat
+    showDrinkers?: boolean;                         // eigene Becher: wer sie trinken muss
+    pro?: boolean;                                  // Knecht Pro: Bouncer in zwei Tipps (Aufprall, dann Becher)
 }>();
+
+// Knecht Pro, Bouncer aktiv: erst die Aufprallstelle, dann der Becher
+const bounceStep = computed(() => {
+    if (!props.pro || !props.game.bouncerArmed.value || props.game.pick.value) return null;
+    return props.game.bounceSpot.value ? 'cup' : 'spot';
+});
+
+const getOwner = (cup: number) => standing.value.has(cup) ? null : props.owners?.get(cup) ?? null;
+const getPlayer = (team: number, player: number) => {
+    const entry = team === 0 ? props.game.match.team1 : props.game.match.team2;
+    // 1 gegen 1 (Liga): Team-Logo statt Profilbild
+    return { name: entry.players[player]?.name ?? '', logo: entry.players.length === 1 ? entry.logo : undefined };
+};
+const getInitials = (name: string) => name.split(/\s+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase();
 
 const rack = computed(() => props.game.state.value.racks[props.teamIndex]);
 const standing = computed(() => new Set(getStandingCups(rack.value)));
@@ -132,6 +162,8 @@ const onCupClick = (cup: number, event: MouseEvent) => {
     const pick = props.game.pick.value;
     const tappable = pick ? pick.candidates.includes(cup) || pick.cup === cup : props.game.hittableCups.value.has(cup);
     if (!tappable) return onTableClick(event);
+    // Knecht Pro: Bouncer braucht erst die Aufprallstelle - ein Tipp auf einen Becher zaehlt dann als Aufprall dort
+    if (bounceStep.value === 'spot') return onTableClick(event);
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (props.game.tapCup(cup)) {
         props.game.markBall('hit', rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width * BALL_TO_CUP);
@@ -160,6 +192,13 @@ const onTableClick = (event: MouseEvent) => {
     const geometry = getGeometry();
     const tap = getTapPoint(event);
     const detail: { spot?: { x: number; y: number }; edge?: EdgeHit } = geometry ? classifyMiss(tap, geometry) : {};
+    // Knecht Pro: erster Tipp beim Bouncer = Aufprallstelle (kein Nullwurf)
+    if (bounceStep.value === 'spot') {
+        props.game.setBounceSpot(detail.spot ?? { x: 0, y: 0 });
+        props.game.markBall('miss', tap.x, tap.y, getBallSize());
+        vibrate('table');
+        return;
+    }
     if (props.game.throwMiss('miss', detail)) {
         props.game.markBall('miss', tap.x, tap.y, getBallSize());
         vibrate(detail.edge ? 'edge' : 'table');
@@ -309,6 +348,39 @@ const onAirballClick = (event: MouseEvent) => {
 .kn-cup--hit .kn-cup-number{
     color: var(--bp-text-subtle);
     opacity: .6;
+}
+.kn-cup-owner{
+    width: 82% !important;
+    height: 82% !important;
+    font-size: calc(var(--kn-cup) * .26) !important;
+    pointer-events: none;
+}
+.kn-cup--hit .kn-cup-owner{ opacity: .85; }
+.kn-cup-owner-ball{
+    position: absolute;
+    left: -4%;
+    bottom: -4%;
+    width: 34%;
+    height: 34%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #FFFFFF 0%, #EFEFEF 55%, #CFCFCF 100%);
+    box-shadow: 0 1px 3px rgba(31, 35, 40, .35);
+    pointer-events: none;
+}
+.kn-cup-drinker{
+    position: absolute;
+    left: 50%;
+    bottom: -14%;
+    transform: translateX(-50%);
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #F5B82E;
+    color: #1F2328;
+    font-size: calc(var(--kn-cup) * .2);
+    font-weight: 800;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
 }
 .kn-cup-ball{
     width: 42%;

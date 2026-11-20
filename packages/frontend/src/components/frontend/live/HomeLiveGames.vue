@@ -1,17 +1,19 @@
 <template>
     <!-- Live-Ticker auf der Startseite: laufende Knecht-Spiele, nur wenn gerade eins laeuft -->
     <section v-if="games.length" class="HomeLiveGames">
-        <h2 class="hl-title"><span class="hl-dot"></span> Live</h2>
-        <router-link v-for="entry in views" :key="entry.id" :to="`/Live/${entry.id}`" class="hl-card">
+        <h2 class="hl-title"><span class="hl-dot"></span> Live<DevBadge feature="live" /></h2>
+        <router-link v-for="entry in views" :key="entry.id" :to="`/Live/${entry.id}`" class="hl-card" :class="{ 'hl-card--paused': entry.view.paused }">
+            <!-- Pausiert: Pause-Symbol mittig ueber der Kachel -->
+            <span v-if="entry.view.paused" class="hl-pause" role="img" aria-label="Pausiert"><span></span><span></span></span>
             <div class="hl-teams">
                 <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="hl-team">
                     <span class="hl-color" :style="{ background: getTeamColor(entry.view.match, teamIndex) }"></span>
-                    <span class="hl-name">{{ entry.view.teamNames[teamIndex] }}</span>
+                    <span class="hl-name" v-fit-text>{{ entry.view.teamNames[teamIndex] }}</span>
                     <span class="hl-score">{{ entry.view.score[teamIndex] }}</span>
                 </div>
             </div>
             <div class="hl-meta">
-                <span>{{ entry.view.phase }}<template v-if="entry.view.minute !== null"> · {{ entry.view.minute }}'</template></span>
+                <span>{{ entry.view.paused ? 'Pausiert' : entry.view.phase }}<template v-if="entry.view.minute !== null"> · {{ entry.view.minute }}'</template></span>
                 <span v-if="entry.view.lastAction" class="hl-last">{{ entry.view.lastAction }}</span>
             </div>
         </router-link>
@@ -19,6 +21,7 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { listLiveGames, type LiveGame } from '@/components/frontend/biPoKnecht/knechtLive';
 import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
@@ -74,6 +77,7 @@ onBeforeUnmount(() => {
     100%{ box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
 }
 .hl-card{
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -83,6 +87,30 @@ onBeforeUnmount(() => {
     box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
     color: inherit;
     text-decoration: none;
+}
+/* Pausiert: Inhalt gedaempft, rundes Pause-Symbol in der Mitte (Farben der Seite) */
+.hl-card--paused > :not(.hl-pause){ opacity: .45; }
+.hl-pause{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--main-color);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+    transform: translate(-50%, -50%);
+}
+.hl-pause span{
+    width: 5px;
+    height: 18px;
+    border-radius: 2px;
+    background: white;
 }
 .hl-teams{
     display: flex;
@@ -104,7 +132,6 @@ onBeforeUnmount(() => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 15px;
     font-weight: 700;

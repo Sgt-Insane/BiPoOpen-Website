@@ -44,6 +44,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { buildStickerData } from './stickerData';
 import { loadStickerFonts, renderSticker, toPngBlob, type StickerPosition, type StickerTemplate, type StickerTheme } from './stickerRender';
+import { renderStickerChart } from './stickerChart';
 
 const props = defineProps<{ match: Match; eloDeltas?: Record<string, number> }>();
 
@@ -75,9 +76,11 @@ const SLIDE_LIST = (): Omit<Slide, 'url'>[] => [
 
 const render = async () => {
     await loadStickerFonts();
+    // Becherverlauf: dieselbe Grafik wie im aufgeklappten Spiel, als Bild
+    const chart = await renderStickerChart(props.match, theme.value).catch(() => null);
     canvases.clear();
     slides.value = SLIDE_LIST().map(slide => {
-        const canvas = renderSticker(data.value, slide.template, theme.value, slide.playerIndex !== undefined ? data.value.players[slide.playerIndex] : undefined, position.value);
+        const canvas = renderSticker(data.value, slide.template, theme.value, slide.playerIndex !== undefined ? data.value.players[slide.playerIndex] : undefined, position.value, chart);
         canvases.set(slide.key, canvas);
         return { ...slide, url: canvas.toDataURL('image/png') };
     });

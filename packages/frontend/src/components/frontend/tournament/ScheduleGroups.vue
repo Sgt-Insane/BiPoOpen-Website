@@ -24,7 +24,6 @@
                         :match="match" 
                         :isBackend="isBackend"
                         @edit="openEdit"
-                        :avatarShape="'square'"
                      />
                   </div>
 

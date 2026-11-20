@@ -13,6 +13,7 @@ export type LiveView = {
     lastAction: string | null;  // letzter Wurf mit Name
     minute: number | null;
     isOver: boolean;
+    paused: boolean;            // pausiert (oder alle Handys weg)
 };
 
 export const getLiveView = (live: LiveGame, now = Date.now()): LiveView => {
@@ -31,6 +32,7 @@ export const getLiveView = (live: LiveGame, now = Date.now()): LiveView => {
     let phase = 'Gleich geht es los';
     if (isOver) phase = state.winnerTeamIndex !== null ? `${teamNames[state.winnerTeamIndex]} gewinnt` : 'Spiel vorbei';
     else if (state.nachwurfTeamIndex !== null) phase = `Nachwurf · ${teamNames[state.nachwurfTeamIndex]}`;
+    else if (live.paused && started) phase = live.pausedBy ? `Pausiert · ${live.pausedBy}` : 'Pausiert';
     else if (started) phase = `${teamNames[state.activeTeamIndex]} ${base[state.activeTeamIndex === 0 ? 'team1' : 'team2'].players.length > 1 ? 'werfen' : 'wirft'}`;
 
     return {
@@ -42,5 +44,6 @@ export const getLiveView = (live: LiveGame, now = Date.now()): LiveView => {
         lastAction,
         minute: live.startedAt && started ? Math.max(0, Math.floor(((isOver ? last?.time ?? now : now) - live.startedAt) / 60000)) : null,
         isOver,
+        paused: !!live.paused && !isOver,
     };
 };

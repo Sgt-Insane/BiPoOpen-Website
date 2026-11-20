@@ -20,7 +20,7 @@
 
                         <span class="ru-body">
                             <span class="ru-title">{{ rule.title }}</span>
-                            <span class="ru-summary">
+                            <span class="ru-summary" v-fit-text>
                                 <strong>{{ rule.key }}</strong> · {{ rule.summary }}
                             </span>
                         </span>
@@ -540,7 +540,6 @@ const visibleSections = computed(() => ruleSet.value === 'league' ? leagueSectio
     color: var(--bp-text-muted);
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 .ru-summary strong{
     font-weight: 700;

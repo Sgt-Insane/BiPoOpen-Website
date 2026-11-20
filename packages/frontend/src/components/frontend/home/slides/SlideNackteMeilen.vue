@@ -17,12 +17,12 @@
                 <button v-if="biggestDebt" type="button" class="sn-tile" @click="openPlayerProfile?.(biggestDebt.name)">
                     <span class="sn-tile-label">Größte Schuld</span>
                     <span class="sn-tile-name">{{ biggestDebt.name }}</span>
-                    <span class="sn-tile-detail">{{ biggestDebt.count }} {{ biggestDebt.count === 1 ? 'Meile' : 'Meilen' }} offen</span>
+                    <span class="sn-tile-detail" v-fit-text>{{ biggestDebt.count }} {{ biggestDebt.count === 1 ? 'Meile' : 'Meilen' }} offen</span>
                 </button>
                 <button v-if="lastRun" type="button" class="sn-tile" @click="openPlayerProfile?.(lastRun.name)">
                     <span class="sn-tile-label">Zuletzt gelaufen</span>
                     <span class="sn-tile-name">{{ lastRun.name }}</span>
-                    <span class="sn-tile-detail">am {{ lastRun.completedAt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) }}</span>
+                    <span class="sn-tile-detail" v-fit-text>am {{ lastRun.completedAt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) }}</span>
                 </button>
             </div>
         </div>
@@ -126,7 +126,6 @@ const lastRun = computed(() => {
     max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 .sn-tile-name{
     font-size: 15px;

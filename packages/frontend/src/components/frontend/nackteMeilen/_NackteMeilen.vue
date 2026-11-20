@@ -52,7 +52,7 @@
                             <button type="button" class="nm-row" :aria-expanded="expandedName === debtor.name" @click="toggleDebtor(debtor.name)">
                                 <Avatar :name="debtor.name" class="nm-avatar"/>
                                 <div class="nm-main">
-                                    <div class="nm-name">{{ debtor.name }}</div>
+                                    <div class="nm-name" v-fit-text>{{ debtor.name }}</div>
                                     <div class="nm-dashes">
                                         <span v-for="index in Math.min(debtor.miles.length, MAX_DASHES)" :key="index" class="nm-dash"></span>
                                     </div>
@@ -89,7 +89,7 @@
                         <div v-for="(run, index) in visibleRuns" :key="index" class="nm-row nm-row-static">
                             <Avatar :name="formatPlayerName(run.name)" class="nm-avatar nm-avatar-done"/>
                             <div class="nm-main">
-                                <div class="nm-name">{{ formatPlayerName(run.name) }}</div>
+                                <div class="nm-name" v-fit-text>{{ formatPlayerName(run.name) }}</div>
                                 <div class="nm-meta">{{ run.match ? `Meile vom ${formatDate(run.time, 'day')} · ${formatMatch(run.match)}` : 'gelaufen' }}</div>
                             </div>
                             <span class="nm-done-date">{{ formatDate(run.completedAt.getTime(), 'short') }} ✓</span>
@@ -364,7 +364,6 @@ const goBack = () => {
     font-weight: 700;
     color: var(--bp-text-strong);
     white-space: nowrap;
-    text-overflow: ellipsis;
 }
 .nm-meta{
     margin-top: 2px;

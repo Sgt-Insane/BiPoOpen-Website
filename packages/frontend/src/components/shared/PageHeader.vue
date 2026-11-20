@@ -5,7 +5,7 @@
             <button type="button" class="ph-back" aria-label="Zurück" @click="goBack">
                 <i class="pi pi-chevron-left"></i>
             </button>
-            <h1 class="ph-title" @click="emit('titleClick')">{{ title }}<slot name="title-extra"/></h1>
+            <h1 class="ph-title" @click="onTitleClick">{{ title }}<slot name="title-extra"/></h1>
             <div v-if="$slots.actions" class="ph-actions"><slot name="actions"/></div>
         </div>
         <p v-if="subtitle" class="ph-subtitle">{{ subtitle }}</p>
@@ -13,12 +13,19 @@
 </template>
 
 <script setup lang="ts">
+import { getCurrentInstance } from 'vue';
 import { useRouter } from 'vue-router';
 
 defineProps<{ title: string; subtitle?: string }>();
 const emit = defineEmits<{ titleClick: [] }>();
 
 const router = useRouter();
+// Titel antippen = zurueck (wie der Pfeil), ausser die Seite nutzt den Titel selbst (z.B. Neuigkeiten)
+const hasTitleListener = !!getCurrentInstance()?.vnode.props?.onTitleClick;
+const onTitleClick = () => {
+    if (hasTitleListener) emit('titleClick');
+    else goBack();
+};
 
 // Ohne Vorgaengerseite (direkt aufgerufener Link) geht es zur Startseite
 const goBack = () => {
@@ -59,6 +66,7 @@ const goBack = () => {
     background: var(--bp-fill);
 }
 .ph-title{
+    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 6px;

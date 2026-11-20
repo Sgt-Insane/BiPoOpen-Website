@@ -2,7 +2,8 @@
     <div class="MatchElementTeam"
         :class="{
             'mt-team-win': isWinner,
-            'mt-team-loose': isLoser
+            'mt-team-loose': isLoser,
+            'mt-team--compact': compact
         }"
         :style="knechtColor ? { '--mt-win-color': knechtColor } : undefined"
     >
@@ -10,17 +11,17 @@
         <div class="mt-team">
             <div class="mt-team-avatars">
 
-                <!-- Team Logo -->
+                <!-- Team-Logo immer eckig -->
                 <Avatar
                     v-if="teamLogo && team"
                     :name="teamName"
                     :avatarImage="teamLogo"
-                    :shape="avatarShape"
+                    shape="square"
                     :grayscale="isLoser"
                     class="mt-logo"
                 />
 
-                <!-- Ohne Team-Logo: Spielerbilder immer rund, avatarShape gilt nur fuer Logos -->
+                <!-- Ohne Team-Logo: Spielerbilder immer rund -->
                 <template v-else-if="team">
                     <Avatar
                         v-for="(player, index) in team.players"
@@ -40,32 +41,43 @@
                         v-fit-text="fitTextGroup"
                         class="mt-team-name"
                         :class="{ 'cursor-pointer': team && team.players.length === 1 }"
-                        :title="teamName"
+                        v-hint="teamName"
                         @click="team && team.players.length === 1 && openPlayerProfile?.(team.players[0].name)"
                     >
                         {{ teamName }}
                     </div>
                     <div class="mt-team-score">{{ teamScore ?? '–' }}</div>
                 </div>
-                <!-- Elo nach dem Spiel und optional die Veraenderung, im Doppel jeweils der Durchschnitt -->
-                <div v-if="elo" class="mt-team-elo">
+                <!-- Elo nach dem Spiel, im Doppel jeweils der Durchschnitt. Die Veraenderung erst aufgeklappt und nur
+                     je Spieler: im 1 gegen 1 hier, im Doppel bei den einzelnen Spielern (nie fuer den Team-Durchschnitt).
+                     Im 1 gegen 1 aufgeklappt auch ohne showElo, es gibt dort keine eigenen Spielerzeilen. -->
+                <div v-if="elo && (showElo || singlesExpanded)" class="mt-team-elo">
+                    <i class="pi pi-chart-line mt-elo-icon" aria-hidden="true"></i>
                     <GlossaryWord :term="elo.players > 1 ? 'eloAverage' : 'elo'">{{ elo.players > 1 ? 'Ø ' : '' }}{{ elo.rating.toLocaleString('de-DE') }} Elo</GlossaryWord>
-                    <span v-if="showEloChange" class="mt-team-elo-delta" :class="{ 'is-up': elo.delta > 0, 'is-down': elo.delta < 0 }">{{ eloDeltaLabel }}</span>
+                    <span v-if="singlesExpanded" class="mt-team-elo-delta" :class="getDeltaClass(elo.delta)">{{ formatEloDelta(elo.delta) }}</span>
                 </div>
             </div>
         </div>
 
         <!-- Team Players when expanded -->
         <div v-if="team && playersVisible && team.players.length > 1" class="mt-team-players">
-            <div class="mt-team-player cursor-pointer" v-for="(player, index) in team.players" :key="`${player.name}-${index}`" @click.stop="openPlayerProfile?.(player.name)">
+            <div class="mt-team-player cursor-pointer" v-for="({ player, elo: playerElo }, index) in playerEntries" :key="`${player.name}-${index}`" @click.stop="openPlayerProfile?.(player.name)">
                 <Avatar
                     :name="player.name"
-                    :shape="avatarShape"
+                    shape="circle"
                     size="normal"
                     class="mt-player-avatar shrink-0"
                     :grayscale="isLoser"
                 />
-                <div class="mt-team-player-name">{{ player.name }}</div>
+                <!-- Elo direkt hinter dem Namen, bricht mit dem Namen um statt ihn abzuschneiden -->
+                <div class="mt-team-player-name">
+                    {{ player.name }}
+                    <span v-if="playerElo" class="mt-team-player-elo">
+                        <i class="pi pi-chart-line mt-elo-icon" aria-hidden="true"></i>
+                        {{ playerElo.rating.toLocaleString('de-DE') }} Elo
+                        <span class="mt-team-elo-delta" :class="getDeltaClass(playerElo.delta)">{{ formatEloDelta(playerElo.delta) }}</span>
+                    </span>
+                </div>
                 <div class="mt-team-player-score">{{ formatPlayerScore(player.score) }}</div>
             </div>
         </div>
@@ -80,17 +92,18 @@ import Avatar from '@/components/shared/Avatar.vue';
 import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import { vFitText, type FitTextGroup } from '@/components/shared/fitText';
-import type { EloMatchSide } from '@/components/frontend/worldRanking/eloRating';
+import { getEloPlayerKey, type EloMatchSide } from '@/components/frontend/worldRanking/eloRating';
 
 const props = defineProps({
     match: {type: Object as PropType<Match>, required: true },
     playersVisible: {type: Boolean, required: true },
     isTeam2: {type: Boolean, required: true },
     placeholder: {type: String, default: undefined},
-    avatarShape: {type: String as () => 'circle' | 'square', default: 'circle'},
+    // Elo dieser Seite nach dem Spiel: in der Teamzeile nur mit showElo, aufgeklappt je Spieler
     elo: {type: Object as PropType<EloMatchSide>, default: undefined},
-    // Neben dem Elo die Veraenderung durch dieses Spiel (+12 / −8)
-    showEloChange: {type: Boolean, default: false},
+    showElo: {type: Boolean, default: false},
+    // Kompakte Variante: kleinere Logos, Schrift und Ergebnis-Box
+    compact: {type: Boolean, default: false},
     // Beide Teamnamen eines Spiels gleich gross (v-fit-text)
     fitTextGroup: {type: Object as PropType<FitTextGroup>, default: undefined},
 });
@@ -99,12 +112,20 @@ const team = computed(() => props.isTeam2 ? props.match.team2 : props.match.team
 // Mit dem BiPo Knecht gezaehlte Spiele haben Becherfarben je Team (rot/blau, ggf. getauscht)
 const knechtColor = computed(() => props.match.turns?.length ? getTeamColor(props.match, props.isTeam2 ? 1 : 0) : null);
 
-const eloDeltaLabel = computed(() => {
-    const delta = props.elo?.delta ?? 0;
+const formatEloDelta = (delta: number) => {
     if (delta > 0) return `+${delta}`;
     if (delta < 0) return `−${Math.abs(delta)}`;
     return '±0';
-});
+};
+const getDeltaClass = (delta: number) => ({ 'is-up': delta > 0, 'is-down': delta < 0 });
+
+// Aufgeklappt im 1 gegen 1: die Team-Elo ist die Elo des Spielers
+const singlesExpanded = computed(() => props.playersVisible && team.value?.players.length === 1);
+// Elo je Spieler fuer die aufgeklappten Zeilen (nicht gewertete Spiele haben keine)
+const playerEntries = computed(() => (team.value?.players ?? []).map(player => ({
+    player,
+    elo: props.elo?.playerChanges.find(change => change.key === getEloPlayerKey(player.name)),
+})));
 
 let teamName = computed(() => {
     if(team.value){
@@ -156,6 +177,15 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     flex-direction: column;
     color: var(--bp-text);
 }
+.MatchElementTeam.mt-team--compact{
+    --mt-font: 14px;
+    --mt-avatar: 24px;
+    --mt-player-avatar: 20px;
+    --mt-elo-font: 10.5px;
+    --mt-score-font: 13px;
+    --mt-score-height: 22px;
+    --mt-gap: 8px;
+}
 .mt-team{
     display: flex;
     align-items: center;
@@ -193,12 +223,11 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     align-items: center;
     gap: calc(var(--mt-gap) + 6px);
 }
-/* Immer eine Zeile: zu lange Namen werden kleiner (v-fit-text), … nur als letzte Notloesung */
+/* Immer eine Zeile: zu lange Namen werden kleiner (v-fit-text), nie mit … gekuerzt */
 .mt-team-name{
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     line-height: 1.25;
 }
@@ -210,6 +239,12 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     line-height: 1.3;
     color: var(--bp-text-faint);
     font-variant-numeric: tabular-nums;
+}
+/* Elo-Symbol vor jeder Elo-Zahl */
+.mt-elo-icon{
+    margin-right: 3px;
+    font-size: 0.85em;
+    vertical-align: -0.05em;
 }
 .mt-team-elo-delta{
     margin-left: 2px;
@@ -267,6 +302,13 @@ const openPlayerProfile = inject<(name: string) => void>('openPlayerProfile');
     flex: 1;
     min-width: 0;
     overflow-wrap: anywhere;
+}
+.mt-team-player-elo{
+    margin-left: 4px;
+    font-size: var(--mt-elo-font);
+    color: var(--bp-text-faint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 .mt-team-player-score{
     min-width: calc(var(--mt-score-height) + 4px);
