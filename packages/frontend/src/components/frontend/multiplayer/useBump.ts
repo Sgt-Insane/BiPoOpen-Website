@@ -20,10 +20,31 @@ const SLOSH_GAIN = 9;
 
 type PermissionRequest = () => Promise<'granted' | 'denied'>;
 
+// iPhone: die Erlaubnis gibt es nur beim Antippen. "+ Spiel" → "Anstoßen" fragt deshalb schon dort (das Antippen
+// ist die Bestaetigung), die Anstoss-Seite lauscht dann sofort.
+// Eine laufende Anfrage wird geteilt (ein zweiter Aufruf ohne Antippen wuerde abgelehnt).
+let permissionGranted = false;
+let permissionRequest: Promise<boolean> | null = null;
+const motionEvent = () => typeof window !== 'undefined' ? (window as any).DeviceMotionEvent : undefined;
+export const requestBumpPermission = (): Promise<boolean> => {
+    const MotionEvent = motionEvent();
+    if (!MotionEvent) return Promise.resolve(false);
+    if (typeof MotionEvent.requestPermission !== 'function' || permissionGranted) return Promise.resolve(true);
+    permissionRequest ??= (MotionEvent.requestPermission as PermissionRequest)()
+        .then(result => (permissionGranted = result === 'granted'))
+        .catch(() => false)
+        .finally(() => { permissionRequest = null; });
+    return permissionRequest;
+};
+
+// Laeuft gerade die Anfrage vom Antippen (oder ist schon erlaubt)? null = nein, dann braucht es den eigenen Knopf
+export const pendingBumpPermission = (): Promise<boolean> | null => permissionGranted ? Promise.resolve(true) : permissionRequest;
+
 export const useBump = (onBump: () => void) => {
-    const MotionEvent = typeof window !== 'undefined' ? (window as any).DeviceMotionEvent : undefined;
+    const MotionEvent = motionEvent();
     const isSupported = !!MotionEvent;
-    const needsPermission = typeof MotionEvent?.requestPermission === 'function';
+    // Schon erlaubt (beim Antippen von "Anstoßen"): kein eigener Knopf mehr noetig
+    const needsPermission = typeof MotionEvent?.requestPermission === 'function' && !permissionGranted;
     const isListening = ref(false);
     const denied = ref(false);
     const hasSensor = ref<boolean | null>(null);      // null = noch keine Messwerte
@@ -86,17 +107,9 @@ export const useBump = (onBump: () => void) => {
     // Auf dem iPhone nur nach einem Antippen moeglich (requestPermission braucht eine Nutzeraktion)
     const start = async () => {
         if (!isSupported || isListening.value) return isListening.value;
-        if (needsPermission) {
-            try {
-                const result = await (MotionEvent.requestPermission as PermissionRequest)();
-                if (result !== 'granted') {
-                    denied.value = true;
-                    return false;
-                }
-            } catch {
-                denied.value = true;
-                return false;
-            }
+        if (typeof MotionEvent.requestPermission === 'function' && !permissionGranted && !await requestBumpPermission()) {
+            denied.value = true;
+            return false;
         }
         window.addEventListener('devicemotion', onMotion);
         isListening.value = true;

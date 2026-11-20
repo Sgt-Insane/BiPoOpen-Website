@@ -4,7 +4,7 @@ import { CUP_URL_SEGMENT } from '../league/cup/LeagueCupUtilFunctions';
 import { clearPlayerCaches } from '../playerProfile/PlayerProfileUtilFunctions';
 import { clearGameDataCache } from '@/util/gameDataCache';
 import { addDemoGame, isDemoMode } from '@/util/demoGames';
-import { formatEdge } from './knechtEdges';
+import { formatEdge, formatHitEdge } from './knechtEdges';
 import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
 import { getFinalPlayerPoints, isHitTurnType, type KnechtState } from './knechtEngine';
 import { getAccuracy, getTurnStats, type KnechtPlayerStats } from './knechtStats';
@@ -139,6 +139,7 @@ export const getTurnLabel = (turn: Turn, match?: Match, previous?: Turn) => {
         turn.type !== 'bouncer' && data.bouncer && TURN_LABELS.bouncer,
         data.double && 'Doppeltreffer',
         isTrickshotHit(turn, previous) && TURN_LABELS.trickshot,
+        !!data.edge && formatHitEdge(data.edge as EdgeHit),
     ].filter(Boolean);
     const cups = Object.keys(data).filter(key => key.startsWith('cupIndex')).length;
     return ['Treffer', ...kinds].join(' · ') + (cups > 1 ? ` (${cups} Becher)` : '');

@@ -4,8 +4,8 @@ import LiveGame from "../models/LiveGame";
 
 // Live-Spiele: nach dieser Zeit ohne Aenderung gilt ein Spiel als verlassen und wird abgeraeumt
 const STALE_MS = 2 * 60 * 60 * 1000;
-// Im Ticker nur, was gerade laeuft: pausierte Spiele und Spiele ohne Aenderung seit 15 Minuten ausblenden
-// (mit dem naechsten Wurf bzw. "Weiterspielen" sind sie wieder da)
+// Im Ticker nur, was gerade laeuft: Spiele ohne Aenderung seit 15 Minuten ausblenden (mit dem naechsten Wurf bzw.
+// "Weiterspielen" sind sie wieder da). Pausierte Spiele bleiben so lange mit "Pausiert" sichtbar.
 const TICKER_MS = 15 * 60 * 1000;
 const MAX_ACTIONS = 600;
 const MAX_DEVICES = 8;
@@ -39,6 +39,7 @@ const toPublic = (game: any) => ({
     endedBy: game.endedBy ?? null,
     paused: !!game.paused,
     pausedBy: game.paused ? game.pausedBy ?? null : null,
+    pauseReady: game.paused ? game.pauseReady ?? [] : [],
     updatedAt: game.updatedAt,
 });
 
@@ -62,13 +63,14 @@ const readBinding = (body: any, match: any): Binding | null => {
     return { team, player };
 };
 
-// Belegt? Ein Spieler bzw. ein Tischende gehoert hoechstens einem Handy
-const isTaken = (devices: Device[], binding: Binding, exceptId?: string) => binding.team !== null && devices.some(device =>
-    device.id !== exceptId && device.team === binding.team && device.player === binding.player);
+// Belegt? Ein Spieler, ein Tischende und "fuer alle eintragen" (team null) gehoeren hoechstens einem Handy
+const isTaken = (devices: Device[], binding: Binding, exceptId?: string) => devices.some(device =>
+    device.id !== exceptId && device.team === binding.team && (binding.team === null || device.player === binding.player));
 
-// Ein weiteres Handy kommt dazu: wer bisher den ganzen Tisch hatte, steht jetzt am anderen Tischende
+// Ein weiteres Handy kommt dazu: hatte bisher ein einzelnes Handy den ganzen Tisch, steht es jetzt am anderen Tischende.
+// Traegt in einer Runde mit mehreren Handys eines fuer alle ein, bleibt das so.
 const withJoined = (devices: Device[], joined: Device) => [
-    ...devices.map(device => device.team === null ? { ...device, team: joined.team === null ? null : 1 - joined.team, player: null } : device),
+    ...devices.map(device => device.team === null && devices.length === 1 ? { ...device, team: joined.team === null ? null : 1 - joined.team, player: null } : device),
     joined,
 ];
 
@@ -161,7 +163,7 @@ const bind = async (req: Request, res: Response) => {
             const devices = game.devices as Device[];
             const me = devices.find(device => device.token === token)!;
             const binding = readBinding(req.body, game.match);
-            if (!binding || (binding.team === null && devices.length > 1)) return { error: 'invalid binding', status: 400 };
+            if (!binding) return { error: 'invalid binding', status: 400 };
             if (isTaken(devices, binding, me.id)) return { error: 'taken', status: 409 };
             return { devices: devices.map(device => device.id === me.id ? { ...device, ...binding } : device) };
         });
@@ -171,7 +173,8 @@ const bind = async (req: Request, res: Response) => {
     }
 };
 
-// Handy steigt aus (selbst) oder wird von einem anderen Handy getrennt (z.B. Akku leer). Das letzte Handy beendet das Spiel nicht.
+// Handy steigt aus (selbst) oder wird von einem anderen Handy getrennt (z.B. Akku leer). Geht das letzte Handy, wird das
+// Spiel pausiert (nicht beendet): der Ticker zeigt es noch 15 Minuten als pausiert, nach 2 h wird es abgeraeumt.
 const removeDevice = async (req: Request, res: Response, targetOf: (devices: Device[], token: string) => string | undefined) => {
     const token = req.body?.token;
     try {
@@ -180,7 +183,8 @@ const removeDevice = async (req: Request, res: Response, targetOf: (devices: Dev
             const target = targetOf(devices, token);
             if (!target) return { error: 'not found', status: 404 };
             const rest = devices.filter(device => device.id !== target);
-            return { devices: rest, extra: rest.length ? {} : { status: 'aborted' } };
+            const leaving = devices.find(device => device.id === target);
+            return { devices: rest, extra: rest.length ? {} : { paused: true, pausedBy: leaving?.name ?? null, pauseReady: [] } };
         });
         reply(res, result);
     } catch (error) {
@@ -194,7 +198,7 @@ const kick = (req: Request, res: Response) => removeDevice(req, res, (devices) =
 const list = (req: Request, res: Response) => {
     // Verlassene Spiele abraeumen (nebenbei, Fehler egal)
     LiveGame.updateMany({ status: { $in: ['live', 'saving'] }, updatedAt: { $lt: Date.now() - STALE_MS } }, { $set: { status: 'aborted' } }).catch(() => {});
-    LiveGame.find({ status: 'live', paused: { $ne: true }, updatedAt: { $gt: Date.now() - TICKER_MS } })
+    LiveGame.find({ status: 'live', updatedAt: { $gt: Date.now() - TICKER_MS } })
         .sort({ updatedAt: -1 })
         .limit(20)
         .lean()
@@ -227,6 +231,7 @@ const sync = async (req: Request, res: Response) => {
         if (req.body.startTeamIndex !== undefined) update.startTeamIndex = req.body.startTeamIndex;
         if (typeof req.body.paused === 'boolean') update.paused = req.body.paused;
         if (typeof req.body.pausedBy === 'string' || req.body.pausedBy === null) update.pausedBy = typeof req.body.pausedBy === 'string' ? req.body.pausedBy.slice(0, 40) : null;
+        if (Array.isArray(req.body.pauseReady)) update.pauseReady = req.body.pauseReady.filter((id: unknown) => typeof id === 'string').slice(0, MAX_DEVICES).map((id: string) => id.slice(0, 64));
         if (typeof req.body.startedAt === 'number') update.startedAt = req.body.startedAt;
         if (req.body.match?.team1?.players && req.body.match?.team2?.players) update.match = req.body.match;
         const game = await LiveGame.findOneAndUpdate(

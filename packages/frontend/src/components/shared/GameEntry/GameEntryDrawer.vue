@@ -154,6 +154,7 @@
 
 <script setup lang="ts">
 import DevBadge from '@/components/shared/DevBadge.vue';
+import { requestBumpPermission } from '@/components/frontend/multiplayer/useBump';
 /**
  * Gemeinsamer Drawer zum Eintragen/Bearbeiten eines Spiels (offene Spiele, Liga, Pokal, Turnier).
  * Standard: Spielersuche pro Platz. Abweichende Auswahl kommt von aussen:
@@ -420,9 +421,11 @@ const onJoin = () => {
     else router.push({ path: '/Knecht', query: { join: code.toUpperCase() } });
 };
 
+// Antippen = Bestaetigung: Sensor gleich freischalten (iPhone fragt hier), die Anstoss-Seite lauscht sofort
 const onBump = () => {
+    requestBumpPermission();
     visible.value = false;
-    router.push('/Mitspielen');
+    router.push({ path: '/Mitspielen', query: { anstossen: '1' } });
 };
 
 const onLaunch = () => {

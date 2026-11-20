@@ -39,6 +39,7 @@ export const createLocalServer = (store: LocalStore) => {
             players: players.map((player, index) => ({ deviceId: player.deviceId, name: player.name, team: index % 2, joinedAt: now + index })),
             cupColors: null,
             live: null,
+            gameKind: 'open',
             version: 1,
         };
         data.sessions[code] = session;

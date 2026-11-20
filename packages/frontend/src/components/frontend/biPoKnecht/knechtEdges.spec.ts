@@ -40,3 +40,33 @@ describe('Kanten-Erkennung', () => {
         expect(classifyMiss({ x: 200, y: 360 }, geometry).spot).toEqual({ x: 0, y: 1 });
     });
 });
+
+describe('Knecht Pro: mehrere Kanten, Treffer ueber die Kante, rein und wieder raus', () => {
+    it('jeder Tipp auf den Rand ist eine weitere Kantenberuehrung', async () => {
+        const { addEdgeContact, formatEdge, getEdgeCount, resetEdge } = await import('./knechtEdges');
+        let edge: EdgeHit = { cup: 4, side: 'vorne' };
+        expect(formatEdge(edge)).toBe('Kante · Becher 5');
+        edge = addEdgeContact(edge, { cup: 4, angle: 90 });
+        expect(edge).toMatchObject({ cup: 4, side: 'rechts', angle: 90, count: 1 });
+        expect(edge.double).toBeUndefined();
+        edge = addEdgeContact(edge, { cup: 4, angle: -90 });
+        expect(formatEdge(edge)).toBe('Doppelkante · Becher 5');
+        expect(edge.second).toEqual({ cup: 4, angle: -90 });
+        edge = addEdgeContact(edge, { cup: 4, angle: 180 });
+        expect(getEdgeCount(edge)).toBe(3);
+        expect(formatEdge(edge)).toBe('3× Kante · Becher 5');
+        expect(resetEdge(edge)).toEqual({ cup: 4, side: 'rechts' });
+    });
+
+    it('aeltere Eintraege (Doppelkante ohne Kontaktliste) zaehlen weiter richtig', async () => {
+        const { getEdgeCount, getEdgeContacts } = await import('./knechtEdges');
+        const old: EdgeHit = { cup: 0, side: 'vorne', angle: 0, double: true, second: { cup: 1, angle: 45 } };
+        expect(getEdgeCount(old)).toBe(2);
+        expect(getEdgeContacts(old)).toEqual([{ cup: 0, angle: 0 }, { cup: 1, angle: 45 }]);
+    });
+
+    it('rein und wieder raus', async () => {
+        const { formatEdge } = await import('./knechtEdges');
+        expect(formatEdge({ cup: 2, side: 'hinten', spinOut: true })).toBe('Rein und wieder raus · Becher 3');
+    });
+});

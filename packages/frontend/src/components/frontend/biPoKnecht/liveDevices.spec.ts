@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canDeviceEnter, getTeamDevice, isBindingTaken, withJoinedDevice, type LiveDevice } from './liveDevices';
+import { canDeviceEnter, getTeamDevice, getTrackerDevice, isBindingTaken, withJoinedDevice, type LiveDevice } from './liveDevices';
 
 const device = (id: string, team: number | null, player: number | null, joinedAt = 0): LiveDevice => ({ id, name: id, team, player, joinedAt });
 
@@ -47,6 +47,28 @@ describe('Mehrere Handys: wer traegt wofuer ein', () => {
     it('wer den ganzen Tisch hatte, steht nach einem Beitritt am anderen Tischende', () => {
         const joined = withJoinedDevice([device('a', null, null)], device('b', 1, 0));
         expect(joined.map(entry => [entry.id, entry.team, entry.player])).toEqual([['a', 0, null], ['b', 1, 0]]);
+    });
+
+    it('traegt ein Handy fuer alle ein, tragen die anderen nichts ein', () => {
+        const devices = [device('a', null, null), device('b', 0, 0), device('c', 1, 0)];
+        expect(canDeviceEnter(devices, 'a', 0, 0)).toBe(true);
+        expect(canDeviceEnter(devices, 'a', 1, 0)).toBe(true);
+        expect(canDeviceEnter(devices, 'b', 0, 0)).toBe(false);
+        expect(canDeviceEnter(devices, 'c', 1, 0)).toBe(false);
+        expect(getTrackerDevice(devices)?.id).toBe('a');
+        // allein ist es kein "fuer alle"
+        expect(getTrackerDevice([device('a', null, null)])).toBeNull();
+    });
+
+    it('fuer alle eintragen kann nur ein Handy', () => {
+        const devices = [device('a', null, null), device('b', 0, 0)];
+        expect(isBindingTaken(devices, { team: null, player: null }, 'b')).toBe(true);
+        expect(isBindingTaken(devices, { team: null, player: null }, 'a')).toBe(false);
+    });
+
+    it('wer in einer Runde fuer alle eintraegt, bleibt dabei, wenn ein Handy dazukommt', () => {
+        const joined = withJoinedDevice([device('a', null, null), device('b', 0, 0)], device('c', 1, 0));
+        expect(joined.map(entry => [entry.id, entry.team])).toEqual([['a', null], ['b', 0], ['c', 1]]);
     });
 
     it('Hinweise wie "Shot-Zeit" zeigt nur das erste Handy des Teams', () => {

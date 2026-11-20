@@ -24,6 +24,7 @@ const KnechtSessionSchema = new Schema(
         players: { type: [SessionPlayerSchema], default: [] },
         cupColors: { type: [String], default: null },                   // Becherfarben je Team
         live: { type: Schema.Types.Mixed, default: null },              // nach dem Start: { id, code } des Live-Spiels
+        gameKind: { type: String, enum: ['open', 'league', 'cup'], default: 'open' },    // offenes, Liga- oder Cup-Spiel
         version: { type: Number, default: 1 },
         updatedAt: { type: Date, default: Date.now },
     },

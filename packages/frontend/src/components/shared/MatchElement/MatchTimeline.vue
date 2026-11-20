@@ -198,7 +198,7 @@ import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnech
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
-import { formatEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
+import { formatEdge, formatHitEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
 import { formatSeconds, getThrowTimes } from '@/components/frontend/biPoKnecht/knechtThrowTimes';
 import { useEloRatings } from '@/components/shared/useEloRatings';
 import BottomSheet from '@/components/shared/BottomSheet.vue';
@@ -267,6 +267,7 @@ const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
         SHORT_LABELS[turn.type],
         turn.type !== 'bouncer' && data.bouncer && 'Bouncer',
         (turn.type === 'trickshot' || isTrickshotHit(turn, previous)) && 'Trickshot',
+        !!data.edge && isHitTurnType(turn.type) && formatHitEdge(data.edge as EdgeHit),
     ].filter(Boolean);
     // Balls Back, On Fire, Bouncer und Trickshot sind Folgen eines Treffers: "Treffer · Balls Back"
     const label = !kinds.length ? 'Treffer' : HIT_FOLLOW_UPS.has(turn.type) ? `Treffer · ${kinds.join(' · ')}` : kinds.join(' · ');

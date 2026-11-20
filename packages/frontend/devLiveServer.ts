@@ -11,14 +11,14 @@ type Match = { team1?: { players?: unknown[] }; team2?: { players?: unknown[] } 
 type LiveGame = {
     id: string; code: string; match: Match; startTeamIndex: number | null; startedAt: number | null;
     actions: unknown[]; version: number; status: 'live' | 'saving' | 'done' | 'aborted'; createdAt: number; updatedAt: number;
-    devices: Device[]; savingBy: string | null; endedBy: string | null; paused?: boolean; pausedBy?: string | null;
+    devices: Device[]; savingBy: string | null; endedBy: string | null; paused?: boolean; pausedBy?: string | null; pauseReady?: string[];
 };
 
 const STALE_MS = 2 * 60 * 60 * 1000;
-// Wie das Backend: im Ticker nur, was gerade laeuft (nicht pausiert, Aenderung in den letzten 15 Minuten)
+// Wie das Backend: im Ticker nur, was sich in den letzten 15 Minuten geaendert hat (pausierte als pausiert)
 const TICKER_MS = 15 * 60 * 1000;
 const MAX_DEVICES = 8;
-const isInTicker = (game: LiveGame) => game.status === 'live' && isFresh(game) && !game.paused && game.updatedAt > Date.now() - TICKER_MS;
+const isInTicker = (game: LiveGame) => game.status === 'live' && isFresh(game) && game.updatedAt > Date.now() - TICKER_MS;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const games = new Map<string, LiveGame>();
 
@@ -119,6 +119,7 @@ export const devLiveServer = (): Plugin => ({
                 if (body.startTeamIndex !== undefined) game.startTeamIndex = body.startTeamIndex;
                 if (typeof body.paused === 'boolean') game.paused = body.paused;
                 if (typeof body.pausedBy === 'string' || body.pausedBy === null) game.pausedBy = body.pausedBy;
+                if (Array.isArray(body.pauseReady)) game.pauseReady = body.pauseReady.filter((id: unknown) => typeof id === 'string').slice(0, MAX_DEVICES);
                 if (typeof body.startedAt === 'number') game.startedAt = body.startedAt;
                 if (body.match?.team1?.players && body.match?.team2?.players) game.match = body.match;
                 touch(game);
@@ -127,7 +128,7 @@ export const devLiveServer = (): Plugin => ({
 
             if (req.method === 'POST' && parts[1] === 'bind') {
                 const binding = readBinding(body, game.match);
-                if (!isFresh(game) || !binding || (binding.team === null && game.devices.length > 1)) return send(400, { message: 'invalid binding' });
+                if (!isFresh(game) || !binding) return send(400, { message: 'invalid binding' });
                 if (isBindingTaken(game.devices, binding, me.id)) return send(409, { message: 'taken' });
                 Object.assign(me, binding);
                 touch(game);
@@ -138,7 +139,8 @@ export const devLiveServer = (): Plugin => ({
                 const target = parts[1] === 'leave' ? me.id : game.devices.find(device => device.id === body?.deviceId)?.id;
                 if (!target) return send(404, { message: 'not found' });
                 game.devices = game.devices.filter(device => device.id !== target);
-                if (!game.devices.length) game.status = 'aborted';
+                // Letztes Handy weg: Spiel pausiert (Ticker zeigt es 15 Minuten als pausiert, nach 2 h ist es weg)
+                if (!game.devices.length) Object.assign(game, { paused: true, pausedBy: me.name, pauseReady: [] });
                 touch(game);
                 return send(200, { game: toPublic(game) });
             }

@@ -25,7 +25,7 @@
             <button type="button" class="ag-option" :class="{ 'ag-option--muted': !profileName }" @click="goBump">
                 <span class="ag-option-icon">🍻</span>
                 <span class="ag-option-text">
-                    <span class="ag-option-title">Anstoßen &amp; spielen</span>
+                    <span class="ag-option-title">Anstoßen &amp; spielen<DevBadge feature="anstossen" /></span>
                     <span class="ag-option-detail">{{ profileName ? 'Jeder mit eigenem Handy – per Anstoßen oder PIN' : 'Erst dein Profil wählen, dann anstoßen' }}</span>
                 </span>
                 <i class="pi pi-angle-right"></i>
@@ -141,6 +141,7 @@ import BottomSheet from '@/components/shared/BottomSheet.vue';
 import { isFeatureOn } from '@/util/featureFlags';
 import { useProfile } from '@/components/frontend/multiplayer/useProfile';
 import { useMultiplayerSession } from '@/components/frontend/multiplayer/useMultiplayerSession';
+import { requestBumpPermission } from '@/components/frontend/multiplayer/useBump';
 import router from '@/router.js';
 
 // Drawer-Einstellungen je Spieltyp
@@ -182,9 +183,12 @@ const resumeLobby = () => {
     if (code) router.push(`/Mitspielen/${code}`);
 };
 
+// Antippen = Bestaetigung: der Sensor wird gleich freigeschaltet (iPhone fragt hier), die Seite lauscht sofort.
+// Eine offene Lobby gibt es oben extra ("Fortsetzen"), hier geht es immer mit einer neuen Suche los.
 const goBump = () => {
+    requestBumpPermission();
     addGameVisible.value = false;
-    router.push('/Mitspielen');
+    router.push({ path: '/Mitspielen', query: { anstossen: '1' } });
 };
 
 const { launchKnecht } = useKnechtLaunch();

@@ -22,7 +22,7 @@
                 <div class="kl-label">PIN für weitere Handys</div>
                 <div class="kl-code">{{ live.code }}</div>
                 <div class="kl-hint">Auf dem anderen Handy: „+ Spiel“ → „Mit PIN beitreten“, oder den Link öffnen. Dort wählt man, für wen das Handy einträgt.</div>
-                <div v-if="referee" class="kl-hint">Mit mehreren Handys geht nur der Spieler-Modus. Kommt ein Handy dazu, wechselt dieses Handy dorthin.</div>
+                <div v-if="referee" class="kl-hint">Mit mehreren Handys geht der Schiri-Modus nur, wenn dieses Handy für alle einträgt.</div>
                 <button type="button" class="kl-button kl-button--primary" @click="share(getJoinLink(live.code), 'Mit dem BiPo Knecht mittracken')">
                     <i class="pi pi-share-alt"></i> {{ copied === 'join' ? 'Link kopiert ✓' : 'Link für weitere Handys teilen' }}
                 </button>
@@ -94,7 +94,7 @@ const statusLabel = computed(() => {
 
 const teamOf = (team: number) => team === 0 ? props.match.team1 : props.match.team2;
 const bindingLabel = (binding: LiveDeviceBinding) => {
-    if (binding.team === null) return 'Ganzer Tisch';
+    if (binding.team === null) return 'Für alle (ganzer Tisch)';
     if (binding.player === null) return `Tischende ${getTeamName(props.match, binding.team)}`;
     return teamOf(binding.team).players[binding.player]?.name ?? 'Spieler';
 };
@@ -104,11 +104,12 @@ const keyOf = (binding: LiveDeviceBinding) => `${binding.team}-${binding.player}
 const bindingOptions = computed(() => {
     const devices = props.live?.devices ?? [];
     const myId = props.live?.deviceId ?? undefined;
-    return [0, 1].flatMap(team => {
+    // Dazu "fuer alle": dieses Handy traegt den ganzen Tisch ein (auch Schiri-Modus), die anderen schauen zu
+    const all: LiveDeviceBinding = { team: null, player: null };
+    return [...[0, 1].flatMap(team => {
         const players = teamOf(team).players.map((_, player) => ({ team, player } as LiveDeviceBinding));
-        const bindings = players.length > 1 ? [...players, { team, player: null }] : players;
-        return bindings.map(binding => ({ key: keyOf(binding), binding, label: bindingLabel(binding), taken: isBindingTaken(devices, binding, myId) }));
-    });
+        return players.length > 1 ? [...players, { team, player: null }] : players;
+    }), all].map(binding => ({ key: keyOf(binding), binding, label: binding.team === null ? 'Für alle (ganzer Tisch)' : bindingLabel(binding), taken: isBindingTaken(devices, binding, myId) }));
 });
 const ownKey = computed(() => {
     const me = props.live?.devices.find(device => device.id === props.live?.deviceId);

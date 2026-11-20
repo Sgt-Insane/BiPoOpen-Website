@@ -21,10 +21,14 @@ export type MpSession = {
     players: MpPlayer[];
     cupColors?: string[] | null;            // Becherfarben je Team
     live?: { id: string; code: string } | null;
+    gameKind?: MpGameKind | null;           // was gespielt wird (Standard: offen)
     version: number;
 };
 
-export type MpPatch = Partial<Pick<MpSession, 'status' | 'players' | 'cupColors' | 'live'>>;
+// Offenes Spiel oder noch offenes Liga-/Cup-Spiel der beiden Teams
+export type MpGameKind = 'open' | 'league' | 'cup';
+
+export type MpPatch = Partial<Pick<MpSession, 'status' | 'players' | 'cupColors' | 'live' | 'gameKind'>>;
 
 export type MpBumpResult =
     | { session: MpSession }

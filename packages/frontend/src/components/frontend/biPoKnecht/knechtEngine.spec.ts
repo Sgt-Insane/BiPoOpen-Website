@@ -382,3 +382,13 @@ describe('BiPo Knecht Regeln', () => {
         expectError(SOLO, [...soloClearWithFirstBall(), hit(0, 0), airball(0)]);
     });
 });
+
+describe('Knecht Pro: Treffer ueber die Kante', () => {
+    it('die Kante bleibt am Treffer (nur Statistik, Spielstand wie ein normaler Treffer)', () => {
+        const edge: EdgeHit = { cup: 3, side: 'vorne', count: 2, double: true };
+        const state = play(SOLO, [hit(0, 3, { edge })]);
+        expect(state.turns[0].type).toBe('hit');
+        expect((state.turns[0].data as { edge?: EdgeHit }).edge).toEqual(edge);
+        expect(getTeamPoints(state)).toEqual(getTeamPoints(play(SOLO, [hit(0, 3)])));
+    });
+});
