@@ -15,7 +15,7 @@
                         <template v-if="names[side] && !editing[side]">
                             <router-link :to="`/Spieler/${encodeURIComponent(names[side])}`" class="pc-player-link">
                                 <Avatar :name="names[side]" :lazy="false" class="pc-avatar" />
-                                <span class="pc-player-name">{{ names[side] }}</span>
+                                <span class="pc-player-name" v-fit-text>{{ names[side] }}</span>
                             </router-link>
                             <button type="button" class="pc-change" @click="editing[side] = true">ändern</button>
                         </template>
@@ -280,7 +280,6 @@ const goBack = () => {
 .pc-player-name{
     max-width: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 16px;
     font-weight: 800;

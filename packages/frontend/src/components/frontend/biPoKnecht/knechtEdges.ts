@@ -83,9 +83,10 @@ export const resetEdge = (edge: EdgeHit): EdgeHit => ({ cup: edge.cup, side: edg
 
 const edgeName = (count: number) => count >= 3 ? `${count}× Kante` : count === 2 ? 'Doppelkante' : 'Kante';
 
-export const formatEdge = (edge: EdgeHit) => edge.spinOut
-    ? `Rein und wieder raus · Becher ${edge.cup + 1}`
-    : `${edgeName(getEdgeCount(edge))} · Becher ${edge.cup + 1}`;
+// Art der Kante ohne Becher-Nummer (Wurfliste im Spielverlauf)
+export const formatEdgeKind = (edge: EdgeHit) => edge.spinOut ? 'Rein und wieder raus' : edgeName(getEdgeCount(edge));
+
+export const formatEdge = (edge: EdgeHit) => `${formatEdgeKind(edge)} · Becher ${edge.cup + 1}`;
 
 // Treffer, der vorher an der Kante war
 export const formatHitEdge = (edge: EdgeHit) => `über die ${edgeName(getEdgeCount(edge))}`;

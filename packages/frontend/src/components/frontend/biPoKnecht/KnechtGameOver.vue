@@ -17,8 +17,10 @@
             <!-- Schritt 1: Auszeichnungen -->
             <template v-if="step === 'awards'">
                 <div class="kn-over-section-title">Auszeichnungen</div>
+                <!-- Auszeichnungen gibt es nur fuer Besonderes, nicht jeder Spieler bekommt eine -->
                 <div class="kn-awards">
-                    <div v-for="(award, index) in awards" :key="index" class="kn-award" :style="{ '--kn-team-color': getTeamColor(match, stats[index].teamIndex) }">
+                    <div v-if="!awardEntries.length" class="kn-award-none">Diesmal keine besonderen Momente – nächstes Spiel!</div>
+                    <div v-for="{ award, index } in awardEntries" :key="index" class="kn-award" :style="{ '--kn-team-color': getTeamColor(match, stats[index].teamIndex) }">
                         <span class="kn-award-icon">{{ award.icon }}</span>
                         <span class="kn-award-text">
                             <span class="kn-award-title">{{ award.title }}</span>
@@ -110,6 +112,7 @@ import { getTeamPoints } from './knechtEngine';
 import { formatSeconds, getThrowTimes } from './knechtThrowTimes';
 import {
     getTeamColor, buildKnechtMatch, formatDuration, formatPoints, getAwards, getPlayerStats, getPlayerName, getSaveLabel, getTeamName, saveKnechtGame,
+    type KnechtAward,
 } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 import ShareStickerPanel from '@/components/shared/ShareSticker/ShareStickerPanel.vue';
@@ -143,7 +146,9 @@ const state = computed(() => props.game.state.value);
 const winner = computed(() => state.value.winnerTeamIndex ?? 0);
 const teamPoints = computed(() => getTeamPoints(state.value));
 const stats = computed(() => getPlayerStats(match, state.value));
-const awards = computed(() => getAwards(stats.value));
+const awardEntries = computed(() => getAwards(stats.value)
+    .map((award, index) => ({ award, index }))
+    .filter((entry): entry is { award: KnechtAward; index: number } => !!entry.award));
 const duration = computed(() => formatDuration(match.time, state.value.turns.at(-1)?.time));
 const saveLabel = getSaveLabel(match.time ?? 0);
 // Knecht Pro: Wurfzeiten, falls "Zug starten" genutzt wurde
@@ -280,6 +285,14 @@ const save = async (rematch: boolean) => {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+.kn-award-none{
+    padding: 14px;
+    border-radius: 16px;
+    background: var(--bp-fill-soft);
+    color: var(--bp-text-muted);
+    font-size: 14px;
+    text-align: center;
 }
 .kn-award{
     display: flex;

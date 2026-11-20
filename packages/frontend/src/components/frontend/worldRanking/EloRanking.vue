@@ -12,11 +12,17 @@
             </button>
         </div>
 
-        <Tabs :value="mode" class="p-tabs-chips" @update:value="value => selectMode(value as EloMode)">
-            <TabList class="elo-chips">
-                <Tab v-for="chip in chips" :key="chip.key" :value="chip.key">{{ chip.label }}</Tab>
-            </TabList>
-        </Tabs>
+        <SelectButton
+            class="elo-mode-select"
+            fluid
+            aria-label="Rangliste"
+            :allowEmpty="false"
+            :modelValue="mode"
+            :options="modeOptions"
+            optionLabel="label"
+            optionValue="key"
+            @update:modelValue="selectMode"
+        />
 
         <div class="elo-card">
             <div class="elo-card-head">
@@ -68,16 +74,14 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import Tabs from 'primevue/tabs';
-import TabList from 'primevue/tablist';
-import Tab from 'primevue/tab';
+import SelectButton from 'primevue/selectbutton';
 import EloRankingEntry from './EloRankingEntry.vue';
 import EloExplainedSheet from './EloExplainedSheet.vue';
 import { ELO_ACTIVE_MONTHS, ELO_MIN_GAMES, ELO_TREND_DAYS, EloMode, RankingData, buildEloGames, computeElo, getEloRanking } from './eloRating';
 
 const props = defineProps<{ data: RankingData; now: number }>();
 
-const chips: { key: EloMode; label: string }[] = [
+const modeOptions: { key: EloMode; label: string }[] = [
     { key: 'players', label: 'Spieler' },
     { key: 'teams', label: 'Teams' },
 ];
@@ -142,9 +146,9 @@ const ranking = computed(() => getEloRanking(records.value, props.now));
     background: var(--bp-fill-soft);
 }
 
-/* ── Filter ── */
-:deep(.elo-chips) {
-    padding: 0 0 14px;
+/* ── Spieler/Teams-Auswahl ── */
+.elo-mode-select {
+    margin-bottom: 14px;
 }
 
 /* ── Liste ── */

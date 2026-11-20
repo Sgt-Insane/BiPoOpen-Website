@@ -8,7 +8,7 @@
             <div class="hl-teams">
                 <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="hl-team">
                     <span class="hl-color" :style="{ background: getTeamColor(entry.view.match, teamIndex) }"></span>
-                    <span class="hl-name">{{ entry.view.teamNames[teamIndex] }}</span>
+                    <span class="hl-name" v-fit-text>{{ entry.view.teamNames[teamIndex] }}</span>
                     <span class="hl-score">{{ entry.view.score[teamIndex] }}</span>
                 </div>
             </div>
@@ -132,7 +132,6 @@ onBeforeUnmount(() => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 15px;
     font-weight: 700;

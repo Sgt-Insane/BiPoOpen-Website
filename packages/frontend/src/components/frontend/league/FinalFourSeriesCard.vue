@@ -20,7 +20,7 @@
                 :grayscale="row.isLoser"
                 class="ffc-avatar !w-[24px] !h-[24px] !min-w-[24px] !text-[9px]"
             />
-            <span class="ffc-team-name">{{ row.name }}</span>
+            <span class="ffc-team-name" v-fit-text>{{ row.name }}</span>
             <span v-if="hasGames" class="ffc-team-score">{{ row.wins }}</span>
         </div>
 
@@ -110,7 +110,6 @@ const rows = computed(() => [
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 .ffc-team--win .ffc-team-name {

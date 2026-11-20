@@ -15,6 +15,8 @@ import Avatar from './Avatar.vue';
 import { useProfile } from '@/components/frontend/multiplayer/useProfile';
 import { useMultiplayerSession } from '@/components/frontend/multiplayer/useMultiplayerSession';
 import { isFeatureOn } from '@/util/featureFlags';
+import WinterLights from './winter/WinterLights.vue';
+import { winterThemeActive } from './winter/winterTheme';
 
 const route = useRoute();
 const { tournamentPickerVisible, openTournamentPicker } = useTournamentPicker();
@@ -131,6 +133,9 @@ const logo = computed(() => isDark.value ? logoDark : logoLight);
 				</router-link>
 			</div>
 		</div>
+
+		<!-- Winter-Theme: Lichterkette unter dem Header -->
+		<WinterLights v-if="winterThemeActive"/>
 
 	</div>
 </template>

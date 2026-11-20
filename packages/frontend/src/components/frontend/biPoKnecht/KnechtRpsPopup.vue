@@ -9,7 +9,7 @@
                     <Avatar :name="getTeamName(match, teamIndex)" :avatarImage="getTeam(match, teamIndex).logo" :shape="getTeam(match, teamIndex).logo ? 'square' : 'circle'" class="kr-option-avatar" />
                     <span class="kr-option-text">
                         <span class="kr-option-team">{{ getTeamName(match, teamIndex) }}</span>
-                        <span v-if="playerLine(teamIndex) !== getTeamName(match, teamIndex)" class="kr-option-players">{{ playerLine(teamIndex) }}</span>
+                        <span v-if="playerLine(teamIndex) !== getTeamName(match, teamIndex)" class="kr-option-players" v-fit-text>{{ playerLine(teamIndex) }}</span>
                     </span>
                     <span class="kr-option-go">beginnt</span>
                 </button>
@@ -22,7 +22,7 @@
             <div v-if="phase === 'rps'" class="kr-status">{{ status }}</div>
             <div v-if="phase === 'rps'" class="kr-hands">
                 <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="kr-team" :style="{ '--kr-team-color': getTeamColor(match, teamIndex) }">
-                    <span class="kr-name">{{ getTeamName(match, teamIndex) }}</span>
+                    <span class="kr-name" v-fit-text>{{ getTeamName(match, teamIndex) }}</span>
                     <span class="kr-hand" :class="{ 'kr-hand--shaking': shaking, 'kr-hand--winner': winner === teamIndex }">{{ hands[teamIndex] }}</span>
                 </div>
             </div>
@@ -152,7 +152,6 @@ onBeforeUnmount(() => timers.splice(0).forEach(clearTimeout));
 .kr-name{
     overflow: hidden;
     max-width: 100%;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12px;
     font-weight: 800;
@@ -218,7 +217,6 @@ onBeforeUnmount(() => timers.splice(0).forEach(clearTimeout));
 }
 .kr-option-players{
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 13px;
     color: var(--bp-text-muted);

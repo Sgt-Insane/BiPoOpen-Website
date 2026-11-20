@@ -3,7 +3,7 @@
         <div v-if="profileName && !editing" class="pp-current">
             <Avatar :name="profileName" class="pp-avatar" :lazy="false" />
             <div class="pp-current-text">
-                <span class="pp-current-name">{{ profileName }}</span>
+                <span class="pp-current-name" v-fit-text>{{ profileName }}</span>
                 <span v-if="leagueTeam" class="pp-current-detail">{{ leagueTeam.teamName }} · {{ leagueTeam.divisionLabel }}</span>
                 <span v-else class="pp-current-detail">Spielt auf diesem Handy</span>
             </div>
@@ -97,7 +97,6 @@ const save = () => {
     font-weight: 800;
     color: var(--bp-text-strong);
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 .pp-current-detail{

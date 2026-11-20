@@ -185,6 +185,28 @@ const BiPoPreset = definePreset(Aura, {
                 padding: '0.5rem 0.75rem',
                 borderRadius: '9px',
                 checkedShadow: '0px 1px 3px 0px rgba(0, 0, 0, 0.08), 0px 1px 2px 0px rgba(0, 0, 0, 0.06)'
+            },
+            // Aura nimmt im Dark Mode surface.950 fuer die Leiste, das ist genau der graue Seitengrund (--page-gray)
+            // und die Leiste verschwindet. Darum eine Stufe heller, damit sie auf Seitengrund und weissem Band sichtbar bleibt.
+            colorScheme: {
+                dark: {
+                    root: {
+                        background: '{surface.800}',
+                        checkedBackground: '{surface.800}',
+                        hoverBackground: '{surface.800}',
+                        borderColor: '{surface.800}',
+                        checkedBorderColor: '{surface.800}',
+                        color: '{surface.300}',
+                        hoverColor: '{surface.100}'
+                    },
+                    content: {
+                        checkedBackground: '{surface.600}'
+                    },
+                    icon: {
+                        color: '{surface.300}',
+                        hoverColor: '{surface.100}'
+                    }
+                }
             }
         },
         // Tabellen als weisse Karte: kleiner grauer Kopf in Grossbuchstaben, feine Zeilenlinien.
@@ -309,7 +331,6 @@ const BiPoPreset = definePreset(Aura, {
                     font-weight: 700;
                     color: var(--bp-text-strong);
                     text-align: start;
-                    text-overflow: ellipsis;
                 }
                 /* Doppelte Klasse, damit seitenweite Avatar-Groessen (z.B. in _League.vue) die Tabelle nicht aufblaehen */
                 .p-datatable .p-datatable-tbody .p-avatar {

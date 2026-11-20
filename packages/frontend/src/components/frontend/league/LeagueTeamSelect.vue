@@ -15,14 +15,14 @@
             <div class="lt-value">
                 <Avatar v-if="slotProps.value" :name="slotProps.value.name" :avatarImage="slotProps.value.logo" shape="square" class="lt-avatar" />
                 <span v-else class="lt-avatar lt-avatar--empty">?</span>
-                <span class="lt-name" :class="{ 'lt-placeholder': !slotProps.value }">{{ slotProps.value?.name ?? slotProps.placeholder }}</span>
+                <span class="lt-name" v-fit-text :class="{ 'lt-placeholder': !slotProps.value }">{{ slotProps.value?.name ?? slotProps.placeholder }}</span>
                 <EloChip v-if="slotProps.value" :rating="getElo(slotProps.value.name)" />
             </div>
         </template>
         <template #option="slotProps">
             <div class="lt-value">
                 <Avatar :name="slotProps.option.name" :avatarImage="slotProps.option.logo" shape="square" class="lt-avatar" />
-                <span class="lt-name">{{ slotProps.option.name }}</span>
+                <span class="lt-name" v-fit-text>{{ slotProps.option.name }}</span>
                 <EloChip :rating="getElo(slotProps.option.name)" />
             </div>
         </template>
@@ -82,7 +82,6 @@ const options = computed(() => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 .lt-placeholder{

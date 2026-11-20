@@ -12,7 +12,7 @@
         >
             <template #value="slotProps">
                 <div class="cp-value">
-                    <span class="cp-value-text" :class="{ 'cp-placeholder': !slotProps.value }">
+                    <span class="cp-value-text" v-fit-text :class="{ 'cp-placeholder': !slotProps.value }">
                         {{ slotProps.value ? `${slotProps.value.team1} vs. ${slotProps.value.team2}` : slotProps.placeholder }}
                     </span>
                     <span class="cp-count">{{ openPairings.length }} offen</span>
@@ -93,7 +93,6 @@ watch(selectedPairing, (pairing) => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 15px;
     font-weight: 600;
@@ -130,9 +129,6 @@ watch(selectedPairing, (pairing) => {
     text-align: right;
 }
 .cp-team-name{
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
     overflow: hidden;
     font-size: 14px;
     line-height: 1.25;

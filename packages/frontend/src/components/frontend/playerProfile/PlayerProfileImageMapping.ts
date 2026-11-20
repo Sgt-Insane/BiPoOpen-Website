@@ -2,94 +2,68 @@ import { LEAGUE_PLAYER_DATA } from '@/components/frontend/league/LeaguePlayersDa
 import axios from 'axios';
 import { reactive } from 'vue';
 
-const CACHE_PREFIX = 'playerImg_';
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Profilbilder als echte Bild-URLs. Eine kleine Liste (/playerImages/list) sagt, wer ein Bild hat und
+// von wann es ist. Die URL traegt diesen Stand (?v=), so darf der Browser jedes Bild dauerhaft cachen und
+// ein neues Bild hat automatisch eine neue URL.
 
-function readFromLocalStorage(key: string): string | null | undefined {
-    try {
-        const raw = localStorage.getItem(CACHE_PREFIX + key);
-        if (!raw) return undefined;
-        const entry = JSON.parse(raw) as { data: string | null; ts: number };
-        if (Date.now() - entry.ts > CACHE_TTL_MS) {
-            localStorage.removeItem(CACHE_PREFIX + key);
-            return undefined;
-        }
-        return entry.data;
-    } catch {
-        return undefined;
-    }
-}
+type PlayerImageEntry = { playerName: string; updatedAt: number };
 
-function writeToLocalStorage(key: string, data: string | null): void {
-    try {
-        localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, ts: Date.now() }));
-    } catch {
-        // QuotaExceededError or similar — silently ignore
-    }
-}
+// Danach wird die Liste beim naechsten Zugriff neu geladen (neue Bilder anderer Geraete)
+const MAX_AGE_MS = 5 * 60 * 1000;
+// Liste nicht ladbar (z.B. offline): nicht bei jedem Avatar erneut versuchen
+const RETRY_AFTER_ERROR_MS = 30 * 1000;
 
-function removeFromLocalStorage(key: string): void {
-    try {
-        localStorage.removeItem(CACHE_PREFIX + key);
-    } catch {
-        // ignore
-    }
-}
+// normalisierter Name -> Bild-URL, reaktiv: Avatare zeigen das Bild, sobald die Liste da ist
+export const playerImageUrls = reactive<Record<string, string>>({});
+let nextLoadAt = 0;
+let request: Promise<void> | null = null;
+let requestId = 0;
 
-// Reactive cache for backend-fetched profile images
-export const backendImageCache = reactive<Record<string, string | null>>({});
-const pendingFetches = new Map<string, Promise<string | null>>();
+const buildImageUrl = ({ playerName, updatedAt }: PlayerImageEntry) => {
+    const base = (axios.defaults.baseURL ?? '').replace(/\/+$/, '');
+    return `${base}/playerImages/raw/${encodeURIComponent(playerName)}?v=${updatedAt}`;
+};
 
-export const fetchPlayerProfileImage = async (playerName: string): Promise<string | null> => {
-    const key = normalizeName(playerName);
-    if (key in backendImageCache) return backendImageCache[key];
+const loadImageList = (force = false): Promise<void> => {
+    if (!force && Date.now() < nextLoadAt) return Promise.resolve();
+    if (!force && request) return request;
 
-    const stored = readFromLocalStorage(key);
-    if (stored !== undefined) {
-        backendImageCache[key] = stored;
-        return stored;
-    }
-
-    if (pendingFetches.has(key)) return pendingFetches.get(key)!;
-
-    const promise = axios
-        .get(`/playerImages/get/${encodeURIComponent(playerName)}`, {
-            validateStatus: (status) => status === 200 || status === 404,
-        })
-        .then((res) => {
-            const imageData = res.status === 200 ? (res.data?.imageData || null) : null;
-            backendImageCache[key] = imageData;
-            writeToLocalStorage(key, imageData);
-            pendingFetches.delete(key);
-            return imageData;
+    // Nur die zuletzt gestartete Anfrage zaehlt (z.B. Neuladen nach Upload, waehrend noch eine aeltere laeuft).
+    // nextLoadAt = 0: Aufrufe bis zur Antwort warten auf diese Anfrage statt die alte Liste zu nehmen.
+    const id = ++requestId;
+    nextLoadAt = 0;
+    request = axios.get<PlayerImageEntry[]>('/playerImages/list')
+        .then(({ data }) => {
+            if (id !== requestId) return;
+            const urls: Record<string, string> = {};
+            data.forEach(entry => urls[normalizeName(entry.playerName)] = buildImageUrl(entry));
+            Object.keys(playerImageUrls).forEach(key => { if (!(key in urls)) delete playerImageUrls[key]; });
+            Object.assign(playerImageUrls, urls);
+            nextLoadAt = Date.now() + MAX_AGE_MS;
         })
         .catch(() => {
-            backendImageCache[key] = null;
-            pendingFetches.delete(key);
-            return null;
-        });
-
-    pendingFetches.set(key, promise);
-    return promise;
+            // Bisherige Bilder bleiben stehen
+            if (id === requestId) nextLoadAt = Date.now() + RETRY_AFTER_ERROR_MS;
+        })
+        .finally(() => { if (id === requestId) request = null; });
+    return request;
 };
 
-export const getPlayerProfileImageFromBackend = async (playerName: string): Promise<string | null> => {
-    return fetchPlayerProfileImage(playerName);
+// Bild-URL des Spielers oder null (kein Bild)
+export const fetchPlayerProfileImage = async (playerName: string): Promise<string | null> => {
+    await loadImageList();
+    return playerImageUrls[normalizeName(playerName)] ?? null;
 };
 
-export const invalidatePlayerProfileImageCache = (playerName: string) => {
-    const key = normalizeName(playerName);
-    delete backendImageCache[key];
-    pendingFetches.delete(key);
-    removeFromLocalStorage(key);
-};
+export const getPlayerProfileImageFromBackend = fetchPlayerProfileImage;
+
+// Nach Upload oder Loeschen: Liste sofort neu laden, das Bild bekommt so eine neue URL
+export const invalidatePlayerProfileImageCache = (_playerName: string) => loadImageList(true);
 
 export const getPlayerProfileImage = (playerOrTeamName: string): string | null => {
-    // Check backend cache first (reactive — will update when fetched)
+    // Reaktiv: aktualisiert sich, sobald die Liste geladen ist
     const backendKey = normalizeName(playerOrTeamName);
-    if (backendKey in backendImageCache && backendImageCache[backendKey]) {
-        return backendImageCache[backendKey];
-    }
+    if (playerImageUrls[backendKey]) return playerImageUrls[backendKey];
 
     const normalizedInput = normalizeName(playerOrTeamName);
     const leagueTeam = LEAGUE_PLAYER_DATA.find(entry => normalizeName(entry.teamName) === normalizedInput);

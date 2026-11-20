@@ -84,11 +84,10 @@ const cupStyle = (number: number) => {
     const share = (heatValues.value[number - 1] ?? 0) / heatMax.value;
     return { '--heat': `${Math.round(12 + share * 88)}%`, color: share > .55 ? 'white' : 'var(--bp-text-strong)' };
 };
-// Bei Gleichstand alle Spitzenreiter (hoechstens drei)
+// Bei Gleichstand alle Spitzenreiter (nie mit … kuerzen, es sind hoechstens 10 Nummern)
 const topCups = computed(() => {
     const max = Math.max(...heatValues.value);
-    const top = heatValues.value.map((value, index) => value === max ? index + 1 : 0).filter(Boolean);
-    return top.length > 3 ? `${top.slice(0, 3).join(', ')} …` : top.join(', ');
+    return heatValues.value.map((value, index) => value === max ? index + 1 : 0).filter(Boolean).join(', ');
 });
 const frontShare = computed(() => {
     const total = heatValues.value.reduce((sum, value) => sum + value, 0);

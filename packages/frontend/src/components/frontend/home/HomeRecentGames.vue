@@ -15,7 +15,7 @@
 
             <div v-else-if="!visibleGames.length" class="hr-empty">Noch keine Spiele</div>
 
-            <MatchElement v-for="entry in visibleGames" v-else :key="entry.match._id" :match="entry.match" :gameType="entry.type" showChip showDate showElo class="hr-entry" />
+            <MatchElement v-for="entry in visibleGames" v-else :key="entry.match._id" :match="entry.match" :gameType="entry.type" showChip timestamp="date" showElo class="hr-entry" />
         </div>
 
         <!-- Gewaehlter Filter wird auf die Ergebnisse-Seite mitgenommen -->

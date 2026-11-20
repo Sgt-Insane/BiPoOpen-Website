@@ -19,7 +19,7 @@
                     <template v-if="lockedNames">
                         <Avatar v-if="getSideName(side)" :name="getSideName(side)" :avatarImage="side.logo" :shape="avatarShape" class="ge-team-avatar" />
                         <span v-else class="ge-team-avatar ge-team-avatar--empty">?</span>
-                        <span class="ge-team-name" :class="{ 'ge-team-name--empty': !getSideName(side) }">{{ getSideName(side) || sideLabels[sideIndex] }}</span>
+                        <span class="ge-team-name" v-fit-text :class="{ 'ge-team-name--empty': !getSideName(side) }">{{ getSideName(side) || sideLabels[sideIndex] }}</span>
                         <EloChip v-if="side.players.length === 1" :rating="getElo(side.players[0].name)" />
                     </template>
                     <span v-else class="ge-side-label">{{ sideLabels[sideIndex] }}</span>
@@ -107,7 +107,7 @@
                     </button>
                 </div>
                 <div v-for="change in eloChanges" :key="change.name" class="ge-elo-row">
-                    <span class="ge-elo-name">{{ change.name }}</span>
+                    <span class="ge-elo-name" v-fit-text>{{ change.name }}</span>
                     <span class="ge-elo-rating">{{ formatRating(change.before) }} → <b>{{ formatRating(change.after) }}</b></span>
                     <span class="ge-elo-delta" :class="change.delta > 0 ? 'ge-elo-up' : 'ge-elo-down'">{{ formatDelta(change.delta) }}</span>
                 </div>
@@ -526,7 +526,6 @@ const onLaunch = () => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 15px;
     font-weight: 700;
@@ -678,7 +677,6 @@ const onLaunch = () => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 .ge-elo-rating{

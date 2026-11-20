@@ -9,7 +9,7 @@
 
         <div v-if="openGames">
             <div v-for="openGame in openGames" :key="openGame._id">
-                <MatchElement :match="openGame" :isBackend="true" @edit="openEdit" showDate/> <!-- TODO-Minor: Only Display some Games not all. Adjust Database download to only get the latest games -->
+                <MatchElement :match="openGame" :isBackend="true" @edit="openEdit" timestamp="date"/> <!-- TODO-Minor: Only Display some Games not all. Adjust Database download to only get the latest games -->
             </div>
         </div>
 

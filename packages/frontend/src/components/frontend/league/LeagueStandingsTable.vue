@@ -215,9 +215,6 @@ const labels = useTableLabels();
 /* Mobil: lange Namen brechen in eine zweite Zeile um statt abgekuerzt zu werden */
 @media (width <= 900px) {
     .league-standings :deep(.bp-name) {
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
         line-height: 1.2;
         white-space: normal;
         overflow-wrap: anywhere;

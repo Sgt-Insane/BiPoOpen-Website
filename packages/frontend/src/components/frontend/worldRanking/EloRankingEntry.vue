@@ -13,7 +13,7 @@
             </div>
 
             <div class="elo-main">
-                <div class="elo-name" :class="{ 'elo-name-team': mode === 'teams' }">{{ entry.name }}</div>
+                <div class="elo-name" v-fit-text :class="{ 'elo-name-team': mode === 'teams' }">{{ entry.name }}</div>
                 <div class="elo-meta">{{ entry.games }} Spiele · zuletzt {{ formatDate(entry.lastTime) }}</div>
             </div>
 
@@ -39,7 +39,7 @@
                 </div>
                 <div v-if="mode === 'players'" class="elo-stat">
                     <div class="elo-stat-label">Häufigster Partner</div>
-                    <div class="elo-stat-value elo-stat-text">{{ entry.favoritePartner ?? '–' }}</div>
+                    <div class="elo-stat-value elo-stat-text" v-fit-text>{{ entry.favoritePartner ?? '–' }}</div>
                 </div>
                 <div v-else class="elo-stat">
                     <div class="elo-stat-label">Siege</div>
@@ -210,13 +210,9 @@ const getTrendClass = (trend: number | null) => {
     font-size: 15px;
     font-weight: 700;
     white-space: nowrap;
-    text-overflow: ellipsis;
 }
 /* Teams: zwei Namen, kleiner und notfalls zweizeilig statt abgeschnitten */
 .elo-name-team {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
     font-size: 13px;
     line-height: 1.25;
     white-space: normal;
@@ -267,7 +263,6 @@ const getTrendClass = (trend: number | null) => {
     overflow: hidden;
     font-size: 13px;
     white-space: nowrap;
-    text-overflow: ellipsis;
 }
 
 .elo-game {

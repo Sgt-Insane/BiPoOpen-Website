@@ -1,7 +1,6 @@
 import { addLeagueGame } from '../league/LeagueUtilFunctions';
 import { addOpenGame } from '../openGames/OpenGamesUtilFunctions';
 import { CUP_URL_SEGMENT } from '../league/cup/LeagueCupUtilFunctions';
-import { clearPlayerCaches } from '../playerProfile/PlayerProfileUtilFunctions';
 import { clearGameDataCache } from '@/util/gameDataCache';
 import { addDemoGame, isDemoMode } from '@/util/demoGames';
 import { formatEdge, formatHitEdge } from './knechtEdges';
@@ -32,6 +31,19 @@ export const getTeamName = (match: Match, teamIndex: number) => {
 
 export const getPlayerName = (match: Match, teamIndex: number, playerIndex: number) =>
     getTeam(match, teamIndex).players[playerIndex]?.name ?? '';
+
+// Kurzname fuer schmale Stellen: Vorname, bei gleichem Vornamen im Spiel mit Initiale ("Matthias W.").
+// Liga- und Cup-Teams sind als einziger "Spieler" gespeichert: Teamnamen nie kuerzen ("JP Burgundy", nicht "JP").
+export const getShortPlayerName = (match: Match, teamIndex: number, playerIndex: number) => {
+    const full = getPlayerName(match, teamIndex, playerIndex).trim();
+    const isLeagueOrCup = !!match.cupId || !!match.season || match.league !== undefined;
+    if (isLeagueOrCup || getTeam(match, teamIndex).logo) return full;
+    const parts = full.split(/\s+/);
+    if (parts.length < 2) return full;
+    const others = [match.team1, match.team2].flatMap(team => team?.players ?? []).map(player => player.name.trim()).filter(name => name !== full);
+    const clash = others.some(name => name.split(/\s+/)[0] === parts[0]);
+    return clash ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
+};
 
 // Frueher wurde ein 1 gegen 1 als zwei gleichnamige Spieler angelegt -> zu einem Spieler zusammenfassen.
 export const normalizeTeams = (match: Match): Match => {
@@ -76,7 +88,6 @@ export const saveKnechtGame = async (match: Match): Promise<boolean> => {
     const success = isDemoMode || (kind === 'open' ? await addOpenGame(match) : await addLeagueGame(match));
     if (success) {
         clearGameDataCache();
-        clearPlayerCaches();
         useAddGame().notifyGameSaved();
     }
     return success;
@@ -161,12 +172,12 @@ export const getPlayerStats = (match: Match, state: KnechtState): KnechtPlayerSt
     getTurnStats(match, state.turns, getFinalPlayerPoints(state));
 
 // ─── Auszeichnungen ───
-// Jeder Spieler bekommt einen Titel. Besondere Titel werden nur einmal vergeben, und zwar an den Spieler,
-// auf den sie am besten passen (nicht an den, der zufaellig zuerst geprueft wird). Wer keinen besonderen
-// Titel bekommt, erhaelt einen allgemeinen Titel passend zu seiner Trefferquote im Vergleich zum Spiel.
+// Nur fuer wirklich Besonderes: nicht jeder Spieler und nicht jedes Spiel bekommt eine. Jeder Titel wird hoechstens
+// einmal vergeben, und zwar an den Spieler, auf den er am besten passt (nicht an den, der zufaellig zuerst geprueft
+// wird). Jeder Spieler bekommt hoechstens einen Titel, seltene Titel zuerst.
 export type KnechtAward = { icon: string; title: string; detail: string };
 
-type AwardContext = { averageAccuracy: number; maxPoints: number; maxStreak: number; teamSize: (teamIndex: number) => number };
+type AwardContext = { averageAccuracy: number; maxStreak: number; teamSize: (teamIndex: number) => number; teamPoints: (teamIndex: number) => number };
 // strength: wie gut der Titel passt (hoeher = besser), null = passt nicht
 type AwardRule = { icon: string; title: string; strength: (s: KnechtPlayerStats, ctx: AwardContext) => number | null; detail: (s: KnechtPlayerStats, ctx: AwardContext) => string };
 
@@ -179,43 +190,42 @@ const AWARD_RULES: AwardRule[] = [
     // Nur mit echten Treffern: ein Deathcup bringt die restlichen Becher als Punkte, ist aber kein Abraeumen
     { icon: '🔟', title: '10/10', strength: (s, ctx) => when(ctx.teamSize(s.teamIndex) > 1 && s.points >= 10 && s.deathcups === 0, s.points), detail: () => 'Alle 10 Becher allein abgeräumt' },
     { icon: '💯', title: 'Makellos', strength: s => when(s.throws >= 5 && s.hits === s.throws, s.throws), detail: s => `${s.hits}/${s.throws} – jeder Wurf ein Treffer` },
-    // Die laengste Serie des Spiels wird immer gelobt (ab 3 Treffern in Folge)
-    { icon: '🎯', title: 'Scharfschütze', strength: (s, ctx) => when(s.bestStreak >= 3 && s.bestStreak === ctx.maxStreak, s.bestStreak), detail: s => `Längste Serie im Spiel: ${s.bestStreak} Treffer in Folge` },
     { icon: '💀', title: 'Sensenmann', strength: s => when(s.deathcups > 0, s.deathcups), detail: () => 'Deathcup versenkt – Spiel sofort beendet' },
-    { icon: '🧨', title: 'Bombenleger', strength: s => when(s.bombs > 0, s.bombs), detail: s => plural(s.bombs, 'Bombe gelegt', 'Bomben gelegt') },
     { icon: '🎪', title: 'Zirkusartist', strength: s => when(s.trickshotHits > 0, s.trickshotHits), detail: s => plural(s.trickshotHits, 'Trickshot verwandelt', 'Trickshots verwandelt') },
-    { icon: '🔥', title: 'Feuerteufel', strength: s => when(s.onFires >= 2, s.onFires), detail: s => `${s.onFires} Treffer im On-Fire-Modus` },
-    { icon: '🏀', title: 'Bouncer-König', strength: s => when(s.bouncers >= 2, s.bouncers), detail: s => `${s.bouncers} Bouncer über den Tisch` },
-    { icon: '🦅', title: 'Adlerauge', strength: s => when(s.throws >= 6 && getAccuracy(s) >= 60, getAccuracy(s)), detail: s => `${getAccuracy(s)} % Trefferquote (${s.hits}/${s.throws})` },
-    { icon: '🪃', title: 'Bumerang', strength: s => when(s.ballsBacks >= 2, s.ballsBacks), detail: s => `${s.ballsBacks}× Balls Back – die Bälle kommen immer zurück` },
-    { icon: '🧊', title: 'Eiskalt', strength: s => when(s.lastCups > 0, s.lastCups), detail: () => 'Den letzten Becher versenkt' },
+    { icon: '🧨', title: 'Bombenleger', strength: s => when(s.bombs > 0, s.bombs), detail: s => plural(s.bombs, 'Bombe gelegt', 'Bomben gelegt') },
     { icon: '🤸', title: 'Fangkünstler', strength: s => when(s.trickshotCatches >= 2, s.trickshotCatches), detail: s => `${s.trickshotCatches} Bälle für einen Trickshot gefangen` },
-    { icon: '🏆', title: 'Becherräumer', strength: (s, ctx) => when(s.points > 0 && s.points === ctx.maxPoints, s.points), detail: s => plural(s.points, 'Becher abgeräumt', 'Becher abgeräumt') },
     { icon: '🙈', title: 'Eigentor-Spezialist', strength: s => when(s.ownCups > 0, s.ownCups), detail: s => plural(s.ownCups, 'eigener Becher vom Tisch geräumt', 'eigene Becher vom Tisch geräumt') },
+    { icon: '🟨', title: 'Verwarnt', strength: s => when(s.penalties > 0, s.penalties), detail: s => plural(s.penalties, 'Karte kassiert', 'Karten kassiert') },
+    { icon: '🔥', title: 'Feuerteufel', strength: s => when(s.onFires > 0, s.onFires), detail: s => plural(s.onFires, 'Treffer im On-Fire-Modus', 'Treffer im On-Fire-Modus') },
+    { icon: '🏀', title: 'Bouncer-König', strength: s => when(s.bouncers > 0, s.bouncers), detail: s => `${s.bouncers} Bouncer über den Tisch` },
+    // 🪃 gibt es unter Windows 10 nicht
+    { icon: '🔄', title: 'Bumerang', strength: s => when(s.ballsBacks >= 2, s.ballsBacks), detail: s => `${s.ballsBacks}× Balls Back – die Bälle kommen immer zurück` },
+    // Im Team fast alles allein gemacht (10/10 ist schon oben)
+    { icon: '🦸', title: 'Alleinunterhalter', strength: (s, ctx) => when(ctx.teamSize(s.teamIndex) > 1 && s.points >= 7, s.points), detail: (s, ctx) => `${formatPoints(s.points)} von ${formatPoints(ctx.teamPoints(s.teamIndex))} Bechern fürs Team` },
+    // Laengste Serie des Spiels, aber erst ab 4 Treffern in Folge
+    { icon: '🎯', title: 'Scharfschütze', strength: (s, ctx) => when(s.bestStreak >= 4 && s.bestStreak === ctx.maxStreak, s.bestStreak), detail: s => `Längste Serie im Spiel: ${s.bestStreak} Treffer in Folge` },
+    // Der letzte Becher faellt in jedem Spiel: nur auszeichnen, wenn es knapp war (Gegner bei mindestens 8)
+    // und das eigene Team gewonnen hat (ein letzter Becher vor der Verlaengerung entscheidet nichts)
+    { icon: '🧊', title: 'Eiskalt', strength: (s, ctx) => when(s.lastCups > 0 && ctx.teamPoints(1 - s.teamIndex) >= 8 && ctx.teamPoints(s.teamIndex) > ctx.teamPoints(1 - s.teamIndex), ctx.teamPoints(1 - s.teamIndex)), detail: (s, ctx) => `Letzten Becher zum ${formatPoints(ctx.teamPoints(s.teamIndex))} : ${formatPoints(ctx.teamPoints(1 - s.teamIndex))} versenkt` },
+    { icon: '🦅', title: 'Adlerauge', strength: s => when(s.throws >= 6 && getAccuracy(s) >= 60, getAccuracy(s)), detail: s => `${getAccuracy(s)} % Trefferquote (${s.hits}/${s.throws})` },
     { icon: '😬', title: 'Kantenkönig', strength: s => when(s.edges >= 3, s.edges), detail: s => `${s.edges}× nur die Kante – so knapp` },
     { icon: '✈️', title: 'Luftpost', strength: s => when(s.airballs >= 3, s.airballs), detail: s => `${s.airballs} Airballs – die Wand freut sich` },
     // Nur wer deutlich schlechter als der Rest getroffen hat, nicht wenn alle schwach waren
     { icon: '🎳', title: 'Zielwasser vergessen', strength: (s, ctx) => when(s.throws >= 6 && getAccuracy(s) < 25 && getAccuracy(s) <= ctx.averageAccuracy - 10, 100 - getAccuracy(s)), detail: s => `Nur ${s.hits} Treffer bei ${s.throws} Würfen` },
 ];
 
-// Allgemeine Titel fuer alle ohne besonderen Titel, nach Trefferquote im Vergleich zum Spieldurchschnitt
-const FALLBACK_AWARDS: { icon: string; title: string; applies: (s: KnechtPlayerStats, ctx: AwardContext) => boolean; detail: (s: KnechtPlayerStats) => string }[] = [
-    { icon: '💪', title: 'Solider Werfer', applies: (s, ctx) => getAccuracy(s) >= Math.max(35, ctx.averageAccuracy), detail: s => `${getAccuracy(s)} % Trefferquote – über dem Schnitt` },
-    { icon: '🤝', title: 'Teamplayer', applies: s => s.points > 0, detail: s => `${plural(s.points, 'Becher', 'Becher')} bei ${s.throws} Würfen` },
-    { icon: '🍀', title: 'Beim nächsten Mal', applies: () => true, detail: s => `${getAccuracy(s)} % Trefferquote – da geht noch was` },
-];
-
 // Wer 0 Becher hat, schuldet eine nackte Meile
 const NACKT_AWARD: KnechtAward = { icon: '🍑', title: 'Nackt', detail: '0 Becher – die nackte Meile ruft' };
 
-export const getAwards = (stats: KnechtPlayerStats[]): KnechtAward[] => {
+// Je Spieler (gleiche Reihenfolge wie stats) ein Titel oder null
+export const getAwards = (stats: KnechtPlayerStats[]): (KnechtAward | null)[] => {
     const hits = stats.reduce((sum, entry) => sum + entry.hits, 0);
     const throws = stats.reduce((sum, entry) => sum + entry.throws, 0);
     const ctx: AwardContext = {
         averageAccuracy: getAccuracy({ hits, throws }),
-        maxPoints: Math.max(0, ...stats.map(entry => entry.points)),
         maxStreak: Math.max(0, ...stats.map(entry => entry.bestStreak)),
         teamSize: teamIndex => stats.filter(entry => entry.teamIndex === teamIndex).length,
+        teamPoints: teamIndex => stats.filter(entry => entry.teamIndex === teamIndex).reduce((sum, entry) => sum + entry.points, 0),
     };
     // Nackt bekommt jeder ohne Becher, auch mehrere Spieler
     const result: (KnechtAward | null)[] = stats.map(entry => entry.points === 0 ? NACKT_AWARD : null);
@@ -232,11 +242,7 @@ export const getAwards = (stats: KnechtPlayerStats[]): KnechtAward[] => {
         if (best >= 0) result[best] = { icon: rule.icon, title: rule.title, detail: rule.detail(stats[best], ctx) };
     });
 
-    return result.map((award, index) => {
-        if (award) return award;
-        const fallback = FALLBACK_AWARDS.find(candidate => candidate.applies(stats[index], ctx))!;
-        return { icon: fallback.icon, title: fallback.title, detail: fallback.detail(stats[index]) };
-    });
+    return result;
 };
 
 // Lustiger Text fuer den Speichern-Knopf

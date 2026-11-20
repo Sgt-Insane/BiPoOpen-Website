@@ -67,9 +67,16 @@
                 </TabPanel>
 
                 <TabPanel value="games" class="pt-[12px]">
-                    <div v-for="match in divisionGames" :key="match.time!" style="margin-top: 10px;">
-                        <MatchElement :match="withLeagueTeamLogos(match)" :avatarShape="'square'" showDate showElo/>
-                    </div>
+                    <LeagueMatchdays
+                        :leagueGames="divisionGames"
+                        :regularSeasonGameCount="regularSeasonGameCount"
+                        :leaguePlayers="leaguePlayers"
+                        :withdrawnPlayers="withdrawnPlayers"
+                        :seasonSlug="season.slug"
+                        :highlightTopSlots="division.highlightTopSlots"
+                        :promotionSlots="division.promotionSlots"
+                        :relegationSlots="division.relegationSlots"
+                    />
                 </TabPanel>
 
                 <TabPanel v-if="showFinalFourTab" value="finalfour">
@@ -113,13 +120,12 @@ import FloatingActionButton from '@/components/shared/FloatingActionButton.vue';
 import wheelIcon from '@/assets/icons/wheel.png';
 import LeagueTable from './LeagueTable.vue';
 import LeagueFinalFour from './LeagueFinalFour.vue';
-import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
+import LeagueMatchdays from './LeagueMatchdays.vue';
 import { onGameSaved, useAddGameContext } from '@/components/shared/GameEntry/useAddGame';
 import LeagueDrawDrawer from './LeagueDrawDrawer.vue';
 import LeagueCup from './cup/LeagueCup.vue';
 import { filterLeagueGames, getAllLeagueGames } from './LeagueUtilFunctions';
 import { CUP_URL_SEGMENT } from './cup/LeagueCupUtilFunctions';
-import { withLeagueTeamLogos } from './LeaguePlayersData';
 import {
     CURRENT_SEASON_SLUG,
     LEAGUE_SEASONS,

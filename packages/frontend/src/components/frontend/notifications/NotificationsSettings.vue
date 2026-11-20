@@ -92,7 +92,7 @@
                 <div v-if="results.length" class="ns-results">
                     <button v-for="name in results" :key="name" type="button" class="ns-result" @click="addPlayer(name)">
                         <Avatar :name="name" shape="circle" class="ns-result-avatar"/>
-                        <span class="flex-1 truncate">{{ name }}</span>
+                        <span class="flex-1 min-w-0 whitespace-nowrap overflow-hidden" v-fit-text>{{ name }}</span>
                         <i class="pi pi-plus ns-result-add"></i>
                     </button>
                 </div>

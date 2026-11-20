@@ -6,10 +6,7 @@
                 <h1 class="bp-title">Weltrangliste</h1>
                 <div class="wr-subtitle">Elo-Rating · alle offiziellen Spiele seit 2020</div>
             </div>
-            <div class="wr-skeleton-chips">
-                <div class="bp-skeleton wr-skeleton-chip"></div>
-                <div class="bp-skeleton wr-skeleton-chip"></div>
-            </div>
+            <div class="bp-skeleton wr-skeleton-select"></div>
             <SkeletonList :rows="12" rank/>
         </div>
         <div v-else-if="hasError || !data" class="wr-error">Die Rangliste konnte nicht geladen werden.</div>
@@ -44,15 +41,11 @@ const { now, data, isLoading, hasError } = useWorldRankingData();
     font-size: 13px;
     color: var(--bp-text-muted);
 }
-.wr-skeleton-chips {
-    display: flex;
-    gap: 8px;
-    padding-bottom: 14px;
-}
-.wr-skeleton-chip {
-    width: 84px;
-    height: 34px;
-    border-radius: 999px;
+/* Platzhalter fuer die Spieler/Teams-Auswahl (SelectButton, volle Breite) */
+.wr-skeleton-select {
+    height: 42px;
+    margin-bottom: 14px;
+    border-radius: 12px;
 }
 
 .wr-error {

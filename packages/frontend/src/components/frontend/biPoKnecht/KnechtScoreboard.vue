@@ -7,7 +7,7 @@
         >
             <div class="kn-score-header">
                 <Avatar :name="getTeamName(match, teamIndex)" :avatarImage="getTeam(match, teamIndex).logo" :shape="getTeam(match, teamIndex).logo ? 'square' : 'circle'" class="kn-score-logo" />
-                <span class="kn-score-name">{{ getTeamName(match, teamIndex) }}</span>
+                <span class="kn-score-name" v-fit-text>{{ getTeamName(match, teamIndex) }}</span>
                 <span v-if="state.winnerTeamIndex === teamIndex" class="kn-win-badge">Sieg</span>
                 <span class="kn-score-total">{{ formatPoints(teamPoints[teamIndex]) }}</span>
             </div>
@@ -98,7 +98,6 @@ const getSpecials = (stats: KnechtPlayerStats) => ([
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 15px;
     font-weight: 700;

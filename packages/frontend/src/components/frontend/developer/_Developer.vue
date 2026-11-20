@@ -340,10 +340,7 @@ const goBack = () => {
     font-weight: 700;
 }
 .dv-notification-text{
-    display: -webkit-box;
     overflow: hidden;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
     font-size: 14px;
     line-height: 1.35;
     color: #E3E5E8;

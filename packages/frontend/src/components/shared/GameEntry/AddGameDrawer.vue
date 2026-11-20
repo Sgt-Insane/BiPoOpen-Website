@@ -9,7 +9,7 @@
                 <span class="ag-knecht-icon">🎯</span>
                 <span class="ag-knecht-text">
                     <span class="ag-knecht-title">Laufendes Knecht-Spiel</span>
-                    <span class="ag-knecht-subtitle">{{ runningGameTitle }}</span>
+                    <span class="ag-knecht-subtitle" v-fit-text>{{ runningGameTitle }}</span>
                 </span>
                 <span class="ag-knecht-action">Fortsetzen</span>
             </button>
@@ -17,7 +17,7 @@
                 <span class="ag-knecht-icon">🍻</span>
                 <span class="ag-knecht-text">
                     <span class="ag-knecht-title">Offene Lobby</span>
-                    <span class="ag-knecht-subtitle">PIN {{ openLobby }}</span>
+                    <span class="ag-knecht-subtitle" v-fit-text>PIN {{ openLobby }}</span>
                 </span>
                 <span class="ag-knecht-action">Fortsetzen</span>
             </button>
@@ -67,7 +67,7 @@
                 <span class="ag-knecht-icon">🎯</span>
                 <span class="ag-knecht-text">
                     <span class="ag-knecht-title">Laufendes Knecht-Spiel</span>
-                    <span class="ag-knecht-subtitle">{{ runningGameTitle }}</span>
+                    <span class="ag-knecht-subtitle" v-fit-text>{{ runningGameTitle }}</span>
                 </span>
                 <span class="ag-knecht-action">Fortsetzen</span>
             </button>
@@ -133,7 +133,7 @@ import { addOpenGame } from '@/components/frontend/openGames/OpenGamesUtilFuncti
 import { addLeagueGame, filterLeagueGames, getAllLeagueGames, getLeagueGameSubtitle } from '@/components/frontend/league/LeagueUtilFunctions';
 import { getCupGames, getCupRoundGames, getLeagueCup, getPairingResult, getPlannedRoundNames } from '@/components/frontend/league/cup/LeagueCupUtilFunctions';
 import { CURRENT_SEASON_SLUG, LEAGUE_SEASONS, getActiveTeams, getSeason, toLeaguePlayers } from '@/components/frontend/league/LeagueSeasonsData';
-import { clearPlayerCaches, getUnlockedBadges } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
+import { getUnlockedBadges } from '@/components/frontend/playerProfile/PlayerProfileUtilFunctions';
 import { clearGameDataCache, getGameData } from '@/util/gameDataCache';
 import { useKnechtLaunch } from '@/components/frontend/biPoKnecht/useKnechtLaunch';
 import { runningGameTitle } from '@/components/frontend/biPoKnecht/knechtStorage';
@@ -217,7 +217,7 @@ const createPresetSides = (names: string[]) => {
     return sides;
 };
 
-// â”€â”€â”€ Daten â”€â”€â”€
+// ─── Daten ───
 // Bei jedem Oeffnen neu laden, damit Runde und offene Paarungen aktuell sind.
 const leagueGames = shallowRef<Match[]>([]);    // neueste zuerst
 const leagueCup = ref<LeagueCup | null | undefined>(undefined);   // undefined = laedt
@@ -249,11 +249,11 @@ watch(addGameVisible, (isVisible) => {
     loadData();
 });
 
-// â”€â”€â”€ Liga â”€â”€â”€
+// ─── Liga ───
 const division = computed(() => season.divisions.find(entry => entry.league === league.value) ?? season.divisions[0]);
 const leagueTeams = computed(() => toLeaguePlayers(getActiveTeams(division.value)));
 
-// â”€â”€â”€ Pokal â”€â”€â”€
+// ─── Pokal ───
 // Eingetragen wird in der zuletzt angelegten Runde.
 const cupRoundIndex = computed(() => (leagueCup.value?.rounds.length ?? 0) - 1);
 const cupGames = computed(() => leagueCup.value ? getCupGames(leagueGames.value, leagueCup.value) : []);
@@ -266,14 +266,14 @@ const hasOpenCupPairings = computed(() => {
     return round.pairings.some(pairing => !getPairingResult(pairing, roundGames, round.bestOf).winner);
 });
 
-// â”€â”€â”€ Drawer â”€â”€â”€
+// ─── Drawer ───
 const subtitle = computed(() => {
     if (mode.value === 'league')
         return getLeagueGameSubtitle(division.value, filterLeagueGames(leagueGames.value, season.slug, league.value));
 
     if (mode.value === 'cup') {
         const roundName = leagueCup.value ? getPlannedRoundNames(leagueCup.value.participants.length)[cupRoundIndex.value] : undefined;
-        return ['League Cup', roundName].filter(part => part).join(' Â· ');
+        return ['League Cup', roundName].filter(part => part).join(' · ');
     }
 
     return 'Offenes Spiel';
@@ -323,16 +323,15 @@ const save = async (sides: GameEntrySide[]) => {
 
     const success = await saveGame(sides);
     if (success) {
-        // Erst die Caches leeren, damit die Seiten beim Neuladen frische Daten bekommen
+        // Erst den Cache leeren, damit die Seiten beim Neuladen frische Daten bekommen
         clearGameDataCache();
-        clearPlayerCaches();
         notifyGameSaved();
         if (badgesBefore) showNewAwards(badgesBefore, names, sides.map(getSideScore).join(' : '));
     }
     return success;
 };
 
-// â”€â”€â”€ Erfolge â”€â”€â”€
+// ─── Erfolge ───
 // Neu freigeschaltete Badges der beteiligten Spieler, Titel zuerst
 const AWARD_GROUP_ORDER: PlayerBadgeGroup[] = ['title', 'record', 'milestone', 'performance'];
 
@@ -467,7 +466,6 @@ const showNewAwards = async (badgesBefore: Map<string, PlayerBadge[]>, names: st
 }
 .ag-knecht-subtitle{
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12px;
     color: #6B7079;

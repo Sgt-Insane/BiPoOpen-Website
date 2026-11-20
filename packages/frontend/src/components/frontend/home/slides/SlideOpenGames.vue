@@ -10,7 +10,7 @@
             <div class="so-tiles">
                 <button v-for="player in topPlayers" :key="player.name" type="button" class="so-tile" @click="openPlayerProfile?.(player.name)">
                     <span class="so-rate">{{ player.winrate }} %</span>
-                    <span class="so-name">{{ player.name }}</span>
+                    <span class="so-name" v-fit-text>{{ player.name }}</span>
                     <span class="so-games">{{ player.matches }} Spiele</span>
                 </button>
             </div>
@@ -118,7 +118,6 @@ const topPlayers = computed(() => {
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
     color: rgba(255, 255, 255, 0.85);
 }
 .so-games{

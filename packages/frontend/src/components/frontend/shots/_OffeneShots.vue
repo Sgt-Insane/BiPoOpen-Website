@@ -51,7 +51,7 @@
                             <button type="button" class="nm-row" :aria-expanded="expandedName === debtor.name" @click="toggleDebtor(debtor.name)">
                                 <Avatar :name="debtor.name" class="nm-avatar"/>
                                 <div class="nm-main">
-                                    <div class="nm-name">{{ debtor.name }}</div>
+                                    <div class="nm-name" v-fit-text>{{ debtor.name }}</div>
                                     <div class="nm-dashes">
                                         <span v-for="index in Math.min(debtor.shots.length, MAX_DASHES)" :key="index" class="nm-dash"></span>
                                     </div>
@@ -89,7 +89,7 @@
                         <div v-for="shot in visibleDrunk" :key="shot._id" class="nm-row nm-row-static">
                             <Avatar :name="shot.name" class="nm-avatar nm-avatar-done"/>
                             <div class="nm-main">
-                                <div class="nm-name">{{ shot.name }}</div>
+                                <div class="nm-name" v-fit-text>{{ shot.name }}</div>
                                 <div class="nm-meta">Shot vom {{ formatDate(shot.gameTime ?? shot.createdAt, 'day') }} · {{ describeGame(shot) }}</div>
                             </div>
                             <button type="button" class="nm-done-date sh-undo" v-hint="'Zurücknehmen'" @click="markDrunk(shot, false)">{{ formatDate(shot.drunkAt!, 'short') }} ✓</button>
@@ -359,7 +359,6 @@ const goBack = () => {
     font-weight: 700;
     color: var(--bp-text-strong);
     white-space: nowrap;
-    text-overflow: ellipsis;
 }
 .nm-meta{
     margin-top: 2px;

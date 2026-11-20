@@ -1,15 +1,18 @@
 <template>
-    <!-- --avatar-background / --avatar-color ueberschreiben die Farben, z.B. graue Avatare in Tabellen (theme.ts) -->
+    <!-- --avatar-background / --avatar-color ueberschreiben die Farben, z.B. graue Avatare in Tabellen (theme.ts).
+         bp-avatar: Haken fuer die Weihnachtsmuetze im Winter-Theme (winter/winter.css), nur Spieler, keine Team-Logos -->
     <PrimeAvatar
         ref="rootRef"
         :label="avatarImageComputed ? undefined : playerInitials"
         :image="avatarImageComputed || undefined"
         :shape="resolvedShape"
+        @error="onImageError"
         :pt="{
             root: {
-                class: `!outline-none !border-none ${isTeamLogo ? '!rounded-none' : ''} ${avatarImageComputed ? '!bg-transparent' : (grayscale ? '!bg-(--bp-fill-strong) !text-(--bp-text)' : '!bg-[var(--avatar-background,var(--main-color))] opacity-70 !text-[var(--avatar-color,white)]')}`
+                class: `!outline-none !border-none ${isTeamLogo ? '!rounded-none' : 'bp-avatar'} ${avatarImageComputed ? '!bg-transparent' : (grayscale ? '!bg-(--bp-fill-strong) !text-(--bp-text)' : '!bg-[var(--avatar-background,var(--main-color))] opacity-70 !text-[var(--avatar-color,white)]')}`
             },
             image: {
+                loading: lazy ? 'lazy' : 'eager',
                 class: `${resolvedShape === 'square' ? 'object-contain' : 'object-cover'} ${isTeamLogo ? '!rounded-none' : ''} bg-transparent ${grayscale ? 'grayscale' : ''}`
             }
         }"
@@ -19,7 +22,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import PrimeAvatar from 'primevue/avatar';
-import { getPlayerInitials, getPlayerProfileImage, fetchPlayerProfileImage, backendImageCache } from '@/components/frontend/playerProfile/PlayerProfileImageMapping';
+import { getPlayerInitials, getPlayerProfileImage, fetchPlayerProfileImage } from '@/components/frontend/playerProfile/PlayerProfileImageMapping';
 
 const props = defineProps({
     name: {type: String, required: true},
@@ -61,13 +64,14 @@ onBeforeUnmount(() => {
     observer = null;
 });
 
-const avatarImageComputed = computed(() => {
-    if(props.avatarImage)
-        return props.avatarImage;
+// Bild nicht ladbar (z.B. offline und nicht im Browser-Cache): Initialen statt kaputtem Bild
+const failedImage = ref<string | null>(null);
+const onImageError = () => { failedImage.value = avatarImageComputed.value; };
 
-    // Access backendImageCache reactively to re-render when image is fetched
-    const _trigger = backendImageCache[props.name?.trim().replace(/\s+/g, ' ').toLowerCase()];
-    return getPlayerProfileImage(props.name);
+const avatarImageComputed = computed(() => {
+    // getPlayerProfileImage liest reaktiv aus playerImageUrls und aktualisiert sich, sobald die Liste da ist
+    const image = props.avatarImage || getPlayerProfileImage(props.name);
+    return image && image !== failedImage.value ? image : null;
 });
 // avatarImage ist immer ein Team-Logo (Liga oder Turnier): nie abrunden und nie beschneiden,
 // auch wenn die Stelle shape="circle" nutzt. Spielerbilder und Initialen behalten ihre Form.

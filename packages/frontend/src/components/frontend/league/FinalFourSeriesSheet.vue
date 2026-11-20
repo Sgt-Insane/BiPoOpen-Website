@@ -29,7 +29,7 @@
                             :grayscale="row.isLoser"
                             class="!w-[26px] !h-[26px] !min-w-[26px] !text-[10px]"
                         />
-                        <span class="ffs-team-name">{{ row.name }}</span>
+                        <span class="ffs-team-name" v-fit-text>{{ row.name }}</span>
                     </span>
                     <span
                         v-for="(score, index) in row.scores"
@@ -170,7 +170,6 @@ const lastGameDate = computed(() => {
 .ffs-team-name {
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--bp-text);
 }

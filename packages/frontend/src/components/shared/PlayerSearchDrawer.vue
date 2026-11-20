@@ -29,7 +29,7 @@
 			<div v-if="results.length" class="ps-list">
 				<button v-for="name in results" :key="name" type="button" class="ps-row" @click="openProfile(name)">
 					<Avatar :name="name" shape="circle" class="ps-avatar" />
-					<span class="ps-name">{{ name }}</span>
+					<span class="ps-name" v-fit-text>{{ name }}</span>
 					<EloChip :rating="getElo(name)" />
 					<span class="ps-count">{{ matchCounts[name] ?? 0 }} {{ (matchCounts[name] ?? 0) == 1 ? 'Spiel' : 'Spiele' }}</span>
 					<i class="pi pi-angle-right ps-arrow"></i>
@@ -41,7 +41,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { onGameSaved } from './GameEntry/useAddGame';
 import router from '@/router.js';
 import Avatar from './Avatar.vue';
 import BottomSheet from './BottomSheet.vue';
@@ -56,7 +57,7 @@ const MAX_RESULTS = 30;
 const MAX_SUGGESTIONS = 15;
 
 const { playerSearchVisible, closePlayerSearch } = usePlayerSearch();
-const { loadEloRatings, getElo } = useEloRatings();
+const { loadEloRatings, isEloLoaded, getElo } = useEloRatings();
 
 const inputEl = ref<HTMLInputElement>();
 const query = ref('');
@@ -66,16 +67,38 @@ const isLoaded = ref(false);
 
 const normalize = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
+// Spieler, Spielzahlen und Elo einmal beim App-Start im Hintergrund laden, damit die Suche beim Oeffnen
+// sofort fertig dasteht und nichts nachrutscht. Neu geladen wird nur nach einem eingetragenen Spiel.
+const loadPlayers = async () => {
+	try {
+		[names.value, matchCounts.value] = await Promise.all([getAllPlayerNames(), getPlayerMatchCounts()]);
+		isLoaded.value = true;
+	} catch {
+		// Beim naechsten Oeffnen erneut versuchen
+	}
+};
+
+const preload = () => {
+	loadPlayers();
+	loadEloRatings();
+};
+
+// Erst wenn die Startseite steht, damit das Vorladen sie nicht ausbremst
+onMounted(() => {
+	if ('requestIdleCallback' in window) requestIdleCallback(preload, { timeout: 3000 });
+	else setTimeout(preload, 1500);
+});
+
+onGameSaved(loadPlayers);
+
 watch(playerSearchVisible, async (visible) => {
 	if (!visible) return;
 	query.value = '';
-	// Elo kommt nach, die Namen stehen schon vorher da
-	loadEloRatings();
+	// Nur falls das Vorladen (noch) nicht geklappt hat
+	if (!isLoaded.value) loadPlayers();
+	if (!isEloLoaded.value) loadEloRatings();
 	await nextTick();
 	inputEl.value?.focus();
-	if (isLoaded.value) return;
-	[names.value, matchCounts.value] = await Promise.all([getAllPlayerNames(), getPlayerMatchCounts()]);
-	isLoaded.value = true;
 });
 
 // Leere Suche: die aktivsten Spieler. Sonst: Treffer nach Anzahl Spiele, Namensanfang zuerst.
@@ -204,7 +227,6 @@ const openFirst = () => {
 	flex: 1;
 	min-width: 0;
 	overflow: hidden;
-	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: 15px;
 	font-weight: 600;

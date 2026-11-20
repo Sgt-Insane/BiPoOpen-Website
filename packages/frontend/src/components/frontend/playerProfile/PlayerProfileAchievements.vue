@@ -30,8 +30,8 @@
                     <span class="material-icons">{{ getIcon(badge) }}</span>
                 </span>
                 <span class="pp-ach-card-text">
-                    <span class="pp-ach-label" :class="{ 'is-muted': badge.locked }">{{ badge.label }}</span>
-                    <span class="pp-ach-caption">{{ badge.caption }}</span>
+                    <span class="pp-ach-label" v-fit-text :class="{ 'is-muted': badge.locked }">{{ badge.label }}</span>
+                    <span class="pp-ach-caption" v-fit-text>{{ badge.caption }}</span>
                 </span>
             </button>
         </div>
@@ -56,7 +56,7 @@
                             <span class="material-icons">{{ getIcon(badge) }}</span>
                         </span>
                         <span class="pp-ach-row-main">
-                            <span class="pp-ach-label" :class="{ 'is-muted': badge.locked }">{{ badge.label }}</span>
+                            <span class="pp-ach-label" v-fit-text :class="{ 'is-muted': badge.locked }">{{ badge.label }}</span>
                             <span v-if="badge.progress" class="pp-ach-progress">
                                 <span :style="{ width: `${getProgressPercent(badge)}%` }"></span>
                             </span>
@@ -272,7 +272,6 @@ button {
     display: block;
     font-weight: 700;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 .pp-ach-label.is-muted {
@@ -316,7 +315,6 @@ button {
     font-size: 12px;
     color: var(--bp-text-muted);
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 

@@ -16,7 +16,7 @@
                 <template v-if="view">
                     <div class="lg-score">
                         <div v-for="teamIndex in [0, 1]" :key="teamIndex" class="lg-team" :style="{ '--lg-team-color': getTeamColor(view.match, teamIndex) }">
-                            <span class="lg-team-name">{{ view.teamNames[teamIndex] }}</span>
+                            <span class="lg-team-name" v-fit-text>{{ view.teamNames[teamIndex] }}</span>
                             <span class="lg-team-score">{{ view.score[teamIndex] }}</span>
                         </div>
                     </div>
@@ -209,7 +209,6 @@ const goBack = () => {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 18px;
     font-weight: 800;

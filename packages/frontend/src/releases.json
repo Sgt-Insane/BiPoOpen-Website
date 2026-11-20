@@ -15,19 +15,26 @@
         "title": "Strike! Das Knecht-Update",
         "notes": [
             "Bowling-Animationen für Bombe, On Fire, Re-Rack, letzten Becher und benannte Formationen",
-            "Spielverlauf mit allen Würfen, Minuten, Highlights, Elo je Spieler und Auszeichnungen",
+            "Spielverlauf mit allen Würfen samt Werfer, Minuten, Highlights, Elo je Spieler und Auszeichnungen",
             "Würfe nachträglich ändern, auch während des Spiels, mit Vorschau der Folgen",
             "Offene Shots: nach 3 Airballs „Später“ trinken und auf der Webseite abhaken",
             "Spieler-Vergleich: zwei Spieler direkt gegeneinander vergleichen"
         ],
         "details": [
+            "BiPo Knecht direkt von der Startseite starten, über den Plus-Button „Spiel“ unten",
+            "BiPo Knecht: übersichtliches Menü, Rückgängig und Spielverlauf sind immer mit einem Tipp erreichbar",
             "Becher-Nummern, Farbwahl vor dem Spiel und Seitentausch durch Drehen des Handys",
             "Kanten-Erkennung, Ellenbogen-Call und Knecht Pro mit Wurfzeiten im Schiri-Modus",
+            "Tippen knapp neben einen Becher zählt nicht als Treffer",
             "Gentleman's Rule mit abwechselnden Bällen, On Fire zählt je Spieler über die Züge",
             "Im Spielverlauf zeigt ein Becher-Dreieck, welcher Becher wann und von wem getroffen wurde",
             "Siegchance im Spielverlauf: wer gerade vorne liegt",
+            "Unmögliche Spielstände werden erkannt und können nicht gespeichert werden",
+            "Offene Spiele: Teams lassen sich zufällig auslosen",
             "Spielerprofil aufgeräumt: Elo-Verlauf, Rekorde, Auszeichnungen und welche Becher jemand am häufigsten trifft",
-            "Begriffe wie Meile, Heaten Up oder Elo antippen für eine kurze Erklärung"
+            "Spielersuche: Namen, die mit dem Getippten anfangen, stehen oben. Klappt auch mit Android-Tastaturen",
+            "Benachrichtigungen: nach dem Folgen mit einem Tipp nur noch Spiele deiner Spieler",
+            "Begriffe wie Meile, Heaten Up, Elo oder Offene Shots antippen für eine kurze Erklärung"
         ]
     },
     {
@@ -36,19 +43,23 @@
         "title": "Anime Dude zieht zurück",
         "notes": [
             "BiPo League: Anime Dude hat sich aus der Saison zurückgezogen und steht fest auf dem letzten Platz",
-            "Neue Ergebnisseite: alle Spiele auf einen Blick, nach Spieler oder Team filterbar. Zu finden auf der Startseite unter „Alle Ergebnisse“",
-            "Offene Spiele: Teams lassen sich jetzt zufällig auslosen"
+            "Neue Ergebnisseite: alle Spiele auf einen Blick, nach Spieler oder Team filterbar. Zu finden auf der Startseite unter „Alle Ergebnisse“"
+        ]
+    },
+    {
+        "version": "2.0.2",
+        "date": "2026-11-20",
+        "title": "Spieltage & Schneegestöber",
+        "notes": [
+            "BiPo League: die Spiele stehen jetzt als Spieltage im Zeitstrahl, mit Bilanz jedes Teams, Schlagzeilen und der Tabelle nach dem Spieltag samt Plätzen auf und ab. Auch die Ergebnisseite fasst große Spieleabende so zusammen",
+            "Spielverlauf neu: Becherverlauf mit Fahnen für besondere Momente, antippen springt zum Wurf. Darunter Spieler und alle Würfe mit Spielzeit und Spielstand",
+            "Winter-Theme bis zum 6. Januar: Lichterkette, Schnee und Weihnachtsmützen",
+            "BiPo Knecht: getroffene Becher zeigen, wer geworfen hat und wer trinken muss. Neue Formationen Sharingan und Windmühle"
         ],
         "details": [
-            "BiPo Knecht direkt von der Startseite starten, der Plus-Button unten heißt jetzt „Spiel“",
-            "BiPo Knecht: übersichtlicheres Menü, Rückgängig und Spielverlauf sind immer mit einem Tipp erreichbar",
-            "BiPo Knecht: Tippen knapp neben einen Becher zählt nicht mehr als Treffer",
-            "Im Spielverlauf steht bei jedem Wurf, wer geworfen hat",
-            "Unmögliche Spielstände werden erkannt und können nicht gespeichert werden",
-            "Spielersuche: Namen, die mit dem Getippten anfangen, stehen oben. Klappt jetzt auch mit Android-Tastaturen",
-            "Benachrichtigungen: nach dem Folgen mit einem Tipp nur noch Spiele deiner Spieler",
-            "Mehr Erklärungen zum Antippen, zum Beispiel bei League, Vergleich, Nackte Meilen und Offene Shots",
-            "Dunkelmodus: die Kacheln oben sind wieder gut lesbar"
+            "BiPo Knecht: Auszeichnungen gibt es nur noch für wirklich Besonderes, neu dabei sind Verwarnt und Alleinunterhalter. Animationen „Alle“ zeigen jetzt auch Fehlwurf und eigenen Becher, „Besondere“ auch Heaten Up und On Fire",
+            "Knecht Pro: je Modus einstellbar (Schiri-Modus an, Spieler-Modus aus). Kanten beliebig oft antippen, ein Tipp in den Becher macht daraus doch einen Treffer, dazu „Rein und wieder raus“. Beim Bouncer erst die Aufprallstelle, dann den Becher antippen. Trickshot erst nach einem Nullwurf, beim letzten Ball kommt die Frage „Gefangen – Trickshot“ oder „Zug beenden“",
+            "Die installierte App holt neue Versionen von selbst, auch ohne sie komplett zu schließen. Während eines laufenden Knecht-Spiels wird nicht neu geladen"
         ]
     },
     {

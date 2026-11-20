@@ -20,7 +20,7 @@
             <div v-if="!filteredLeagueGames.length" class="ml-empty">Keine Spiele in dieser Liga.</div>
 
             <MatchElement v-for="leagueGame in filteredLeagueGames" :key="leagueGame._id"
-                :match="withLeagueTeamLogos(leagueGame)" :isBackend="true" :avatarShape="'square'" @edit="openEdit(leagueGame)"
+                :match="leagueGame" gameType="league" :isBackend="true" @edit="openEdit(leagueGame)"
             />
         </div>
 
@@ -50,7 +50,6 @@ import LeagueTeamSelect from '@/components/frontend/league/LeagueTeamSelect.vue'
 import { applySidesToMatch, useMatchEdit, type GameEntrySide } from '@/components/shared/GameEntry/gameEntry';
 import { filterLeagueGames, getAllLeagueGames, getGameLeague, getGameSeason, updateLeagueGame, deleteLeagueGame} from "@/components/frontend/league/LeagueUtilFunctions";
 import { CURRENT_SEASON_SLUG, LEAGUE_SEASONS, getSeason, toLeaguePlayers } from "@/components/frontend/league/LeagueSeasonsData";
-import { withLeagueTeamLogos } from "@/components/frontend/league/LeaguePlayersData";
 
 let leagueGames = ref<Match[]|undefined>();
 const { editingMatch, editVisible, editSides, openEdit } = useMatchEdit();
