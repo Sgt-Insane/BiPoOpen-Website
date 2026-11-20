@@ -25,10 +25,10 @@
                     <span v-else class="ge-side-label">{{ sideLabels[sideIndex] }}</span>
 
                     <span v-if="winnerIndex === sideIndex" class="ge-win-badge">Sieg</span>
-                    <span class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
+                    <span v-if="entry !== 'track'" class="ge-side-score" :class="{ 'ge-side-score--empty': totals[sideIndex] === null }">{{ totals[sideIndex] ?? '—' }}</span>
                 </div>
 
-                <div v-if="side.players.length > 1" class="ge-side-hint">Treffer je Spieler · das Team-Ergebnis ist die Summe</div>
+                <div v-if="side.players.length > 1 && entry !== 'track'" class="ge-side-hint">Treffer je Spieler · das Team-Ergebnis ist die Summe</div>
 
                 <div v-for="(player, playerIndex) in side.players" :key="playerIndex" class="ge-player">
                     <!-- Feste Namen: bei mehreren Spielern pro Seite steht der Name ueber den Treffern -->
@@ -59,6 +59,7 @@
                     </template>
 
                     <GameEntryScorePicker
+                        v-if="entry !== 'track'"
                         v-model="player.score"
                         :max="maxScore"
                         :chances="getScoreChances(sides, sideIndex, playerIndex, maxScore)"
@@ -113,21 +114,32 @@
             </div>
             <EloExplainedSheet v-if="eloPreview" v-model:visible="eloExplainedVisible"/>
 
-            <!-- Spiel live im BiPo Knecht zaehlen statt das Ergebnis einzutragen -->
-            <button v-if="launch" type="button" class="ge-launch" :disabled="!canLaunch" @click="onLaunch()">
+            <!-- Spiel live mit dem BiPo Knecht tracken statt das Ergebnis einzutragen (nur ohne Auswahl vorher) -->
+            <button v-if="launch && entry === 'both'" type="button" class="ge-launch" :disabled="!canLaunch" @click="onLaunch()">
                 <span class="ge-launch-icon">🎯</span>
                 <span class="ge-launch-text">
-                    <span class="ge-launch-title">Mit BiPo Knecht spielen</span>
+                    <span class="ge-launch-title">Mit dem BiPo Knecht tracken</span>
                     <span class="ge-launch-subtitle">{{ canLaunch ? 'Jeden Wurf live zählen, Ergebnis wird automatisch eingetragen' : missingLabel }}</span>
                 </span>
                 <i class="pi pi-angle-right"></i>
             </button>
-            <!-- Zweites Handy: einem laufenden Knecht-Spiel mit Code beitreten -->
-            <button v-if="launch && isFeatureOn('live')" type="button" class="ge-join" @click="onJoin()">
-                <i class="pi pi-mobile"></i> Spiel läuft schon auf einem anderen Handy? <b>Mit Code beitreten</b>
-            </button>
+            <!-- Mehrere Handys: Lobby per Anstossen, oder einem laufenden Knecht-Spiel mit Code beitreten -->
+            <div v-if="launch && entry === 'both' && isFeatureOn('anstossen')" class="ge-more">
+                <button type="button" class="ge-join" @click="onBump()">
+                    <i class="pi pi-mobile"></i> Jeder mit eigenem Handy? <b>Zum Anstoßen 🍻</b><DevBadge feature="anstossen" />
+                </button>
+                <button type="button" class="ge-join" @click="onJoin()">
+                    <i class="pi pi-sign-in"></i> Spiel läuft schon? <b>Mit PIN beitreten</b><DevBadge feature="anstossen" />
+                </button>
+            </div>
 
-            <div class="ge-footer">
+            <!-- Tracken: gleicher Knopf wie beim Eintragen, startet den BiPo Knecht -->
+            <div v-if="entry === 'track'" class="ge-footer">
+                <button type="button" class="ge-button ge-button-save" :disabled="!canLaunch" @click="onLaunch()">
+                    {{ canLaunch ? 'Spiel starten' : hasDuplicateNames ? 'Doppelt gewählt' : incompleteLabel }}
+                </button>
+            </div>
+            <div v-else class="ge-footer">
                 <button v-if="remove" type="button" class="ge-button ge-button-delete" :disabled="loading" aria-label="Spiel löschen" @click="onDelete()">
                     <i class="pi pi-trash"></i>
                 </button>
@@ -141,6 +153,8 @@
 </template>
 
 <script setup lang="ts">
+import DevBadge from '@/components/shared/DevBadge.vue';
+import { requestBumpPermission } from '@/components/frontend/multiplayer/useBump';
 /**
  * Gemeinsamer Drawer zum Eintragen/Bearbeiten eines Spiels (offene Spiele, Liga, Pokal, Turnier).
  * Standard: Spielersuche pro Platz. Abweichende Auswahl kommt von aussen:
@@ -186,7 +200,10 @@ const props = withDefaults(defineProps<{
     save: (sides: GameEntrySide[]) => Promise<boolean | void>;
     remove?: () => Promise<boolean | void>;
     launch?: (sides: GameEntrySide[]) => void;
+    // both: Treffer eintragen oder mit dem Knecht tracken; track: nur Teams waehlen, dann Knecht; result: nur Treffer
+    entry?: 'both' | 'track' | 'result';
 }>(), {
+    entry: 'both',
     title: 'Spiel eintragen',
     sideLabels: () => ['Team 1', 'Team 2'],
     allowDraw: true,
@@ -390,16 +407,25 @@ const missingLabel = computed(() => {
     return parts.length ? `Noch ${parts.join(' und ')} wählen` : props.incompleteLabel;
 });
 
+// Code vom anderen Handy: 4 Ziffern = Anstoss-Lobby, sonst Code eines laufenden Knecht-Spiels
 const onJoin = () => {
-    const answer = window.prompt('Code vom anderen Handy (steht dort im Knecht-Menü unter „Live“):');
+    const answer = window.prompt('PIN vom anderen Handy (in der Lobby oder im Knecht-Menü unter „Live“):');
     if (answer === null) return;
-    const code = answer.trim();
+    const code = answer.trim().replace(/\s/g, '');
     if (!code) {
-        toast.add({ severity: 'warn', summary: 'Kein Code eingegeben', detail: 'Den Code zeigt das andere Handy im Knecht-Menü unter „Live“.', life: 4000 });
+        toast.add({ severity: 'warn', summary: 'Keine PIN eingegeben', detail: 'Die PIN zeigt das andere Handy in der Lobby oder im Knecht-Menü unter „Live“.', life: 4000 });
         return;
     }
     visible.value = false;
-    router.push({ path: '/Knecht', query: { join: code.toUpperCase() } });
+    if (/^\d{4}$/.test(code)) router.push(`/Mitspielen/${code}`);
+    else router.push({ path: '/Knecht', query: { join: code.toUpperCase() } });
+};
+
+// Antippen = Bestaetigung: Sensor gleich freischalten (iPhone fragt hier), die Anstoss-Seite lauscht sofort
+const onBump = () => {
+    requestBumpPermission();
+    visible.value = false;
+    router.push({ path: '/Mitspielen', query: { anstossen: '1' } });
 };
 
 const onLaunch = () => {
@@ -674,6 +700,11 @@ const onLaunch = () => {
 .ge-elo-down{ color: var(--bp-danger); }
 
 /* ─── BiPo Knecht ─── */
+.ge-more{
+    display: flex;
+    flex-direction: column;
+    margin-top: -4px;
+}
 .ge-join{
     display: flex;
     align-items: center;

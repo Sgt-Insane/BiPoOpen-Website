@@ -2,7 +2,7 @@
     <div class="KnechtEdgeZoom" @pointerdown="$emit('activity')">
         <div class="kn-zoom-header">
             <span class="kn-zoom-title">{{ formatEdge(edge) }}</span>
-            <span class="kn-zoom-hint">{{ contacts.length ? 'Zweiter Tipp = Doppelkante' : 'Tippe genau, wo der Ball die Kante traf' }}</span>
+            <span class="kn-zoom-hint">{{ hint }}</span>
         </div>
 
         <!-- Nahansicht aus Sicht des Werfers: Spitze unten, der Werfer steht unter dem Bild -->
@@ -10,10 +10,20 @@
             <g v-for="cup in visibleCups" :key="cup.index">
                 <circle :cx="cup.x" :cy="cup.y" :r="RADIUS * EDGE_REACH" class="kn-zoom-reach" />
                 <circle :cx="cup.x" :cy="cup.y" :r="RADIUS" class="kn-zoom-cup" :class="{ 'kn-zoom-cup--gone': !cup.standing, 'kn-zoom-cup--active': cup.index === edge.cup }" />
-                <text :x="cup.x" :y="cup.y" class="kn-zoom-number">{{ cup.index + 1 }}</text>
+                <!-- Innen: Ball ist nach der Kante doch reingegangen -->
+                <circle v-if="canHit" :cx="cup.x" :cy="cup.y" :r="RADIUS * INSIDE" class="kn-zoom-inside" />
+                <text :x="cup.x" :y="cup.y - (canHit ? .18 : 0)" class="kn-zoom-number">{{ cup.index + 1 }}</text>
+                <text v-if="canHit" :x="cup.x" :y="cup.y + .32" class="kn-zoom-inside-label">rein = Treffer</text>
             </g>
-            <circle v-for="(contact, index) in contactPoints" :key="index" :cx="contact.x" :cy="contact.y" :r="RADIUS * BALL_TO_CUP" class="kn-zoom-ball" />
+            <g v-for="(contact, index) in contactPoints" :key="index">
+                <circle :cx="contact.x" :cy="contact.y" :r="RADIUS * BALL_TO_CUP" class="kn-zoom-ball" />
+                <text v-if="contactPoints.length > 1" :x="contact.x" :y="contact.y" class="kn-zoom-ball-number">{{ index + 1 }}</text>
+            </g>
         </svg>
+
+        <button type="button" role="switch" class="kn-zoom-spin" :aria-checked="!!edge.spinOut" @click="toggleSpinOut">
+            🌀 Ball dreht im Becher und fliegt wieder raus
+        </button>
 
         <div class="kn-zoom-footer">
             <span class="kn-zoom-thrower">↓ Werfer</span>
@@ -25,14 +35,17 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { EDGE_REACH, formatEdge, getEdgeSide } from './knechtEdges';
+import { EDGE_REACH, addEdgeContact, formatEdge, getEdgeContacts, resetEdge } from './knechtEdges';
 
-// Knecht Pro: Nahansicht des Bechers, an dessen Kante der Ball war. Ein Tipp auf den Rand legt die genaue
-// Stelle fest, ein zweiter Tipp macht daraus eine Doppelkante.
-const props = defineProps<{ edge: EdgeHit; standing: number[] }>();
-const emit = defineEmits<{ update: [edge: EdgeHit]; close: []; activity: [] }>();
+// Knecht Pro: Nahansicht des Bechers, an dessen Kante der Ball war. Jeder Tipp auf den Rand ist eine Kantenberuehrung
+// (beliebig oft: Kante, Doppelkante, 3x Kante ...). Ein Tipp in den Becher: der Ball ist danach doch reingegangen,
+// das zaehlt als Treffer (canHit: der Becher darf gerade getroffen werden). "Rein und wieder raus": Ball hat sich im
+// Becher gedreht und ist rausgeflogen (bleibt ein Fehlwurf).
+const props = defineProps<{ edge: EdgeHit; standing: number[]; canHit?: boolean }>();
+const emit = defineEmits<{ update: [edge: EdgeHit]; inside: [cup: number]; close: []; activity: [] }>();
 
 const RADIUS = 1;
+const INSIDE = .72;                     // innerhalb dieses Anteils des Radius: Ball ist im Becher
 const BALL_TO_CUP = 0.42;
 const STEP = 2.3;                       // Abstand der Bechermitten in Becherradien
 const ROWS = [[6, 7, 8, 9], [3, 4, 5], [1, 2], [0]];   // hinten (oben) nach vorne (unten)
@@ -60,10 +73,13 @@ const toPoint = (cup: number, angle: number) => {
     return { x: x + Math.sin(radians) * distance, y: y + Math.cos(radians) * distance };
 };
 
-const contacts = computed(() => [
-    ...(props.edge.angle !== undefined ? [{ cup: props.edge.cup, angle: props.edge.angle }] : []),
-    ...(props.edge.second ? [props.edge.second] : []),
-]);
+const contacts = computed(() => getEdgeContacts(props.edge));
+const hint = computed(() => {
+    if (props.edge.spinOut) return 'Rein und wieder raus – zählt als Fehlwurf';
+    const count = contacts.value.length;
+    const next = count === 0 ? 'Tippe auf den Rand, wo der Ball die Kante traf' : 'Nochmal auf den Rand = weitere Kante';
+    return props.canHit ? `${next} · in den Becher = doch Treffer` : next;
+});
 const contactPoints = computed(() => contacts.value.map(contact => toPoint(contact.cup, contact.angle)));
 
 const onTap = (event: MouseEvent) => {
@@ -78,17 +94,17 @@ const onTap = (event: MouseEvent) => {
         .filter(entry => entry.distance <= RADIUS * EDGE_REACH)
         .sort((a, b) => a.distance - b.distance)[0];
     if (!target) return;
+    if (props.canHit && target.distance < RADIUS * INSIDE) return emit('inside', target.cup.index);
     const angle = Math.round(Math.atan2(point.x - target.cup.x, point.y - target.cup.y) * 180 / Math.PI);
-    const contact = { cup: target.cup.index, angle };
-
-    // Erster Tipp: genaue Stelle (und ggf. anderer Becher). Zweiter Tipp: Doppelkante.
-    if (props.edge.angle === undefined || props.edge.second)
-        emit('update', { cup: contact.cup, side: getEdgeSide(angle), angle });
-    else
-        emit('update', { ...props.edge, double: true, second: contact });
+    emit('update', addEdgeContact(props.edge, { cup: target.cup.index, angle }));
 };
 
-const reset = () => emit('update', { cup: props.edge.cup, side: props.edge.side });
+const toggleSpinOut = () => {
+    const { spinOut: _spinOut, ...rest } = props.edge;
+    emit('update', props.edge.spinOut ? rest : { ...rest, spinOut: true });
+};
+
+const reset = () => emit('update', resetEdge({ ...props.edge, spinOut: false }));
 </script>
 
 <style scoped>
@@ -152,6 +168,43 @@ const reset = () => emit('update', { cup: props.edge.cup, side: props.edge.side 
 }
 .kn-zoom-cup--gone + .kn-zoom-number{
     fill: var(--bp-text-subtle);
+}
+.kn-zoom-inside{
+    fill: color-mix(in srgb, #2EA3C7 22%, transparent);
+    stroke: #2EA3C7;
+    stroke-width: .04;
+    stroke-dasharray: .12 .1;
+}
+.kn-zoom-inside-label{
+    font-size: .22px;
+    font-weight: 700;
+    fill: #2EA3C7;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+}
+.kn-zoom-ball-number{
+    font-size: .3px;
+    font-weight: 800;
+    fill: #1F2328;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+}
+.kn-zoom-spin{
+    padding: 9px 10px;
+    border: 1.5px solid var(--bp-border);
+    border-radius: 12px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.kn-zoom-spin[aria-checked="true"]{
+    border-color: #2EA3C7;
+    background: color-mix(in srgb, #2EA3C7 14%, var(--bp-surface));
 }
 .kn-zoom-ball{
     fill: white;

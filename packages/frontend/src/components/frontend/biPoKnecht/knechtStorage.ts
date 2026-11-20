@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { getDeviceStorage } from '@/util/deviceStorage';
 import type { KnechtAction } from './knechtEngine';
 import type { LiveBinding } from './knechtLive';
 
@@ -13,12 +14,14 @@ export type StoredKnechtGame = {
     actions: KnechtAction[];
     refereeUsed: boolean;
     savedAt: number;
-    live?: LiveBinding | null;      // Live-Ticker / zweites Handy: Schreibrecht fuer das Live-Spiel
+    live?: LiveBinding | null;      // Live-Ticker / mehrere Handys: Schreibrecht fuer das Live-Spiel
+    lobby?: string | null;          // aus der Anstoss-Lobby gestartet: deren PIN (Zurueck vor dem ersten Wurf)
+    paused?: boolean;               // pausiert verlassen: bleibt beim Fortsetzen pausiert, bis man aufs Display tippt
 };
 
 export const loadStoredGame = (): StoredKnechtGame | null => {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = getDeviceStorage().getItem(STORAGE_KEY);
         return raw ? JSON.parse(raw) as StoredKnechtGame : null;
     } catch {
         return null;
@@ -34,11 +37,11 @@ const getTitle = (game: StoredKnechtGame | null) => {
 export const runningGameTitle = ref<string | null>(getTitle(loadStoredGame()));
 
 export const storeGame = (game: StoredKnechtGame) => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(game)); } catch { /* Speicher voll oder gesperrt */ }
+    try { getDeviceStorage().setItem(STORAGE_KEY, JSON.stringify(game)); } catch { /* Speicher voll oder gesperrt */ }
     runningGameTitle.value = getTitle(game);
 };
 
 export const clearStoredGame = () => {
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignorieren */ }
+    try { getDeviceStorage().removeItem(STORAGE_KEY); } catch { /* ignorieren */ }
     runningGameTitle.value = null;
 };

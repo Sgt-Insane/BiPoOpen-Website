@@ -6,6 +6,7 @@ import mkcert from 'vite-plugin-mkcert';
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { devLiveServer } from './devLiveServer'
+import { devMpServer } from './devMpServer'
 
 export default defineConfig(({ command }) => {
   return {
@@ -15,6 +16,8 @@ export default defineConfig(({ command }) => {
       tailwindcss(),
       // Live-Spiele im Demo-Modus (nur lokaler Dev-Server, siehe devLiveServer.ts)
       devLiveServer(),
+      // Anstoss-Lobbys im Demo-Modus (siehe devMpServer.ts)
+      devMpServer(),
 
       // PWA plugin configuration
       VitePWA({

@@ -59,7 +59,7 @@
         <div v-if="!rps.playing" class="kn-start-hint">📱 Seite falsch? Einfach das Handy auf dem Tisch umdrehen.</div>
 
         <div class="kn-start-footer">
-            <button type="button" class="kn-start-button kn-start-button-cancel" @click="rps.playing ? stopRps() : step = 'colors'">
+            <button type="button" class="kn-start-button kn-start-button-cancel" @click="rps.playing ? stopRps() : skipColors ? $emit('cancel') : step = 'colors'">
                 Zurück
             </button>
             <button type="button" class="kn-start-button kn-start-button-start" :disabled="rps.playing" @click="$emit('start', selected)">
@@ -75,11 +75,12 @@ import { onBeforeUnmount, reactive, ref } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import { TEAM_COLORS, getTeamColor, getTeam, getTeamName, swapCupColors } from './KnechtUtilFunctions';
 
-const props = defineProps<{ match: Match }>();
+// skipColors: Farben stehen schon fest (z.B. in der Anstoss-Lobby gewaehlt)
+const props = defineProps<{ match: Match; skipColors?: boolean }>();
 const emit = defineEmits<{ start: [teamIndex: number]; cancel: [] }>();
 
 const selected = ref(0);
-const step = ref<'colors' | 'start'>('colors');
+const step = ref<'colors' | 'start'>(props.skipColors ? 'start' : 'colors');
 const colorName = (teamIndex: number) => getTeamColor(props.match, teamIndex) === TEAM_COLORS[0] ? 'Rote Becher' : 'Blaue Becher';
 
 const getPlayerLine = (teamIndex: number) => getTeam(props.match, teamIndex).players.map(player => player.name).join(' & ');

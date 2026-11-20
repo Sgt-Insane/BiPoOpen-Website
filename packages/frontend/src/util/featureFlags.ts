@@ -20,8 +20,18 @@ export type Release = { version: string; date: string; title: string; notes: str
 
 export const FEATURES = {
     live: {
-        title: 'Live-Ticker & zweites Handy',
-        description: 'Knecht-Spiele live auf der Startseite verfolgen und mit zwei Handys zählen (Code oder Link).',
+        title: 'Live-Ticker',
+        description: 'Laufende Knecht-Spiele live auf der Startseite verfolgen. Neue Knecht-Spiele gehen automatisch live.',
+        release: '2.1.0',
+    },
+    profil: {
+        title: 'Profil',
+        description: 'Standard-Profil auf diesem Handy: Knopf oben rechts und Seite „Mein Profil“.',
+        release: '2.1.0',
+    },
+    anstossen: {
+        title: 'Mehrere Handys & Anstoßen',
+        description: 'Jeder spielt mit seinem Handy: Lobby per Anstoßen oder PIN, Bereit, Beitreten zu laufenden Spielen. Dazu die neue „+ Spiel“-Auswahl (Anstoßen, Spiel tracken, Ergebnis eintragen).',
         release: '2.1.0',
     },
     shareOverlay: {
@@ -73,6 +83,13 @@ export const setFeature = (key: FeatureKey, on: boolean) => {
 };
 
 export const isFeatureOn = (key: FeatureKey) => isReleased(key) || (devState.enabled && isFeatureToggledOn(key));
+
+// Nur im Entwicklermodus zu sehen (an, aber noch nicht veroeffentlicht): dann bekommt das Element ein kleines DEV.
+// Mehrere Features: sichtbar, wenn eines an ist - DEV nur, solange keines davon veroeffentlicht ist.
+export const isDevOnly = (keys: FeatureKey | FeatureKey[]) => {
+    const list = Array.isArray(keys) ? keys : [keys];
+    return list.every(key => !isReleased(key)) && list.some(isFeatureOn);
+};
 
 // Update-Push genau so, wie ihn das Backend baut (packages/backend/src/controllers/Push.ts)
 export const buildReleasePush = (release: Release) => ({

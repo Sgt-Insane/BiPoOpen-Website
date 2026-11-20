@@ -42,7 +42,7 @@
                     :key="index"
                     class="pp-activity-cell"
                     :class="day ? [`level-${day.level}`, { 'is-selected': day === selectedDay }] : 'is-empty'"
-                    :title="day ? getDayLabel(day) : undefined"
+                    v-hint="day ? getDayLabel(day) : undefined"
                 ></span>
             </div>
 

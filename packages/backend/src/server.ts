@@ -10,6 +10,7 @@ import registrationRoutes from './routes/TournamentRegistration';
 import pushRoutes from './routes/Push';
 import shotRoutes from './routes/Shot';
 import liveGameRoutes from './routes/LiveGame';
+import knechtSessionRoutes from './routes/KnechtSession';
 
 const router = express();
 
@@ -77,6 +78,7 @@ router.use('/registrations', registrationRoutes);
 router.use('/push', pushRoutes);
 router.use('/shots', shotRoutes);
 router.use('/live', liveGameRoutes);
+router.use('/knechtSessions', knechtSessionRoutes);
 
 // Error handling
 router.use((req, res, next) => {

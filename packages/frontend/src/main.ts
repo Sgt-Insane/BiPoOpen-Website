@@ -3,7 +3,7 @@ import App from '@/App.vue'
 import router from '@/router.js';
 import PrimeVue from 'primevue/config';
 import ToastService from 'primevue/toastservice';
-import Tooltip from 'primevue/tooltip';
+import { hintDirective } from '@/util/hintDirective';
 import BiPoPreset from '@/theme';
 import "bootstrap/dist/css/bootstrap.min.css"
 import "primeicons/primeicons.css"
@@ -36,6 +36,7 @@ app.use(PrimeVue, {
 });
 
 app.use(ToastService);
-app.directive('tooltip', Tooltip);
+// Erklaerung beim Drueberfahren (PC) bzw. Gedrueckthalten (Handy), siehe util/hintDirective.ts
+app.directive('hint', hintDirective);
 app.use(router);
 app.mount('#app');

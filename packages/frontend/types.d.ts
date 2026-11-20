@@ -114,14 +114,20 @@ declare global {
 
     // Zusatzbecher (Bouncer, Bombe) fehlen, wenn sonst der letzte Becher gefallen waere.
     // bouncer: Treffer war zusaetzlich ein Bouncer (z.B. Balls Back per Bouncer).
-    type HitTurn = { cupIndex: number };
+    // edge (Knecht Pro): der Ball war vorher an der Kante und ist dann doch reingegangen
+    type HitTurn = { cupIndex: number; edge?: EdgeHit };
     // Nullwurf: spot = wo der Ball gelandet ist (Becherdurchmesser, Ursprung Becher 1, x nach rechts, y nach hinten,
     // aus Sicht des Werfers), edge = Ball hat die Kante eines Bechers getroffen
     type MissTurn = { spot?: { x: number; y: number }; edge?: EdgeHit };
     type EdgeSide = 'vorne' | 'vorne-rechts' | 'rechts' | 'hinten-rechts' | 'hinten' | 'hinten-links' | 'links' | 'vorne-links';
     // cup: Becher-Index (0-9), side: grobe Seite aus dem Tipp. Knecht Pro: angle = genaue Stelle am Rand in Grad
-    // (0 = vorne zum Werfer, positiv = rechts), second = zweite Kontaktstelle bei einer Doppelkante
-    type EdgeHit = { cup: number; side: EdgeSide; angle?: number; double?: boolean; second?: { cup: number; angle: number } };
+    // (0 = vorne zum Werfer, positiv = rechts), second = zweite Kontaktstelle bei einer Doppelkante.
+    // contacts: alle Kontaktstellen der Reihe nach (beliebig oft an der Kante), count = Anzahl Kantenberuehrungen.
+    // spinOut: Ball war im Becher, hat sich gedreht und ist wieder rausgeflogen (zaehlt als Fehlwurf).
+    type EdgeHit = {
+        cup: number; side: EdgeSide; angle?: number; double?: boolean; second?: { cup: number; angle: number };
+        contacts?: { cup: number; angle: number }[]; count?: number; spinOut?: boolean;
+    };
     type AirballTurn = { };
     type BombTurn = { cupIndex1: number, cupIndex2?: number, cupIndex3?: number, cupIndex4?: number, bouncer?: boolean };   // cupIndex4 / bouncer: Bombe per Bouncer (4 Becher)
     type BouncerTurn = { cupIndex1: number, cupIndex2?: number };

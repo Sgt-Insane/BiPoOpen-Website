@@ -54,16 +54,20 @@
     {
         "version": "2.1.0",
         "date": "2026-11-15",
-        "title": "Live-Ticker & Story-Overlay",
+        "title": "Live-Ticker & jeder mit eigenem Handy",
         "draft": true,
         "notes": [
             "Laufende Knecht-Spiele live auf der Startseite mitverfolgen",
-            "Zwei Handys zählen ein Spiel, beitreten per Code oder Link",
+            "Anstoßen wie mit dem Bier: Handys aneinanderstoßen, Teams wählen, alle drücken „Bereit“, jeder trägt seine Würfe selbst ein",
             "Story-Overlay: Endstand, Spielverlauf und eigene Stats als durchsichtiges Bild über dein Foto legen"
         ],
         "details": [
             "Spielverlauf live: jeder Wurf erscheint sofort",
-            "Mit zwei Handys hat jedes Team seine feste Tischseite, Animationen und Sounds laufen auf beiden",
+            "Weitere Handys kommen auch während des Spiels dazu, per Code oder Link, als Spieler oder ganzes Tischende",
+            "Spieler ohne eigenes Handy trägt ein Handy ihres Teams mit ein",
+            "Standard-Profil: wer auf diesem Handy spielt, oben rechts in der Kopfzeile",
+            "Eintragen und Abbrechen geht von jedem Handy, eingetragen wird nur einmal",
+            "Revanche mit denselben Handys, ohne neu zu verbinden",
             "Pausierte oder liegen gebliebene Spiele verschwinden nach 15 Minuten aus dem Live-Ticker"
         ]
     }

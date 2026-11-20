@@ -1,12 +1,12 @@
 <template>
-    <!-- Live-Ticker und zweites Handy: Code zum Beitreten, Links teilen, Status -->
+    <!-- Live-Ticker und mehrere Handys: Code zum Beitreten, wer mit welchem Handy eintraegt, Links teilen -->
     <div class="KnechtLivePanel">
         <template v-if="!live || live.status === 'off'">
             <p class="kl-text">
                 <b>Live-Ticker:</b> Zuschauer sehen das Spiel live auf der Webseite.<br>
-                <b>Zweites Handy:</b> An der anderen Tischseite mitzählen – beide Handys tragen ins selbe Spiel ein.
+                <b>Mehrere Handys:</b> Jeder Spieler oder jedes Tischende trägt auf dem eigenen Handy ein, alle im selben Spiel.
             </p>
-            <button type="button" class="kl-button kl-button--primary" @click="$emit('start')">
+            <button type="button" class="kl-button kl-button--primary" @click="emit('action', { type: 'start' })">
                 <span class="kl-dot"></span> Live starten
             </button>
         </template>
@@ -17,32 +17,51 @@
                 <span>{{ statusLabel }}</span>
             </div>
 
-            <!-- Zweites Handy schon verbunden: erstes Handy kann es trennen -->
-            <template v-if="live.role === 'host' && live.devices > 1">
-                <div class="kl-hint">Jedes Handy liegt an einem Tischende und zeigt die Becher des Gegners. Ist das andere Team dran, wartet dieses Handy.</div>
-                <button type="button" class="kl-button" @click="$emit('kick')">
-                    <i class="pi pi-times-circle"></i> Zweites Handy trennen
-                </button>
-            </template>
-            <!-- Zweites Handy nur im Spieler-Modus (jedes Handy an einem Tischende) -->
-            <div v-else-if="live.code && referee" class="kl-hint">Ein zweites Handy geht nur im Spieler-Modus. Der Live-Ticker für Zuschauer läuft trotzdem.</div>
-            <template v-else-if="live.code && live.role === 'host'">
-                <div class="kl-label">Code fürs zweite Handy</div>
+            <!-- Weitere Handys: beitreten auch waehrend des Spiels -->
+            <template v-if="live.code">
+                <div class="kl-label">PIN für weitere Handys</div>
                 <div class="kl-code">{{ live.code }}</div>
-                <div class="kl-hint">Auf dem zweiten Handy: „Spiel eintragen“ → „Mit Code beitreten“, oder den Link öffnen. Dort wählt man, an welchem Tischende das Handy liegt.</div>
-                <button type="button" class="kl-button kl-button--primary" @click="share(getJoinLink(live.code), 'Beim BiPo Knecht mitzählen')">
-                    <i class="pi pi-share-alt"></i> {{ copied === 'join' ? 'Link kopiert ✓' : 'Link fürs zweite Handy teilen' }}
+                <div class="kl-hint">Auf dem anderen Handy: „+ Spiel“ → „Mit PIN beitreten“, oder den Link öffnen. Dort wählt man, für wen das Handy einträgt.</div>
+                <div v-if="referee" class="kl-hint">Mit mehreren Handys geht der Schiri-Modus nur, wenn dieses Handy für alle einträgt.</div>
+                <button type="button" class="kl-button kl-button--primary" @click="share(getJoinLink(live.code), 'Mit dem BiPo Knecht mittracken')">
+                    <i class="pi pi-share-alt"></i> {{ copied === 'join' ? 'Link kopiert ✓' : 'Link für weitere Handys teilen' }}
                 </button>
             </template>
+
+            <!-- Handys im Spiel -->
+            <template v-if="live.devices.length > 1">
+                <div class="kl-label">Handys im Spiel</div>
+                <ul class="kl-devices">
+                    <li v-for="device in live.devices" :key="device.id" class="kl-device" :class="{ 'kl-device--me': device.id === live.deviceId }">
+                        <span class="kl-device-dot" :style="{ background: device.team === null ? 'var(--bp-text-faint)' : getTeamColor(match, device.team) }"></span>
+                        <span class="kl-device-text">
+                            <b>{{ device.id === live.deviceId ? 'Dieses Handy' : deviceName(device) }}</b>
+                            <small>{{ bindingLabel(device) }}</small>
+                        </span>
+                        <button v-if="device.id !== live.deviceId" type="button" class="kl-device-remove" :aria-label="`${deviceName(device)} trennen`" @click="emit('action', { type: 'kick', deviceId: device.id })">
+                            <i class="pi pi-times"></i>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="kl-label">Dieses Handy trägt ein für</div>
+                <select class="kl-select" :value="ownKey" @change="onBind(($event.target as HTMLSelectElement).value)">
+                    <option v-for="option in bindingOptions" :key="option.key" :value="option.key" :disabled="option.taken">
+                        {{ option.label }}{{ option.taken ? ' (anderes Handy)' : '' }}
+                    </option>
+                </select>
+                <div class="kl-hint">Spieler ohne eigenes Handy trägt ein Handy ihres Teams mit ein.</div>
+            </template>
+
             <button v-if="live.id" type="button" class="kl-button" @click="share(getWatchLink(live.id), 'BiPo Knecht live', 'watch')">
                 <i class="pi pi-eye"></i> {{ copied === 'watch' ? 'Link kopiert ✓' : 'Zuschauer-Link teilen' }}
             </button>
 
-            <button v-if="live.role === 'host'" type="button" class="kl-button kl-button--quiet" @click="$emit('stop')">
-                Live beenden (Spiel läuft hier weiter)
+            <button v-if="live.devices.length > 1" type="button" class="kl-button kl-button--quiet" @click="emit('action', { type: 'leave' })">
+                Dieses Handy abmelden (Spiel läuft auf den anderen weiter)
             </button>
-            <button v-else type="button" class="kl-button kl-button--quiet" @click="$emit('leave')">
-                Dieses Handy abmelden (Spiel läuft auf dem anderen weiter)
+            <button v-else type="button" class="kl-button kl-button--quiet" @click="emit('action', { type: 'stop' })">
+                Live beenden (Spiel läuft hier weiter)
             </button>
         </template>
     </div>
@@ -51,20 +70,58 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { getJoinLink, getWatchLink } from './knechtLive';
-import type { LiveStatus } from './useKnechtLiveSync';
+import { getTeamColor, getTeamName } from './KnechtUtilFunctions';
+import { isBindingTaken, type LiveDevice, type LiveDeviceBinding } from './liveDevices';
+import { deviceName, type LiveStatus } from './useKnechtLiveSync';
 
-export type KnechtLiveInfo = { status: LiveStatus; code: string | null; id: string | null; role: 'host' | 'guest' | null; devices: number };
+// team: wofuer dieses Handy eintraegt (aus der gespeicherten Bindung, schon bevor die Geraeteliste geladen ist)
+export type KnechtLiveInfo = { status: LiveStatus; code: string | null; id: string | null; devices: LiveDevice[]; deviceId: string | null; team?: number | null };
+export type KnechtLiveAction =
+    | { type: 'start' | 'stop' | 'leave' }
+    | { type: 'kick'; deviceId: string }
+    | { type: 'bind'; binding: LiveDeviceBinding };
 
-const props = defineProps<{ live: KnechtLiveInfo | null; referee?: boolean }>();
-defineEmits<{ start: []; stop: []; leave: []; kick: [] }>();
+const props = defineProps<{ live: KnechtLiveInfo | null; match: Match; referee?: boolean }>();
+const emit = defineEmits<{ action: [action: KnechtLiveAction] }>();
 
 const statusLabel = computed(() => {
     const live = props.live;
     if (!live) return '';
     if (live.status === 'connecting') return 'Verbinde …';
     if (live.status === 'offline') return 'Keine Verbindung – wird erneut versucht';
-    return live.devices > 1 ? `Live · ${live.devices} Handys verbunden` : 'Live · nur dieses Handy';
+    return live.devices.length > 1 ? `Live · ${live.devices.length} Handys verbunden` : 'Live · nur dieses Handy';
 });
+
+const teamOf = (team: number) => team === 0 ? props.match.team1 : props.match.team2;
+const bindingLabel = (binding: LiveDeviceBinding) => {
+    if (binding.team === null) return 'Für alle (ganzer Tisch)';
+    if (binding.player === null) return `Tischende ${getTeamName(props.match, binding.team)}`;
+    return teamOf(binding.team).players[binding.player]?.name ?? 'Spieler';
+};
+
+// Auswahl: jeder Spieler und (bei mehreren Spielern) das ganze Tischende eines Teams
+const keyOf = (binding: LiveDeviceBinding) => `${binding.team}-${binding.player}`;
+const bindingOptions = computed(() => {
+    const devices = props.live?.devices ?? [];
+    const myId = props.live?.deviceId ?? undefined;
+    // Dazu "fuer alle": dieses Handy traegt den ganzen Tisch ein (auch Schiri-Modus), die anderen schauen zu
+    const all: LiveDeviceBinding = { team: null, player: null };
+    return [...[0, 1].flatMap(team => {
+        const players = teamOf(team).players.map((_, player) => ({ team, player } as LiveDeviceBinding));
+        return players.length > 1 ? [...players, { team, player: null }] : players;
+    }), all].map(binding => ({ key: keyOf(binding), binding, label: binding.team === null ? 'Für alle (ganzer Tisch)' : bindingLabel(binding), taken: isBindingTaken(devices, binding, myId) }));
+});
+const ownKey = computed(() => {
+    const me = props.live?.devices.find(device => device.id === props.live?.deviceId);
+    if (!me) return '';
+    // Ein Spieler pro Team: Tischende und Spieler sind dasselbe
+    if (me.team !== null && me.player === null && teamOf(me.team).players.length === 1) return keyOf({ team: me.team, player: 0 });
+    return keyOf(me);
+});
+const onBind = (key: string) => {
+    const option = bindingOptions.value.find(entry => entry.key === key);
+    if (option && key !== ownKey.value) emit('action', { type: 'bind', binding: option.binding });
+};
 
 // Teilen-Menue des Handys, sonst in die Zwischenablage
 const copied = ref<'join' | 'watch' | null>(null);
@@ -167,6 +224,63 @@ const share = async (url: string, title: string, kind: 'join' | 'watch' = 'join'
     background: none;
     color: var(--bp-text-muted);
     font-size: 13px;
+    font-weight: 600;
+}
+.kl-devices{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.kl-device{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 4px 6px 4px 12px;
+    border: 1px solid var(--bp-border);
+    border-radius: 14px;
+    background: var(--bp-surface);
+}
+.kl-device--me{ border-color: var(--main-color); }
+.kl-device-dot{
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.kl-device-text{
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    color: var(--bp-text-strong);
+}
+.kl-device-text small{
+    font-size: 12px;
+    color: var(--bp-text-muted);
+}
+.kl-device-remove{
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--bp-text-muted);
+    cursor: pointer;
+}
+.kl-select{
+    min-height: 48px;
+    padding: 0 12px;
+    border: 1px solid var(--bp-border);
+    border-radius: 14px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-size: 15px;
     font-weight: 600;
 }
 </style>
