@@ -1,5 +1,8 @@
+import { winterThemeActive } from '@/components/shared/winter/winterTheme';
+
 export type LeagueTeam = {
-    teamName: string;
+    teamName: string;        // Name, unter dem die Spiele gespeichert sind und der ueberall angezeigt wird
+    shortName?: string;      // Abkuerzung sehr langer Namen, nur in der Ligatabelle (Spalte auf dem Handy zu schmal)
     playerName: string;
     logo: string;
     // Waehrend der Saison ausgestiegen: Spiele wurden geloescht, das Team spielt nicht mehr mit
@@ -25,7 +28,11 @@ export type LeagueSeason = {
     hasCup?: boolean;        // League Cup als eigener Reiter neben den Ligen
 };
 
-const teamLogo = (fileName: string) => new URL(`/src/assets/league/teams/${fileName}`, import.meta.url).href;
+// Optionales Winter-Logo: gilt, solange das Winter-Theme laeuft (15.11. bis 6.1.), danach automatisch wieder das normale.
+const teamLogo = (fileName: string, winterFileName?: string) => {
+    const file = winterThemeActive && winterFileName ? winterFileName : fileName;
+    return new URL(`/src/assets/league/teams/${file}`, import.meta.url).href;
+};
 
 // Single source of truth: Saison -> Liga -> Teams.
 export const LEAGUE_SEASONS: LeagueSeason[] = [
@@ -45,7 +52,7 @@ export const LEAGUE_SEASONS: LeagueSeason[] = [
                     { teamName: 'Hangover Heroes', playerName: 'David Jones', logo: teamLogo('Hangover-Heroes.webp') },
                     { teamName: 'Hopfenstreife', playerName: 'Jonas Weck', logo: teamLogo('Hopfenstreife.webp') },
                     { teamName: 'Cupfire Squad', playerName: 'Matthias Weck', logo: teamLogo('Cupfire-Squad.webp') },
-                    { teamName: 'Lokomotive Wiedenbrück', playerName: 'Simon Weck', logo: teamLogo('Lokomotive-Wiedenbrueck.webp') },
+                    { teamName: 'Lokomotive Wiedenbrück', playerName: 'Simon Weck', logo: teamLogo('Lokomotive-Wiedenbrueck.webp', 'Lokomotive-Wiedenbrueck-Winter.webp') },
                     { teamName: 'Don Promillo', playerName: 'Patrick Pohlmann', logo: teamLogo('Don-Promillo.webp') },
                     { teamName: 'Wonne', playerName: 'Daniel Wonnemann', logo: teamLogo('Wonne.webp') },
                     { teamName: 'El Gunto', playerName: 'Matthias Gunter', logo: teamLogo('El-Gunto.webp') },
@@ -78,7 +85,7 @@ export const LEAGUE_SEASONS: LeagueSeason[] = [
                     { teamName: '4Fisch', playerName: 'David Jones', logo: teamLogo('4Fisch.webp') },
                     { teamName: 'Hopfenstreife', playerName: 'Jonas Weck', logo: teamLogo('Hopfenstreife.webp') },
                     { teamName: 'Sgt. Insane', playerName: 'Matthias Weck', logo: teamLogo('Sgt-Insane.webp') },
-                    { teamName: 'Lokomotive Wiedenbrück', playerName: 'Simon Weck', logo: teamLogo('Lokomotive-Wiedenbrueck.webp') },
+                    { teamName: 'Lokomotive Wiedenbrück', playerName: 'Simon Weck', logo: teamLogo('Lokomotive-Wiedenbrueck.webp', 'Lokomotive-Wiedenbrueck-Winter.webp') },
                     { teamName: 'Don Promillo', playerName: 'Patrick Pohlmann', logo: teamLogo('Don-Promillo.webp') },
                     { teamName: 'Wonne', playerName: 'Daniel Wonnemann', logo: teamLogo('Wonne.webp') },
                     { teamName: 'El Gunto', playerName: 'Matthias Gunter', logo: teamLogo('El-Gunto.webp') },
@@ -109,7 +116,7 @@ export const LEAGUE_SEASONS: LeagueSeason[] = [
                     { teamName: 'Laufbier-Legende', playerName: 'Dana Pohlmann', logo: teamLogo('Laufbier-Legende.webp') },
                     { teamName: 'Die Bierpong-Pädagogin', playerName: 'Michelle Langer', logo: teamLogo('Die-Bierpong-Pädagogin.webp') },
                     { teamName: 'Trinkerbell', playerName: 'Annabell Kramme', logo: teamLogo('Trinkerbell.webp') },
-                    { teamName: 'Leoni Straub', playerName: 'Leoni Straub', logo: teamLogo('BiPo-League-Logo.webp') },
+                    { teamName: 'Walter Frosch Gedächtniskapelle e.V.', shortName: '1. WFGK', playerName: 'Leoni Straub', logo: teamLogo('Walter-Frosch-GK.webp') },
                     { teamName: 'Michael Weck', playerName: 'Michael Weck', logo: teamLogo('BiPo-League-Logo.webp') },
                 ],
             },
@@ -147,4 +154,4 @@ export const getSeasonTeams = (season: LeagueSeason | undefined): LeagueTeam[] =
     season ? season.divisions.flatMap(division => division.teams) : [];
 
 export const toLeaguePlayers = (teams: LeagueTeam[]): LeaguePlayer[] =>
-    teams.map(({ teamName, logo }) => ({ name: teamName, logo }));
+    teams.map(({ teamName, shortName, logo }) => ({ name: teamName, shortName, logo }));

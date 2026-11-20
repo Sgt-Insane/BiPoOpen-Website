@@ -17,7 +17,7 @@ const PALETTES: Record<StickerTheme, CupChartPalette> = {
 
 export const renderStickerChart = async (match: Match, theme: StickerTheme): Promise<HTMLImageElement | null> => {
     const host = document.createElement('div');
-    const app = createApp({ render: () => h(MatchCupChart, { match, width: LAYOUT_WIDTH, scale: SCALE, palette: PALETTES[theme], fontFamily: STICKER_FONT }) });
+    const app = createApp({ render: () => h(MatchCupChart, { match, width: LAYOUT_WIDTH, scale: SCALE, palette: PALETTES[theme], fontFamily: STICKER_FONT, logos: false }) });
     app.mount(host);
     const svg = host.querySelector('svg');
     const markup = svg ? new XMLSerializer().serializeToString(svg) : null;

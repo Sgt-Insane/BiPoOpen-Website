@@ -196,6 +196,22 @@ const undoLastRound = async (req: Request, res: Response, next: NextFunction) =>
     }
 };
 
+// Cup aendern (z.B. Teamname in Teilnehmern, Paarungen, Freilosen), wie /leagueGames/update.
+const updateLeagueCup = (req: Request, res: Response, next: NextFunction) => {
+    LeagueCup.findById(req.params.leagueCupId)
+        .then((leagueCup) => {
+            if (!leagueCup)
+                return res.status(404).json({ message: "League Cup not found" });
+
+            leagueCup.set(req.body);
+            return leagueCup
+                .save()
+                .then((leagueCup) => res.status(201).json({ leagueCup }))
+                .catch((error) => res.status(500).json({ error }));
+        })
+        .catch((error) => res.status(500).json({ error }));
+};
+
 const deleteLeagueCup = (req: Request, res: Response, next: NextFunction) => {
     LeagueCup.findOneAndDelete({ _id: req.params.leagueCupId, rounds: { $size: 0 } })
         .then((leagueCup) => {
@@ -206,4 +222,4 @@ const deleteLeagueCup = (req: Request, res: Response, next: NextFunction) => {
         .catch((error) => res.status(500).json({ error }));
 };
 
-export default { createLeagueCup, readLeagueCup, addNextRound, undoLastRound, deleteLeagueCup };
+export default { createLeagueCup, readLeagueCup, addNextRound, undoLastRound, updateLeagueCup, deleteLeagueCup };

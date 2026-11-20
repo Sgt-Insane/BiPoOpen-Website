@@ -8,10 +8,12 @@
             </filter>
         </defs>
         <g :filter="palette.shadow ? `url(#cc-shadow-${uid})` : undefined">
-            <!-- Legende: volle Teamnamen -->
+            <!-- Legende: Farbstrich, Team-Logo (Liga/Cup) und voller Teamname -->
             <g v-for="item in layout.legend" :key="`legend-${item.teamIndex}`">
                 <rect :x="item.x" :y="item.y - 5" width="14" height="3" rx="1.5" :fill="teamColor(item.teamIndex)" />
-                <text :x="item.x + 20" :y="item.y" :font-size="item.size" font-weight="700" :style="{ fill: palette.text }">{{ item.name }}</text>
+                <image v-if="item.logo && !failedLogos.has(item.logo)" :href="item.logo" :x="item.x + 20" :y="item.y - 4 - CUP_CHART.legendLogo / 2"
+                    :width="CUP_CHART.legendLogo" :height="CUP_CHART.legendLogo" preserveAspectRatio="xMidYMid meet" @error="onLogoError(item.logo)" />
+                <text :x="item.textX" :y="item.y" :font-size="item.size" font-weight="700" :style="{ fill: palette.text }">{{ item.name }}</text>
             </g>
 
             <!-- Linien der Fahnen unter Diagramm und Fahnen -->
@@ -46,7 +48,7 @@
                 @click="interactive && note.rowKey !== null && emit('select', note.rowKey)">
                 <rect v-if="palette.noteBase" :x="note.left" :y="note.top" :width="note.width" :height="CUP_CHART.noteHeight" :rx="CUP_CHART.noteHeight / 2" :style="{ fill: palette.noteBase }" />
                 <rect :x="note.left" :y="note.top" :width="note.width" :height="CUP_CHART.noteHeight" :rx="CUP_CHART.noteHeight / 2"
-                    :fill="teamColor(note.teamIndex)" :fill-opacity="palette.noteTint" :stroke="teamColor(note.teamIndex)" stroke-width="1.3" />
+                    :fill="teamColor(note.teamIndex)" :fill-opacity="palette.noteTint" :stroke="teamColor(note.teamIndex)" stroke-width="1" />
                 <g :transform="`translate(${iconX(note)} ${note.top + (CUP_CHART.noteHeight - CUP_CHART.noteIcon) / 2}) scale(${CUP_CHART.noteIcon / 24})`"
                     fill="none" :stroke="teamColor(note.teamIndex)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <template v-for="(shape, index) in KNECHT_ICONS[note.icon]" :key="index">
@@ -54,16 +56,17 @@
                         <path v-else :d="shape.d" v-bind="shapeAttrs(shape, note.teamIndex)" />
                     </template>
                 </g>
-                <text v-if="note.label || note.clock" :x="note.left + CUP_CHART.notePad + CUP_CHART.noteIcon + 4" :y="note.top + 14"
+                <text v-if="note.label || note.clock" :x="note.left + CUP_CHART.notePad + CUP_CHART.noteIcon + CUP_CHART.noteTextGap"
+                    :y="note.top + CUP_CHART.noteHeight / 2 + CUP_CHART.noteFont * .36"
                     :font-size="CUP_CHART.noteFont" font-weight="700" :style="{ fill: palette.text }">{{ note.label }}<tspan v-if="note.clock"
-                        :dx="note.label ? 4 : 0" font-weight="500" :style="{ fill: palette.muted }">{{ note.clock }}</tspan></text>
+                        :dx="note.label ? CUP_CHART.noteTextGap : 0" font-weight="500" :style="{ fill: palette.muted }">{{ note.clock }}</tspan></text>
             </g>
         </g>
     </svg>
 </template>
 
 <script setup lang="ts">
-import { computed, PropType } from 'vue';
+import { computed, PropType, ref } from 'vue';
 import { KNECHT_ICONS, type KnechtIconShape } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import { buildCupChart, CUP_CHART, SITE_CUP_CHART_PALETTE, type CupChartNote, type CupChartPalette } from './cupChart';
@@ -79,6 +82,8 @@ const props = defineProps({
     live: { type: Boolean, default: false },
     // Fahnen antippbar (springt zum Wurf)
     interactive: { type: Boolean, default: false },
+    // Team-Logos in der Legende (Story-Overlay: aus, das SVG-Bild laedt keine fremden Bilder)
+    logos: { type: Boolean, default: true },
 });
 
 const emit = defineEmits<{ select: [rowKey: number] }>();
@@ -94,7 +99,11 @@ const measure = (text: string, weight: number, size: number) => {
     return context.measureText(text).width;
 };
 
-const layout = computed(() => props.width > 0 ? buildCupChart(props.match, props.width, measure, props.live) : null);
+const layout = computed(() => props.width > 0 ? buildCupChart(props.match, props.width, measure, props.live, props.logos) : null);
+
+// Logo nicht ladbar (z.B. offline): nur Farbstrich und Name
+const failedLogos = ref(new Set<string>());
+const onLogoError = (logo: string) => { failedLogos.value = new Set(failedLogos.value).add(logo); };
 
 // Symbol links in der Fahne, ohne Text mittig
 const iconX = (note: CupChartNote) => note.label || note.clock

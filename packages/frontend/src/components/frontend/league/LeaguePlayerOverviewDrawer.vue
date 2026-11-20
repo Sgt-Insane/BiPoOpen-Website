@@ -2,9 +2,16 @@
     <BottomSheet v-model:visible="drawerVisible">
         <template #header>
             <div v-if="selectedPlayer" class="lpo-head">
-                <Avatar :name="selectedPlayer.name" :avatarImage="selectedPlayer.logo" shape="square" class="lpo-head-avatar" />
+                <!-- Antippen des Logos: gross aufploppen lassen. pointerdown.stop, damit der Kopf nicht das Ziehen des Sheets startet -->
+                <button v-if="selectedPlayer.logo" type="button" class="lpo-head-logo" :aria-label="`Logo von ${selectedPlayer.name} groß anzeigen`"
+                    @pointerdown.stop @click="logoOpen = true">
+                    <Avatar :name="selectedPlayer.name" :avatarImage="selectedPlayer.logo" shape="square" class="lpo-head-avatar" />
+                </button>
+                <Avatar v-else :name="selectedPlayer.name" shape="square" class="lpo-head-avatar" />
                 <div class="lpo-head-text">
-                    <div class="lpo-title" v-fit-text>{{ selectedPlayer.name }}</div>
+                    <!-- Sehr lange Namen (mit shortName fuer die Tabelle) hier voll ausgeschrieben: lieber umbrechen als verkleinern -->
+                    <div v-if="selectedPlayer.shortName" class="lpo-title lpo-title-full">{{ selectedPlayer.name }}</div>
+                    <div v-else class="lpo-title" v-fit-text>{{ selectedPlayer.name }}</div>
                     <div v-if="subtitle" class="lpo-subtitle">{{ subtitle }}</div>
                 </div>
             </div>
@@ -74,10 +81,21 @@
             </div>
         </div>
     </BottomSheet>
+
+    <!-- Logo gross: ueber dem Sheet, Antippen irgendwo schliesst -->
+    <Teleport to="body">
+        <Transition name="lpo-logo">
+            <div v-if="logoOpen && selectedPlayer?.logo" class="lpo-logo-overlay" role="dialog" aria-modal="true"
+                :aria-label="`Logo von ${selectedPlayer.name}`" @click="logoOpen = false">
+                <img :src="selectedPlayer.logo" :alt="`Logo von ${selectedPlayer.name}`" class="lpo-logo-image" />
+                <div class="lpo-logo-name">{{ selectedPlayer.name }}</div>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import BottomSheet from '@/components/shared/BottomSheet.vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
@@ -103,6 +121,17 @@ const { openAddGame } = useAddGame();
 
 const expandedOpponent = ref<string>();
 watch(() => props.selectedPlayer, () => expandedOpponent.value = undefined);
+
+// Grosses Logo: schliesst mit dem Sheet und per Escape (ohne dabei das Sheet mitzuschliessen)
+const logoOpen = ref(false);
+watch(drawerVisible, visible => { if (!visible) logoOpen.value = false; });
+const onKeydown = (event: KeyboardEvent) => {
+    if (!logoOpen.value || event.key !== 'Escape') return;
+    event.stopImmediatePropagation();
+    logoOpen.value = false;
+};
+onMounted(() => document.addEventListener('keydown', onKeydown, true));
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true));
 
 const toggleOpponent = (name: string) => {
     expandedOpponent.value = expandedOpponent.value === name ? undefined : name;
@@ -171,17 +200,91 @@ const addGame = (opponentName: string) => {
 }
 .lpo-head-avatar {
     flex-shrink: 0;
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-    font-size: 16px;
+    width: 100px;
+    height: 100px;
+    border-radius: 18px;
+    font-size: 26px;
     font-weight: 700;
     opacity: 1;
     --avatar-background: var(--bp-fill);
     --avatar-color: var(--bp-text-muted);
 }
+.lpo-head-logo {
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    border-radius: 18px;
+    background: none;
+    cursor: zoom-in;
+    transition: transform .15s ease;
+}
+.lpo-head-logo:active {
+    transform: scale(.94);
+}
+.lpo-head-logo:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+}
 .lpo-head-text {
     min-width: 0;
+}
+
+/* ─── Logo gross ─── */
+.lpo-logo-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;              /* ueber dem Sheet (PrimeVue-Overlays ab 1100) */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 24px 16px;
+    background: rgba(0, 0, 0, .8);
+    cursor: zoom-out;
+}
+.lpo-logo-image {
+    width: min(80vw, 60vh, 420px);
+    height: min(80vw, 60vh, 420px);
+    object-fit: contain;
+    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .45));
+}
+.lpo-logo-name {
+    max-width: 100%;
+    font-size: 20px;
+    font-weight: 800;
+    color: white;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+/* Aufploppen: Logo waechst mit leichtem Ueberschwingen, Hintergrund blendet ein */
+.lpo-logo-enter-active {
+    transition: opacity .2s ease;
+}
+.lpo-logo-enter-active .lpo-logo-image {
+    animation: lpo-logo-pop .38s cubic-bezier(.34, 1.56, .64, 1);
+}
+.lpo-logo-leave-active {
+    transition: opacity .16s ease;
+}
+.lpo-logo-leave-active .lpo-logo-image {
+    transition: transform .16s ease;
+}
+.lpo-logo-enter-from,
+.lpo-logo-leave-to {
+    opacity: 0;
+}
+.lpo-logo-leave-to .lpo-logo-image {
+    transform: scale(.6);
+}
+@keyframes lpo-logo-pop {
+    from { transform: scale(.25); }
+    to { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lpo-logo-enter-active .lpo-logo-image {
+        animation: none;
+    }
 }
 .lpo-title {
     overflow: hidden;
@@ -190,6 +293,10 @@ const addGame = (opponentName: string) => {
     color: var(--bp-text-strong);
     line-height: 1.2;
     white-space: nowrap;
+}
+.lpo-title-full {
+    white-space: normal;
+    overflow-wrap: break-word;
 }
 .lpo-subtitle {
     font-size: 13px;

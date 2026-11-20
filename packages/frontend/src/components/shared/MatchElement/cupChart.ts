@@ -1,6 +1,6 @@
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getScoringTeam, getTurnCups } from '@/components/frontend/biPoKnecht/knechtStats';
-import { formatPoints, getShortPlayerName, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
+import { formatPoints, getShortPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import type { KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 
 // Becherverlauf eines Knecht-Spiels als fertig ausgelegte Grafik (Pixel bei gegebener Breite).
@@ -65,12 +65,18 @@ export const getCupChartMoments = (match: Match): CupChartMoment[] => {
         if (turn.type === 'bouncer' || (data.bouncer && (cups || isHitTurnType(turn.type)))) add('bouncer', 'Bouncer', 3);
         if (turn.type === 'ballsback') add('ballsback', 'Balls Back', 2);
     });
+    // Verlaengerung und Re-Rack (Fahne auf der Linie des Teams, das es verlangt hat)
+    const EVENT_MOMENTS: Partial<Record<MatchEvent['kind'], { icon: KnechtIconName; title: string; importance: number }>> = {
+        overtime: { icon: 'overtime', title: 'Verlängerung', importance: 6 },
+        reRack: { icon: 'reRack', title: 'Re-Rack', importance: 3 },
+    };
     events.forEach((event, index) => {
-        if (event.kind !== 'overtime') return;
+        const moment = EVENT_MOMENTS[event.kind];
+        if (!moment) return;
         const previous = turns[event.afterTurnIndex - 1];
         list.push({
             key: `e${index}`, rowKey: previous ? event.afterTurnIndex - 1 : null, position: event.afterTurnIndex - .5, teamIndex: event.teamIndex,
-            playerIndex: null, scoreTeam: event.teamIndex, icon: 'overtime', title: 'Verlängerung', importance: 6, time: event.time ?? previous?.time ?? null,
+            playerIndex: null, scoreTeam: event.teamIndex, ...moment, time: event.time ?? previous?.time ?? null,
         });
     });
     list.sort((a, b) => a.position - b.position);
@@ -122,7 +128,8 @@ export type CupChartNote = {
 export type CupChartLayout = {
     width: number;
     height: number;
-    legend: { teamIndex: number; name: string; size: number; x: number; y: number }[];
+    // logo: Team-Logo (Liga/Cup) zwischen Farbstrich und Namen, textX: wo der Name beginnt
+    legend: { teamIndex: number; name: string; size: number; x: number; y: number; logo: string | null; textX: number }[];
     plot: { top: number; width: number; height: number };
     grid: { y: number; dashed: boolean }[];
     lines: { teamIndex: number; points: string }[];
@@ -135,16 +142,20 @@ export type CupChartLayout = {
 // Masse in Pixeln (Webseite 1:1, im Story-Overlay hochskaliert)
 export const CUP_CHART = {
     legendRow: 18,
+    legendLogoRow: 28,          // Legende mit Team-Logos
+    legendLogo: 24,
     legendGap: 8,
     plotHeight: 130,
     endsWidth: 52,
     axisHeight: 24,
-    noteRow: 25,
-    noteHeight: 20,
-    noteGap: 8,
-    notePad: 7,
-    noteIcon: 13,
-    noteFont: 11,
+    // Fahnen bewusst klein, damit sie den Verlauf nicht ueberdecken
+    noteRow: 19,
+    noteHeight: 15,
+    noteGap: 6,
+    notePad: 5,
+    noteIcon: 10,
+    noteFont: 9,
+    noteTextGap: 3,
     maxNoteRows: 3,
 };
 
@@ -155,7 +166,8 @@ const LEGEND_MARK = 20;
 const LEGEND_GAP = 14;
 const LEGEND_FONT = 12;
 
-export const buildCupChart = (match: Match, width: number, measure: MeasureText, live = false): CupChartLayout | null => {
+// logos: Team-Logos in der Legende (aus im Story-Overlay: das SVG-Bild kann keine fremden Bilder nachladen)
+export const buildCupChart = (match: Match, width: number, measure: MeasureText, live = false, logos = true): CupChartLayout | null => {
     const turns = match.turns ?? [];
     // Stand nach jedem Turn
     const running: [number, number] = [0, 0];
@@ -173,17 +185,21 @@ export const buildCupChart = (match: Match, width: number, measure: MeasureText,
     // Legende: volle Teamnamen, immer nebeneinander in einer Zeile. Reicht der Platz nicht, werden beide
     // gleich kleiner (nie umgebrochen, nie mit … gekuerzt).
     const names = [0, 1].map(teamIndex => getTeamName(match, teamIndex));
+    const teamLogos = [0, 1].map(teamIndex => (logos && getTeam(match, teamIndex)?.logo) || null);
+    const hasLogos = teamLogos.some(Boolean);
+    // Vor jedem Namen: Farbstrich, mit Logo dazu Logo und Abstand
+    const marks = teamLogos.map(logo => LEGEND_MARK + (logo ? C.legendLogo + 6 : 0));
     const textWidths = names.map(name => measure(name, 700, LEGEND_FONT));
-    const room = width - LEGEND_MARK * 2 - LEGEND_GAP;
+    const room = width - marks[0] - marks[1] - LEGEND_GAP;
     const fullWidth = textWidths[0] + textWidths[1];
     const legendSize = fullWidth <= room ? LEGEND_FONT : Math.floor(LEGEND_FONT * room / fullWidth * 2) / 2;
     const scale = legendSize / LEGEND_FONT;
-    const legend = names.map((name, teamIndex) => ({
-        teamIndex, name, size: legendSize,
-        x: teamIndex === 0 ? 0 : LEGEND_MARK + textWidths[0] * scale + LEGEND_GAP,
-        y: 13,
-    }));
-    const legendHeight = C.legendRow + C.legendGap;
+    const legendRow = hasLogos ? C.legendLogoRow : C.legendRow;
+    const legend = names.map((name, teamIndex) => {
+        const x = teamIndex === 0 ? 0 : marks[0] + textWidths[0] * scale + LEGEND_GAP;
+        return { teamIndex, name, size: legendSize, x, y: legendRow / 2 + 4, logo: teamLogos[teamIndex], textX: x + marks[teamIndex] };
+    });
+    const legendHeight = legendRow + C.legendGap;
 
     // Skalen
     const plotWidth = width - C.endsWidth;
@@ -259,9 +275,9 @@ export const buildCupChart = (match: Match, width: number, measure: MeasureText,
         const rowEnds: number[] = [];
         const placed: Placed[] = moments.filter(moment => !hidden.has(moment.key)).map(moment => {
             const { label, clock } = content(moment);
-            const textWidth = (label ? 4 + measure(label, 700, C.noteFont) : 0) + (clock ? 4 + measure(clock, 500, C.noteFont) : 0);
+            const textWidth = (label ? C.noteTextGap + measure(label, 700, C.noteFont) : 0) + (clock ? C.noteTextGap + measure(clock, 500, C.noteFont) : 0);
             const noteWidth = label || clock ? C.notePad * 2 + C.noteIcon + textWidth : C.noteHeight + 2;
-            const anchor = label || clock ? moment.x - 10 : moment.x - noteWidth / 2;
+            const anchor = label || clock ? moment.x - 8 : moment.x - noteWidth / 2;
             const left = Math.max(0, Math.min(anchor, width - noteWidth));
             let row = rowEnds.findIndex(rowEnd => rowEnd + 4 <= left);
             if (row < 0) { row = rowEnds.length; rowEnds.push(0); }
@@ -274,7 +290,7 @@ export const buildCupChart = (match: Match, width: number, measure: MeasureText,
     const fits = () => layout.rows <= C.maxNoteRows;
     const byImportance = [...moments].sort((a, b) => a.importance - b.importance || a.x - b.x);
     // Schritte bei Platzmangel, bis es in die Zeilen passt: erst ueberall die Zeit weg, dann die gewoehnlichen
-    // Momente (Balls Back, Bouncer, On Fire, Karten) verkleinern und notfalls ausblenden (in der Wurfliste bleiben sie),
+    // Momente (Balls Back, Re-Rack, Bouncer, On Fire, Karten) verkleinern und notfalls ausblenden (in der Wurfliste bleiben sie),
     // erst danach die seltenen (Deathcup, Bombe, Trickshot, ...) ebenso
     const RARE = 5;
     const common = byImportance.filter(moment => moment.importance < RARE);

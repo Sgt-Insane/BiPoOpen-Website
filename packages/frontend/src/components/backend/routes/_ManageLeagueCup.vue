@@ -123,14 +123,14 @@
                 </div>
             </div>
 
-            <!-- Ein Drawer fuer Neu (Paarung waehlen) und Bearbeiten (Paarung steht fest) -->
+            <!-- Ein Drawer fuer Neu (Paarung waehlen, Teams fest) und Bearbeiten (Teams wie bei Ligaspielen waehlbar) -->
             <GameEntryDrawer
                 v-model:visible="gameDrawerVisible"
                 :title="editingMatch ? 'Spiel bearbeiten' : 'Spiel eintragen'"
                 :subtitle="`League Cup · ${roundNames[drawerRoundIndex] ?? ''}`"
                 :initialSides="editSides"
                 :sideLabels="['Team 1', 'Team 2']"
-                lockedNames
+                :lockedNames="!editingMatch"
                 :allowDraw="false"
                 avatarShape="square"
                 incompleteLabel="Paarung wählen"
@@ -139,6 +139,9 @@
             >
                 <template v-if="!editingMatch" #top="{ setTeams }">
                     <CupPairingSelect :leagueCup="leagueCup" :roundIndex="drawerRoundIndex" :cupGames="cupGames" @select="setTeams"/>
+                </template>
+                <template v-if="editingMatch" #player="{ player, excludedNames, setName }">
+                    <LeagueTeamSelect :modelValue="player.name" :teams="cupTeams" :excludedNames="excludedNames" @update:modelValue="setName"/>
                 </template>
             </GameEntryDrawer>
         </template>
@@ -153,6 +156,7 @@ import Avatar from '@/components/shared/Avatar.vue';
 import MatchElement from '@/components/shared/MatchElement/MatchElement.vue';
 import GameEntryDrawer from '@/components/shared/GameEntry/GameEntryDrawer.vue';
 import CupPairingSelect from '@/components/frontend/league/cup/CupPairingSelect.vue';
+import LeagueTeamSelect from '@/components/frontend/league/LeagueTeamSelect.vue';
 import { applySidesToMatch, matchToSides, sidesToNewMatch, type GameEntrySide } from '@/components/shared/GameEntry/gameEntry';
 import { getLeagueTeamLogo } from '@/components/frontend/league/LeaguePlayersData';
 import { addLeagueGame, getAllLeagueGames, updateLeagueGame, deleteLeagueGame } from '@/components/frontend/league/LeagueUtilFunctions';
@@ -334,6 +338,14 @@ const openAddGame = (roundIndex: number) => {
     drawerRoundIndex.value = roundIndex;
     gameDrawerVisible.value = true;
 }
+
+// Auswahl beim Bearbeiten: alle Cup-Teilnehmer mit Logo der Saison
+const cupTeams = computed<LeaguePlayer[]>(() =>
+    (leagueCup.value?.participants ?? []).map(participant => ({
+        name: participant.teamName,
+        logo: getLeagueTeamLogo(participant.teamName, selectedSeasonSlug.value) ?? '',
+    }))
+);
 
 const openEditGame = (match: Match) => {
     editingMatch.value = match;

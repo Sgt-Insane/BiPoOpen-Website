@@ -18,8 +18,9 @@ const leagueLogoSlug = (teamName) => teamName
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
+// Bei teamLogo('normal.webp', 'winter.webp') zaehlt fuer den Push immer das normale Logo.
 const logos = new Map();
-for (const [, teamName, fileName] of seasonsData.matchAll(/teamName: '([^']+)'.*?logo: teamLogo\('([^']+)'\)/g))
+for (const [, teamName, fileName] of seasonsData.matchAll(/teamName: '([^']+)'.*?logo: teamLogo\('([^']+)'/g))
     logos.set(leagueLogoSlug(teamName), fileName);
 
 mkdirSync(outputDir, { recursive: true });
