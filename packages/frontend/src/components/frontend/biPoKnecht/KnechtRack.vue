@@ -294,11 +294,11 @@ const onAirballClick = (event: MouseEvent) => {
     min-width: 0;
 }
 .kn-rack--down .kn-pyramid{ flex-direction: column; }
-/* Schiri (Tisch von der Seite): neben dem Dreieck liegen Airball-Zone (14 %) und Knoepfe (30 %), das Dreieck
-   ist etwa 4,4 Becher breit. 11,5 % der Breite fuellt den Platz dazwischen aus, mit etwas Abstand. */
+/* Schiri (Tisch von der Seite): neben dem Dreieck liegen Airball-Zone (14 %) und Hinweis (20 %), das Dreieck
+   ist etwa 4,4 Becher breit. 13,5 % der Breite fuellt den Platz dazwischen aus, mit etwas Abstand. */
 .kn-rack--left .kn-pyramid,
 .kn-rack--right .kn-pyramid{
-    --kn-cup: min(11.5cqw, 20cqh);
+    --kn-cup: min(13.5cqw, 19cqh);
     flex-direction: row-reverse;
 }
 .kn-rack--right .kn-pyramid{ flex-direction: row; }
@@ -456,9 +456,10 @@ const onAirballClick = (event: MouseEvent) => {
     min-height: 0;
     padding: 8px 10px 10px;
 }
+/* Schiri: hier steht nur der Hinweis (Nullwurf / Bouncer-Schritte), die Knoepfe liegen beim werfenden Team */
 .kn-rack--left .kn-front,
 .kn-rack--right .kn-front{
-    width: 30%;
+    width: 20%;
     padding: 10px 6px;
 }
 /* Wartender Tisch: keine Eingabe, das Dreieck steht mittig */
@@ -467,6 +468,17 @@ const onAirballClick = (event: MouseEvent) => {
 .kn-zone-label-miss{
     font-size: 10px;
     text-align: center;
+}
+/* Schmale Spalte neben dem Dreieck: Symbol ueber dem Text, Text bricht zwischen Woertern um */
+.kn-rack--left .kn-zone-label-miss,
+.kn-rack--right .kn-zone-label-miss{
+    flex-direction: column;
+    gap: 3px;
+    max-width: 100%;
+    font-size: 9px;
+    letter-spacing: .03em;
+    overflow-wrap: anywhere;
+    hyphens: auto;
 }
 
 /* ─── Zusatzbecher waehlen ─── */

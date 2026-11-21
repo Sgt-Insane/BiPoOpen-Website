@@ -46,9 +46,11 @@
             <div v-else class="kn-field kn-field--referee" :style="{ gridTemplateColumns: `minmax(0, ${isTarget(leftTeam) ? 3 : 2}fr) minmax(0, ${isTarget(rightTeam) ? 3 : 2}fr)` }">
                 <div v-for="teamIndex in [leftTeam, rightTeam]" :key="teamIndex" class="kn-end" :class="{ 'kn-end--target': isTarget(teamIndex) }">
                     <div class="kn-end-rack">
-                        <KnechtRack :game="game" :teamIndex="teamIndex" :direction="teamIndex === leftTeam ? 'left' : 'right'" :isTarget="isTarget(teamIndex)" :pro="proActive" :owners="cupOwners.racks[teamIndex]" showDrinkers>
-                            <template #front><KnechtControls v-if="isTarget(teamIndex)" :game="game" :trickshotActive="sheet === 'trickshot'" :pro="proActive" :catchReady="catchWindow?.team === 1 - teamIndex" @trickshot="openTrickshot" /></template>
-                        </KnechtRack>
+                        <KnechtRack :game="game" :teamIndex="teamIndex" :direction="teamIndex === leftTeam ? 'left' : 'right'" :isTarget="isTarget(teamIndex)" :pro="proActive" :owners="cupOwners.racks[teamIndex]" showDrinkers />
+                        <!-- Re-Rack, Bouncer, Trickshot beim werfenden Team unter dem ausgegrauten Dreieck: das Ziel-Dreieck bleibt gross -->
+                        <div v-if="isTarget(1 - teamIndex)" class="kn-end-controls">
+                            <KnechtControls :game="game" :trickshotActive="sheet === 'trickshot'" :pro="proActive" :catchReady="catchWindow?.team === teamIndex" @trickshot="openTrickshot" />
+                        </div>
                     </div>
                     <KnechtPlayers :game="game" :teamIndex="teamIndex" :compact="!isThrowing(teamIndex)" />
                 </div>
@@ -941,6 +943,24 @@ onUnmounted(() => {
 .kn-field--referee .kn-end > *{ grid-column: 1; min-width: 0; }
 .kn-field--referee .kn-end + .kn-end > *{ grid-column: 2; border-left: 2px solid var(--bp-surface); }
 .kn-field--referee .kn-end > *{ grid-row: 1; }
+.kn-field--referee .kn-end-rack{ position: relative; }
+.kn-end-controls{
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+}
+.kn-end-controls :deep(.KnechtControls){
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: min(360px, 100%);
+}
+/* Laengere Texte (z.B. "Bouncer: wo kam er auf?") brechen im Knopf um, statt herauszulaufen */
+.kn-end-controls :deep(.kn-control){ flex: 1 1 0; min-width: 0; height: auto; min-height: 40px; padding: 4px 8px; font-size: 13px; line-height: 1.15; }
+.kn-end-controls :deep(.kn-control-rerack){ flex-basis: 100%; }
 /* Namensleiste oben ueber dem Tisch (beim werfenden Team ueber dem ausgegrauten Dreieck) */
 .kn-field--referee .KnechtPlayers{
     position: relative;
