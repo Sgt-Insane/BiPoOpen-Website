@@ -293,7 +293,7 @@ const sections: Section[] = [
                 key: 'Letzter Becher',
                 summary: 'muss direkt getroffen werden',
                 points: [
-                    'Wird automatisch an die Spitze gestellt (kein Re-Rack), nur vor dem Wurf.',
+                    'Wird automatisch an die Spitze gestellt (kein Re-Rack) – wie beim Re-Rack erst, wenn man wieder am Zug ist, nie innerhalb des eigenen Zugs (z. B. nicht bei Balls Back oder im Nachwurf).',
                     'Bouncer oder Bombe räumen nie den letzten Becher mit ab – einer bleibt immer stehen.',
                     'Als direkter Treffer zählen auch Bouncer, gefangene Bälle und Becher, die der Gegner selbst umstößt.',
                     'Beide Bälle im letzten Becher = direkt gewonnen, ohne Gentleman\'s Rule.',

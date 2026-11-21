@@ -301,7 +301,9 @@ const commitPending = (state: KnechtState) => {
     });
 };
 
-// Bleibt nur ein Becher stehen, kommt er vor dem naechsten Wurf an die Pyramidenspitze
+// Bleibt nur ein Becher stehen, kommt er an die Pyramidenspitze. Wie beim Re-Rack erst, wenn das werfende Team
+// wieder neu am Zug ist (der Gegner hatte die Baelle), nie innerhalb eines Zugs: nicht bei Balls Back, nicht in
+// weiteren Runden des Nachwurfs und nicht, wenn der Gegner waehrenddessen einen eigenen Becher verliert.
 const moveLastCupToTip = (rack: Rack) => {
     const standing = getStandingCups(rack);
     if (standing.length === 1 && standing[0] !== 0 && rack.pending.length === 0)
@@ -314,12 +316,14 @@ const resetStreaks = (state: KnechtState) => {
 
 const startRound = (state: KnechtState, teamIndex: number, ballsBack = false, fixedOwners: number[] | null = null) => {
     commitPending(state);
+    // Neuer Zug: die Baelle wechseln zum anderen Team (Balls Back und Nachwurf-Runden bleiben im Zug)
+    const newTurn = state.activeTeamIndex !== teamIndex;
     // Serien laufen je Spieler ueber die Zuege weiter: sie enden erst mit einem eigenen Fehlwurf
     // (oder mit der Verlaengerung), nicht wenn das andere Team wirft
     state.activeTeamIndex = teamIndex;
     state.round = newRound(ballsBack, fixedOwners);
     state.decider = null;
-    moveLastCupToTip(state.racks[enemyOf(teamIndex)]);
+    if (newTurn) moveLastCupToTip(state.racks[enemyOf(teamIndex)]);
 };
 
 const finish = (state: KnechtState, winnerTeamIndex: number, reason: EndReason) => {
@@ -582,8 +586,8 @@ const applyOwnCup = (state: KnechtState, action: Extract<KnechtAction, { type: '
     rack.hit = sorted([...rack.hit, ...action.cups]);
     pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'owncup', data: { cups: sorted(action.cups) } }, action.time, credits);
 
+    // Ein einzelner Restbecher kommt erst mit dem naechsten Zug an die Spitze (siehe moveLastCupToTip)
     if (getStandingCups(rack).length === 0) ownRackCleared(state, team, action.time);
-    else moveLastCupToTip(rack);
 };
 
 // Ellenbogen-Call: der erste je Person ist eine Verwarnung (gelb), ab dem zweiten rot mit Strafbecher.
@@ -611,7 +615,6 @@ const applyElbow = (state: KnechtState, action: Extract<KnechtAction, { type: 'e
     rack.hit = sorted([...rack.hit, ...action.cups]);
     pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'red', cups: [...action.cups] } }, action.time, credits);
     if (getStandingCups(rack).length === 0) ownRackCleared(state, team, action.time);
-    else moveLastCupToTip(rack);
 };
 
 // Letzter eigener Becher runtergeworfen: zaehlt als letzter Becher des Gegners, es folgt die Gentleman's Rule.

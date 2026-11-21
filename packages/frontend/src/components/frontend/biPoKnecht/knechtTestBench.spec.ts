@@ -127,10 +127,16 @@ const checkInvariants = (state: KnechtState, previous: KnechtState | null, actio
     if (state.overtimeCount > 0) expect(state.reRacksLeft, `Re-Rack in der Verlaengerung ${context()}`).toEqual([0, 0]);
 
     if (state.status === 'playing') {
-        // 10. Ein einzelner Becher steht vor dem ersten Wurf an der Spitze
+        // 10. Ein einzelner Becher steht zu Beginn eines neuen Zugs (die Baelle wechseln das Team) an der Spitze.
+        //     Innerhalb eines Zugs (Balls Back, Nachwurf-Runden, eigener Becher des Gegners) bleibt er, wo er ist.
         const target = state.racks[1 - state.activeTeamIndex];
-        if (state.round.throwCount === 0 && target.pending.length === 0 && getStandingCups(target).length === 1)
+        const newTurn = !!previous && previous.activeTeamIndex !== state.activeTeamIndex;
+        if (newTurn && state.round.throwCount === 0 && target.pending.length === 0 && getStandingCups(target).length === 1)
             expect(getStandingCups(target), `letzter Becher nicht an der Spitze ${context()}`).toEqual([0]);
+        // 10b. Innerhalb eines Zugs wandert ein einzelner Becher nicht
+        const before = previous?.racks[1 - state.activeTeamIndex];
+        if (previous && !newTurn && before && getStandingCups(before).length === 1 && getStandingCups(target).length === 1 && state.overtimeCount === previous.overtimeCount)
+            expect(getStandingCups(target), `letzter Becher im Zug verschoben ${context()}`).toEqual(getStandingCups(before));
         // 11. Nach dem letzten Becher endet der Ball: den Doppeltreffer wirft ein anderer Ball
         const newest = state.turns.at(-1);
         if (previous && newest && state.turns.length > previous.turns.length && newest.type === 'lastCup' && !(newest.data as { double?: boolean }).double)

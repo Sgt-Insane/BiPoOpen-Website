@@ -32,7 +32,7 @@ const soloClearWithFirstBall = (): KnechtAction[] => [
     hit(0, 3), hit(0, 4),
     hit(0, 5), hit(0, 6),
     hit(0, 7), hit(0, 8),
-    hit(0, 0),                              // letzter Becher steht an der Spitze (0)
+    hit(0, 9),                              // letzter Becher: noch derselbe Zug (Balls Back), er steht noch hinten (9)
 ];
 
 const expectPointsMatchCups = (state: KnechtState) => {
@@ -215,7 +215,7 @@ describe('BiPo Knecht Regeln', () => {
     });
 
     it('gewinnt sofort, wenn ein weiterer Ball den letzten Becher trifft', () => {
-        const state = play(SOLO, [...soloClearWithFirstBall(), hit(0, 0)]);
+        const state = play(SOLO, [...soloClearWithFirstBall(), hit(0, 9)]);
         expect(state.status).toBe('over');
         expect(state.winnerTeamIndex).toBe(0);
         expect(state.endReason).toBe('doubleLastCup');
@@ -224,7 +224,7 @@ describe('BiPo Knecht Regeln', () => {
 
     it('erlaubt nach dem letzten Becher nur noch Wuerfe auf diesen Becher', () => {
         const state = play(SOLO, soloClearWithFirstBall());
-        expect(getHittableCups(state)).toEqual([0]);
+        expect(getHittableCups(state)).toEqual([9]);
     });
 
     it('gibt dem Gegner nach dem letzten Becher den Nachwurf (Gentleman\'s Rule)', () => {
@@ -249,9 +249,9 @@ describe('BiPo Knecht Regeln', () => {
     const nachwurfEqualizer = (): KnechtAction[] => [
         ...soloClearWithFirstBall(), miss(0),
         // Team 1 hat 0 Becher getroffen: im Nachwurf alle 10 treffen, je Runde zwei Baelle.
-        // Der Bouncer laesst einen Becher uebrig, der an die Spitze kommt und mit Ball 1 faellt.
+        // Der Bouncer laesst einen Becher uebrig. Der Nachwurf ist ein Zug: er bleibt hinten (9) und faellt mit Ball 1.
         hit(0, 0), hit(0, 1), hit(0, 2), hit(0, 3), hit(0, 4), hit(0, 5), hit(0, 6), hit(0, 7, { bouncer: true, extraCups: [8] }),
-        hit(0, 0),
+        hit(0, 9),
     ];
 
     it('geht bei Ausgleich im Nachwurf in die Verlaengerung mit 2x3 Bechern, ohne Re-Racks', () => {
@@ -291,7 +291,7 @@ describe('BiPo Knecht Regeln', () => {
     });
 
     it('gewinnt den Nachwurf sofort mit einem weiteren Ball im letzten Becher', () => {
-        const state = play(SOLO, [...nachwurfEqualizer(), hit(0, 0)]);   // zweiter Ball in den letzten Becher
+        const state = play(SOLO, [...nachwurfEqualizer(), hit(0, 9)]);   // zweiter Ball in den letzten Becher
         expect(state.status).toBe('over');
         expect(state.winnerTeamIndex).toBe(1);
         expect(state.endReason).toBe('nachwurfDouble');
@@ -359,10 +359,25 @@ describe('BiPo Knecht Regeln', () => {
         expect(state.status).toBe('playing');
     });
 
-    it('stellt nach einem eigenen Becher den einzelnen Restbecher sofort an die Spitze', () => {
-        const state = play(DUO, [{ type: 'ownCup', team: 1, player: 0, cups: [0, 1, 2, 3, 4, 5, 6, 7, 9], time: 0 }]);
-        expect(getStandingCups(state.racks[1])).toEqual([0]);
-        expect(getHittableCups(state)).toEqual([0]);
+    it('stellt nach einem eigenen Becher des Gegners den Restbecher erst im naechsten eigenen Zug an die Spitze', () => {
+        // Team 0 ist am Zug, Team 1 wirft dabei 9 eigene Becher um: Becher 8 (Index 8) bleibt, wo er ist
+        const during = play(DUO, [{ type: 'ownCup', team: 1, player: 0, cups: [0, 1, 2, 3, 4, 5, 6, 7, 9], time: 0 }]);
+        expect(getStandingCups(during.racks[1])).toEqual([8]);
+        expect(getHittableCups(during)).toEqual([8]);
+        // Zug zu Ende, Team 1 wirft, dann ist Team 0 wieder am Zug: jetzt an der Spitze
+        const later = play(DUO, [{ type: 'ownCup', team: 1, player: 0, cups: [0, 1, 2, 3, 4, 5, 6, 7, 9], time: 0 }, miss(0), miss(1), miss(0), miss(1)]);
+        expect(later.activeTeamIndex).toBe(0);
+        expect(getStandingCups(later.racks[1])).toEqual([0]);
+    });
+
+    it('stellt den letzten Becher bei Balls Back nicht an die Spitze (gleicher Zug)', () => {
+        // Team 0 trifft in jeder Runde beide Baelle, die letzte mit Bouncer: Balls Back, Becher 10 (Index 9) bleibt hinten
+        const state = play(SOLO, [
+            hit(0, 0), hit(0, 1), hit(0, 2), hit(0, 3), hit(0, 4), hit(0, 5), hit(0, 6), hit(0, 7, { bouncer: true, extraCups: [8] }),
+        ]);
+        expect(state.activeTeamIndex).toBe(0);
+        expect(getStandingCups(state.racks[1])).toEqual([9]);
+        expect(getHittableCups(state)).toEqual([9]);
     });
 
     it('gibt dem Sieger bei Punktgleichstand einen Siegpunkt', () => {
@@ -379,7 +394,7 @@ describe('BiPo Knecht Regeln', () => {
 
     it('akzeptiert keine Airballs mit Becher und keine Aktionen nach Spielende', () => {
         expectError(SOLO, [{ type: 'throw', player: 0, outcome: 'airball', cup: 3, time: 0 }]);
-        expectError(SOLO, [...soloClearWithFirstBall(), hit(0, 0), airball(0)]);
+        expectError(SOLO, [...soloClearWithFirstBall(), hit(0, 9), airball(0)]);
     });
 });
 
