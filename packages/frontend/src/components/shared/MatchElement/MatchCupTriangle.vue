@@ -52,7 +52,7 @@ const initials = (fall: CupFall) => {
     return parts.length > 1 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : name.slice(0, 2);
 };
 
-const KIND_LABELS: Partial<Record<Turn['type'], string>> = { bomb: 'Bombe', bouncer: 'Bouncer', trickshot: 'Trickshot', deathcup: 'Deathcup', owncup: 'eigener Becher', penalty: 'Strafbecher', lastCup: 'letzter Becher' };
+const KIND_LABELS: Partial<Record<Turn['type'], string>> = { bomb: 'Bombe', bouncer: 'Bouncer', trickshot: 'Trickshot', deathcup: 'Deathcup', owncup: 'eigener Becher', penalty: 'Strafbier', lastCup: 'letzter Becher' };
 const describe = (fall: CupFall, number: number) => {
     const who = getPlayerName(props.match, fall.teamIndex, fall.playerIndex);
     const kind = KIND_LABELS[fall.kind];

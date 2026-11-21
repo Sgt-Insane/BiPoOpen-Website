@@ -23,7 +23,7 @@
                 <i :class="open ? 'pi pi-times' : 'pi pi-ellipsis-v'"></i>
             </button>
 
-            <button type="button" class="kn-side-button kn-side-button--special" v-hint="'Sonderaktion: Ellenbogen, eigene Becher, Deathcup'" aria-label="Sonderaktion eintragen" @click="pick('special')">
+            <button type="button" class="kn-side-button kn-side-button--special" v-hint="'Sonderaktion: Strafbier, Verwarnung, eigene Becher, Deathcup'" aria-label="Sonderaktion eintragen" @click="pick('special')">
                 <i class="pi pi-flag"></i>
             </button>
 

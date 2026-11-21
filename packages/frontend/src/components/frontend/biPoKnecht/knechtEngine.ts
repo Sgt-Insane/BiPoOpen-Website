@@ -34,7 +34,7 @@ export type KnechtAction =
     | { type: 'reRack'; time: number }
     | { type: 'turnStart'; time: number }
     // Ellenbogen ueber der Tischkante (Schiedsrichter): 1. Call je Person gelb, ab dem 2. rot mit Strafbecher
-    | { type: 'elbow'; team: number; player: number; cups: number[]; time: number }           // Knecht Pro: Werfer haben die Baelle, die Zeit fuer den Zug laeuft
+    | { type: 'elbow'; team: number; player: number; cups: number[]; time: number; card?: 'yellow' | 'red'; reason?: string }           // Knecht Pro: Werfer haben die Baelle, die Zeit fuer den Zug laeuft
     | { type: 'deathcup'; player: number; time: number }
     | { type: 'ownCup'; team: number; player: number; cups: number[]; time: number };
 
@@ -586,30 +586,31 @@ const applyOwnCup = (state: KnechtState, action: Extract<KnechtAction, { type: '
     else moveLastCupToTip(rack);
 };
 
-// Ellenbogen-Call: der erste je Person ist eine Verwarnung (gelb), ab dem zweiten rot mit Strafbecher.
-// Der Strafbecher kommt vom eigenen Tisch und zaehlt fuer den Gegner (wie ein eigener Becher).
+// Verwarnung (gelb) oder Strafbier (rot, ein eigener Becher vom Tisch, zaehlt fuer den Gegner wie ein eigener Becher).
+// card und reason waehlt der Schiri bzw. die Spieler (Grund z.B. Ellenbogen-Call, irregulaerer Eingriff ins Spiel).
+// Aeltere Eintraege ohne card: der erste Ellenbogen-Call je Person ist gelb, ab dem zweiten rot.
 export const isNextElbowRed = (state: KnechtState, team: number, player: number) => (state.elbowCalls[team]?.[player] ?? 0) >= 1;
 
 const applyElbow = (state: KnechtState, action: Extract<KnechtAction, { type: 'elbow' }>) => {
     const team = action.team;
     if (team !== 0 && team !== 1) fail('Unbekanntes Team');
     if (action.player < 0 || action.player >= state.config.playerCounts[team]) fail('Unbekannter Spieler');
-    const red = isNextElbowRed(state, team, action.player);
+    const red = action.card ? action.card === 'red' : isNextElbowRed(state, team, action.player);
     const rack = state.racks[team];
     const standing = getStandingCups(rack);
-    if (!red && action.cups.length) fail('Die erste Verwarnung kostet keinen Becher');
+    if (!red && action.cups.length) fail('Eine Verwarnung kostet keinen Becher');
     if (red && (action.cups.length !== 1 || !standing.includes(action.cups[0]))) fail('Fuer die rote Karte einen stehenden eigenen Becher waehlen');
     state.elbowCalls[team][action.player]++;
 
     if (!red) {
-        pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'yellow', cups: [] } }, action.time, []);
+        pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'yellow', cups: [], ...(action.reason && { reason: action.reason }) } }, action.time, []);
         return;
     }
     const opponent = enemyOf(team);
     const opponentCount = state.config.playerCounts[opponent];
     const credits = Array.from({ length: opponentCount }, (_, playerIndex) => ({ teamIndex: opponent, playerIndex, points: 1 / opponentCount }));
     rack.hit = sorted([...rack.hit, ...action.cups]);
-    pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'red', cups: [...action.cups] } }, action.time, credits);
+    pushTurn(state, { playerIndex: action.player, teamIndex: team, type: 'penalty', data: { card: 'red', cups: [...action.cups], ...(action.reason && { reason: action.reason }) } }, action.time, credits);
     if (getStandingCups(rack).length === 0) ownRackCleared(state, team, action.time);
     else moveLastCupToTip(rack);
 };

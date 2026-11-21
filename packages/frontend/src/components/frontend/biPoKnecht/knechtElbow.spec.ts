@@ -5,6 +5,22 @@ const DUO: KnechtConfig = { playerCounts: [2, 2], startTeamIndex: 0 };
 const elbow = (team: number, player: number, cups: number[] = []): KnechtAction => ({ type: 'elbow', team, player, cups, time: 0 });
 
 describe('Ellenbogen-Call', () => {
+    it('gibt Strafbier mit Grund auch ohne vorherige Verwarnung und speichert den Grund', () => {
+        const { state, error } = replay(DUO, [
+            { type: 'elbow', team: 1, player: 0, cups: [4], card: 'red', reason: 'Irregulärer Eingriff ins Spiel', time: 0 },
+            { type: 'elbow', team: 0, player: 1, cups: [], card: 'yellow', reason: 'Zu laut', time: 0 },
+        ]);
+        expect(error).toBeNull();
+        expect(state.turns[0]).toMatchObject({ type: 'penalty', data: { card: 'red', cups: [4], reason: 'Irregulärer Eingriff ins Spiel' } });
+        expect(state.turns[1]).toMatchObject({ type: 'penalty', data: { card: 'yellow', cups: [], reason: 'Zu laut' } });
+        expect(getTeamPoints(state)).toEqual([1, 0]);
+    });
+
+    it('verlangt bei Strafbier genau einen stehenden eigenen Becher, bei der Verwarnung keinen', () => {
+        expect(replay(DUO, [{ type: 'elbow', team: 1, player: 0, cups: [], card: 'red', time: 0 }]).error).not.toBeNull();
+        expect(replay(DUO, [{ type: 'elbow', team: 1, player: 0, cups: [2], card: 'yellow', time: 0 }]).error).not.toBeNull();
+    });
+
     it('gibt beim ersten Call gelb ohne Becher', () => {
         const { state, error } = replay(DUO, [elbow(1, 0)]);
         expect(error).toBeNull();

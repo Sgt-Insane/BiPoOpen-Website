@@ -54,9 +54,8 @@ export const getCupChartMoments = (match: Match): CupChartMoment[] => {
         if (turn.type === 'hit' && isTrickshotHit(turn, previous)) add('trickshot', 'Trickshot', 8);
         if (turn.type === 'owncup') add('owncup', 'Eigener Becher', 7);
         if (turn.type === 'penalty') {
-            if (data.card === 'red') add('penalty', 'Rote Karte', 7);
-            else if (cups) add('penalty', 'Strafbecher', 3);
-            else add('penalty', 'Gelbe Karte', 2);
+            if (data.card === 'red' || cups) add('penalty', 'Strafbier', 7);
+            else add('penalty', 'Verwarnung', 2);
         }
         if (index === finalLastCup) add('lastCup', 'Letzter Becher', 5);
         // On Fire nur beim Start der Serie, nicht bei jedem weiteren Treffer

@@ -60,7 +60,7 @@ const props = defineProps<{ celebration: KnechtCelebration | null; flipped?: boo
 type ParticleKind = 'debris' | 'flame' | 'ember' | 'spark' | 'confetti' | 'star';
 type Look = {
     title: string;
-    subtitle?: (player: string) => string;
+    subtitle?: (player: string, note?: string) => string;
     icon: KnechtIconName;
     color: string;
     dark: string;
@@ -88,8 +88,8 @@ const LOOKS: Record<KnechtCelebrationKind, Look> = {
     equalizer: { title: 'Ausgleich!', subtitle: player => player, icon: 'equalizer', color: '#3E63DD', dark: '#14245E', particle: 'spark', count: 12, rings: [1] },
     lastcup: { title: 'Letzter Becher!', subtitle: player => `${player} räumt ab`, icon: 'lastCup', color: '#E0A800', dark: '#5C4300', particle: 'star', count: 24, rings: [1, 2] },
     formation: { title: 'Formation', icon: 'reRack', color: '#E5484D', dark: '#7A1418', particle: 'spark', count: 12, rings: [] },
-    'yellow-card': { title: 'Gelbe Karte', subtitle: player => `${player} · Ellenbogen über der Kante`, icon: 'penalty', color: '#F5C518', dark: '#5C4700', particle: null, count: 0, rings: [1] },
-    'red-card': { title: 'Rote Karte!', subtitle: player => `${player} · Strafbecher`, icon: 'penalty', color: '#E5484D', dark: '#5E0E12', particle: 'debris', count: 14, rings: [1, 2] },
+    'yellow-card': { title: 'Verwarnung', subtitle: (player, note) => `${player} · ${note ?? 'Ellenbogen-Call'}`, icon: 'penalty', color: '#F5C518', dark: '#5C4700', particle: null, count: 0, rings: [1] },
+    'red-card': { title: 'Strafbier!', subtitle: (player, note) => `${player} · ${note ?? 'Strafbecher'}`, icon: 'penalty', color: '#E5484D', dark: '#5E0E12', particle: 'debris', count: 14, rings: [1, 2] },
     hit: { title: 'Treffer!', subtitle: player => player, icon: 'hit', color: '#2F9E44', dark: '#14532D', particle: 'spark', count: 8, rings: [1] },
     'trickshot-hit': { title: 'Trickshot!', subtitle: player => `${player} verwandelt`, icon: 'trickshot', color: '#F5A524', dark: '#6B4300', particle: 'star', count: 26, rings: [1, 2], ball: 'loop' },
 };
@@ -117,7 +117,7 @@ const title = computed(() => formation.value?.name ?? look.value.title);
 const titleSize = computed(() => `min(15cqw, ${(118 / Math.max(title.value.length, 1)).toFixed(1)}cqw, 96px)`);
 const subtitle = computed(() => {
     if (formation.value) return `Becher ${[...formation.value.cups].sort((a, b) => a - b).join(' · ')} stehen`;
-    return props.celebration && look.value.subtitle ? look.value.subtitle(props.celebration.player).replace(/^ · /, '') : '';
+    return props.celebration && look.value.subtitle ? look.value.subtitle(props.celebration.player, props.celebration.note).replace(/^ · /, '') : '';
 });
 
 // ─── Formation: Becher aus Sicht des Werfers, Spitze unten ───

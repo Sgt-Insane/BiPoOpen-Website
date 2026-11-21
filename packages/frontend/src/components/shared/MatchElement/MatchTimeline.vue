@@ -199,7 +199,7 @@ const SHORT_LABELS: Partial<Record<Turn['type'], string>> = {
     lastCup: 'Letzter Becher',
     deathcup: 'Deathcup',
     owncup: 'Eigener Becher',
-    penalty: 'Strafbecher',
+    penalty: 'Strafbier',
 };
 
 type Row = {
@@ -227,7 +227,7 @@ const QUIET_LABELS: Partial<Record<Turn['type'], string>> = {
     miss: 'Nullwurf',
     airball: 'Airball',
     trickshot: 'Trickshot-Fang',
-    penalty: 'Gelbe Karte',
+    penalty: 'Verwarnung',
 };
 
 const HIT_FOLLOW_UPS = new Set<Turn['type']>(['hit', 'ballsback', 'onfire', 'bouncer']);

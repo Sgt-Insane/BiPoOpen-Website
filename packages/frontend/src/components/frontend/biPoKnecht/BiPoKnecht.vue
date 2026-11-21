@@ -180,9 +180,14 @@
             <!-- Sonderaktionen: alles, was man im Spiel eintragen muss, direkt vom Spielfeld (Knopf mit der Fahne) -->
             <KnechtSheet :visible="sheet === 'special'" title="Sonderaktion" subtitle="Was ist passiert?" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <div class="kn-menu-list">
-                    <button type="button" class="kn-menu-button kn-special-button" @click="sheet = 'elbow'">
+                    <!-- Verwarnung gibt nur der Schiri -->
+                    <button v-if="mode === 'referee'" type="button" class="kn-menu-button kn-special-button" @click="sheet = 'warning'">
                         <KnechtIcon name="penalty" />
-                        <span>Ellenbogen-Call <small>Verwarnung, ab der zweiten Strafbier (Strafbecher)</small></span>
+                        <span>Verwarnung <small>z. B. Ellenbogen-Call · kostet keinen Becher</small></span>
+                    </button>
+                    <button type="button" class="kn-menu-button kn-special-button" @click="sheet = 'penaltyCup'">
+                        <KnechtIcon name="penalty" />
+                        <span>Strafbier <small>z. B. Ellenbogen-Call, irregulärer Eingriff · ein eigener Becher vom Tisch</small></span>
                     </button>
                     <button type="button" class="kn-menu-button kn-special-button" @click="sheet = 'ownCup'">
                         <KnechtIcon name="owncup" />
@@ -195,8 +200,11 @@
                 </div>
             </KnechtSheet>
 
-            <KnechtSheet :visible="sheet === 'elbow'" title="Ellenbogen-Call" subtitle="Wer war mit dem Ellenbogen über der Tischkante?" :flipped="sheetFlipped" @update:visible="sheet = null">
-                <KnechtElbow :game="game" @done="sheet = null" />
+            <KnechtSheet :visible="sheet === 'warning'" title="Verwarnung" :flipped="sheetFlipped" @update:visible="sheet = null">
+                <KnechtElbow v-if="sheet === 'warning'" :game="game" card="yellow" @done="sheet = null" />
+            </KnechtSheet>
+            <KnechtSheet :visible="sheet === 'penaltyCup'" title="Strafbier" :flipped="sheetFlipped" @update:visible="sheet = null">
+                <KnechtElbow v-if="sheet === 'penaltyCup'" :game="game" card="red" @done="sheet = null" />
             </KnechtSheet>
 
             <KnechtSheet :visible="sheet === 'ownCup'" title="Eigene Becher runter" :flipped="sheetFlipped" @update:visible="sheet = null">
@@ -381,7 +389,7 @@ const paused = ref(!!props.initialPaused && props.startTeamIndex !== null);
 const pauseReady = ref<string[]>([]);       // mehrere Handys: wer nach der Pause bereit ist
 const pausedBy = ref<string | null>(null);    // mehrere Handys: wer pausiert hat
 const { profileName } = useProfile();
-const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'special' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
+const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'special' | 'trickshot' | 'ownCup' | 'warning' | 'penaltyCup' | null>(null);
 const editTurn = ref<number | null>(null);
 const openTurnEditor = (turnIndex: number) => {
     editTurn.value = turnIndex;

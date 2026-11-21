@@ -138,7 +138,7 @@ declare global {
     type DeathcupTurn = { cups: number[] };             // alle uebrigen Becher des Gegners
     type OwnCupTurn = { cups: number[] };
     // Ellenbogen-Call: gelb = Verwarnung, rot = Strafbecher (eigener Becher, zaehlt fuer den Gegner)
-    type PenaltyTurn = { card: 'yellow' | 'red'; cups: number[] };               // eigene Becher runtergeworfen, zaehlen fuer den Gegner
+    type PenaltyTurn = { card: 'yellow' | 'red'; cups: number[]; reason?: string };   // reason: z.B. "Ellenbogen-Call" (aeltere Eintraege ohne)               // eigene Becher runtergeworfen, zaehlen fuer den Gegner
 
     // Stats
     type GroupWithStats = {  
