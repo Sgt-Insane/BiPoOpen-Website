@@ -317,25 +317,24 @@ const getPlayerLine = (playerIndex: number) => {
     color: var(--bp-text-muted);
 }
 
-/* Schmal (z.B. werfendes Team auf dem kleinen Tisch im Schiri-Modus): Teamname und Punktestand in der ersten Zeile,
-   Abzeichen (am Zug, Heaten Up, ...) darunter. So wird nichts uebereinandergeschoben. */
+/* Schmal (z.B. werfendes Team auf dem kleinen Tisch im Schiri-Modus): alles in einer flachen Leiste, damit das
+   Spielfeld gross bleibt. Kopf in einer Zeile (Teamname, Am Zug, Punkte), Karten nebeneinander ohne Profilbild.
+   Heaten Up / On Fire steht dann an der Karte, nicht doppelt im Kopf. Nichts wird uebereinandergeschoben. */
 @container (max-width: 420px){
-    .kn-players-header{
-        flex-wrap: wrap;
-        gap: 4px 6px;
-    }
-    .kn-team-logo, .kn-team-name, .kn-team-score{ order: -1; }
-    .kn-team-name{ flex: 1 1 0; }
-    /* Umbruch nach dem Punktestand: alle Abzeichen in die zweite Zeile */
-    .kn-players-header::after{ content: ''; flex-basis: 100%; order: -1; }
+    .KnechtPlayers{ gap: 4px; padding: 5px 8px 6px; }
+    .kn-players-header{ gap: 5px; min-height: 18px; }
+    .KnechtPlayers:not(.kn-players--compact) .kn-fire-pill{ display: none; }
     .kn-fire-pill{ max-width: 100%; }
     .kn-fire-pill > span{ white-space: normal; overflow-wrap: anywhere; }
-    .kn-player{ gap: 6px; padding: 5px 7px; }
-    .kn-player-avatar{ width: 24px !important; height: 24px !important; min-width: 24px; font-size: 10px !important; }
-}
-/* Sehr schmal: Spielerkarten untereinander in voller Breite statt zusammengedrueckt */
-@container (max-width: 260px){
-    .kn-player-list{ grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .kn-turn-badge{ padding: 1px 6px; font-size: 9px; letter-spacing: .02em; }
+    .kn-team-score{ font-size: 14px; }
+    .kn-team-score small{ display: none; }
+    .kn-player-list{ gap: 4px; }
+    .kn-player{ padding: 3px 7px; border-radius: 9px; }
+    .kn-player-avatar{ display: none !important; }
+    .kn-player-name{ font-size: 13px; }
+    .kn-player-stats{ font-size: 10px; }
+    .kn-thrower-hint{ display: none; }
 }
 
 /* Kompakt: wartendes Team im Spielermodus */

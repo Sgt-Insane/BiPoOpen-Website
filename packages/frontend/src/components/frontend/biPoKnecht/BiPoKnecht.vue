@@ -1146,6 +1146,8 @@ onUnmounted(() => {
     top: 8px;
     transform: none;
 }
+/* Wartender Tisch rechts: Dreieck nicht unter die Knoepfe der Seitenleiste schieben */
+.kn-field--referee .kn-end + .kn-end :deep(.kn-rack--waiting .kn-pyramid){ padding-right: 52px; }
 .kn-turn-start{
     display: flex;
     align-items: center;
