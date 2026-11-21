@@ -83,6 +83,11 @@ export const KNECHT_ICONS = {
     overtime: [{ d: 'M7 3h10M7 21h10', part: 'glass' }, { d: 'M8 3c0 5 4 6 4 9s-4 4-4 9h8c0-5-4-6-4-9s4-4 4-9z', soft: true, part: 'glass' }],
     // Karte (Ellenbogen-Call)
     penalty: [{ d: 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z', soft: true, part: 'card' }, { d: 'M10 7h4', part: 'card' }],
+    // Formation: drei Becher hinten, einer vorne, dazu ein Funkeln
+    formation: [
+        { cx: 5, cy: 9, r: 2.6, soft: true }, { cx: 12, cy: 9, r: 2.6, soft: true }, { cx: 19, cy: 9, r: 2.6, soft: true },
+        { cx: 12, cy: 18.5, r: 2.6, soft: true }, { d: 'M12 1.5v2.5M7.5 2.5l1 1.8M16.5 2.5l-1 1.8' },
+    ],
     win: [{ d: 'M8 4h8v5a4 4 0 0 1-8 0z', soft: true }, { d: 'M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4' }, { d: 'M12 13v4M8 20h8M10 17h4v3h-4z' }],
 } satisfies Record<string, KnechtIconShape[]>;
 

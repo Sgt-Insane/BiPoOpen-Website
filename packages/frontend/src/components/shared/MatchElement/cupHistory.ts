@@ -1,5 +1,6 @@
 import { CUP_COUNT, OVERTIME_FORMATION, RE_RACK_FORMATIONS } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getScoringTeam } from '@/components/frontend/biPoKnecht/knechtStats';
+import { findFormation, type KnechtFormation } from '@/components/frontend/biPoKnecht/knechtFormations';
 
 // Becher-Dreieck "was fiel wann": fuer jedes Team-Rack, welcher Becher wann und von wem abgeraeumt wurde.
 // Re-Rack und Verlaengerung stellen die Becher neu auf: dann beginnt fuer das Rack ein neuer Abschnitt.
@@ -14,6 +15,9 @@ export type RackPhase = {
 
 export type RackHistory = { ownerIndex: number; phases: RackPhase[] };
 
+// Benannte Formation, die durch einen Eintrag entstanden ist (wie die Animation im Knecht)
+export type FormationMoment = { turnIndex: number; ownerIndex: number; formation: KnechtFormation };
+
 // Welche Becherpositionen ein Eintrag abraeumt
 export const getTurnCupPositions = (turn: Turn): number[] => {
     const data = (turn.data ?? {}) as Record<string, unknown>;
@@ -25,8 +29,7 @@ export const getTurnCupPositions = (turn: Turn): number[] => {
     return turn.type === 'bomb' ? cups.slice(1) : cups;
 };
 
-// null: der Verlauf passt nicht zusammen (z.B. alte Knecht-Spiele ohne Re-Rack-Eintraege) - dann kein Dreieck
-export const buildCupHistory = (match: Match): RackHistory[] | null => {
+const walkCupHistory = (match: Match) => {
     const turns = match.turns ?? [];
     const events = [...(match.events ?? [])].filter(event => event.kind === 'reRack' || event.kind === 'overtime');
     const start = match.time ?? turns[0]?.time;
@@ -57,6 +60,7 @@ export const buildCupHistory = (match: Match): RackHistory[] | null => {
 
     let order = 0;
     let valid = true;
+    const formations: FormationMoment[] = [];
     turns.forEach((turn, index) => {
         applyEvents(index);
         const cups = getTurnCupPositions(turn);
@@ -71,7 +75,21 @@ export const buildCupHistory = (match: Match): RackHistory[] | null => {
         });
         const [last] = [...standing[owner]];
         if (standing[owner].size === 1 && last !== 0 && lastCupFrom[owner] === null) lastCupFrom[owner] = last;
+        const formation = findFormation([...standing[owner]]);
+        if (formation) formations.push({ turnIndex: index, ownerIndex: owner, formation });
     });
     applyEvents(turns.length);
+    return { racks, formations, valid };
+};
+
+// null: der Verlauf passt nicht zusammen (z.B. alte Knecht-Spiele ohne Re-Rack-Eintraege) - dann kein Dreieck
+export const buildCupHistory = (match: Match): RackHistory[] | null => {
+    const { racks, valid } = walkCupHistory(match);
     return valid ? racks : null;
+};
+
+// Formationen, die durch Wuerfe entstanden sind (nicht durch Re-Rack oder Verlaengerung)
+export const getFormationMoments = (match: Match): FormationMoment[] => {
+    const { formations, valid } = walkCupHistory(match);
+    return valid ? formations : [];
 };

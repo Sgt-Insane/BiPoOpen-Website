@@ -32,6 +32,20 @@ describe('Becherverlauf: besondere Momente', () => {
         expect(lastCups.map(moment => moment.rowKey)).toEqual([3]);
     });
 
+    it('zeigt benannte Formationen, die durch Wuerfe entstehen, mit Werfer und Stelle im Verlauf', () => {
+        // Team 1 raeumt die Becher 1-6 ab: Berliner Mauer (7 8 9 10) steht
+        const turns = [0, 1, 2, 3, 4, 5].map((cup, index) => turn('hit', 0, index % 2, 60 + index * 30, { cupIndex: cup }));
+        const formations = getCupChartMoments(makeMatch(turns)).filter(moment => moment.icon === 'formation');
+        expect(formations).toEqual([expect.objectContaining({ title: 'Berliner Mauer', rowKey: 5, teamIndex: 0, scoreTeam: 0, playerIndex: 1 })]);
+    });
+
+    it('zeigt keine Formation nach einem Re-Rack ohne Wurf', () => {
+        // 4 Becher uebrig (nicht als Formation), Re-Rack stellt sie neu auf: keine Fahne fuer die neue Stellung
+        const turns = [0, 2, 4, 6, 8, 9].map((cup, index) => turn('hit', 0, 0, 60 + index * 30, { cupIndex: cup }));
+        const match = makeMatch(turns, [{ kind: 'reRack', teamIndex: 0, afterTurnIndex: 6, time: START + 300_000 } as MatchEvent]);
+        expect(getCupChartMoments(match).filter(moment => moment.icon === 'formation')).toEqual([]);
+    });
+
     it('fasst gleiche Momente desselben Spielers kurz hintereinander zusammen', () => {
         const match = makeMatch([turn('ballsback', 1, 0, 140), turn('ballsback', 1, 0, 150), turn('ballsback', 1, 1, 160)]);
         const moments = getCupChartMoments(match).filter(moment => moment.title === 'Balls Back');

@@ -2,12 +2,14 @@ import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getScoringTeam, getTurnCups } from '@/components/frontend/biPoKnecht/knechtStats';
 import { formatPoints, getShortPlayerName, getTeam, getTeamName } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import type { KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
+import { getFormationMoments } from './cupHistory';
 
 // Becherverlauf eines Knecht-Spiels als fertig ausgelegte Grafik (Pixel bei gegebener Breite).
 // Dieselbe Auslegung zeichnet MatchCupChart.vue auf der Webseite und im Story-Overlay.
 
 // ─── Besondere Momente (Fahnen ueber dem Diagramm) ───
 // Selten und spannend. Normale Treffer, Fehlwuerfe, Kanten, Ausgleich, Fuehrungswechsel und Nachwurf gehoeren nicht dazu.
+// Benannte Formationen (Berliner Mauer, Donut, ...) zaehlen dazu, wenn sie durch einen Wurf entstehen.
 export type CupChartMoment = {
     key: string;
     rowKey: number | null;      // Turn, zu dem die Fahne springt
@@ -64,6 +66,14 @@ export const getCupChartMoments = (match: Match): CupChartMoment[] => {
             add('onfire', 'On Fire', 4);
         if (turn.type === 'bouncer' || (data.bouncer && (cups || isHitTurnType(turn.type)))) add('bouncer', 'Bouncer', 3);
         if (turn.type === 'ballsback') add('ballsback', 'Balls Back', 2);
+    });
+    // Benannte Formation der stehenden Becher (Berliner Mauer, Donut, ...): Fahne beim Team, das sie abgeraeumt hat
+    getFormationMoments(match).forEach(({ turnIndex, ownerIndex, formation }) => {
+        const turn = turns[turnIndex];
+        list.push({
+            key: `${turnIndex}-f-${formation.name}`, rowKey: turnIndex, position: turnIndex + .25, teamIndex: 1 - ownerIndex, playerIndex: turn.playerIndex,
+            scoreTeam: 1 - ownerIndex, icon: 'formation', title: formation.name, importance: 4, time: turn.time || null,
+        });
     });
     // Verlaengerung und Re-Rack (Fahne auf der Linie des Teams, das es verlangt hat)
     const EVENT_MOMENTS: Partial<Record<MatchEvent['kind'], { icon: KnechtIconName; title: string; importance: number }>> = {
