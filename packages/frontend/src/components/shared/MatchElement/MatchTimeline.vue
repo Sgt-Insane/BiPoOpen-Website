@@ -158,7 +158,7 @@ import Avatar from '@/components/shared/Avatar.vue';
 import GlossaryText from '@/components/shared/GlossaryText.vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
 import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
-import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
+import { isHitTurnType, isTrickshotAirball } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
 import { formatEdgeKind, formatHitEdge } from '@/components/frontend/biPoKnecht/knechtEdges';
@@ -236,6 +236,7 @@ const getLabel = (turn: Turn, previous: Turn | undefined, cups: number) => {
     const data = getData(turn);
     // Kante ohne Becher-Nummer: welcher Becher, ist fuer die Wurfliste egal
     if (turn.type === 'miss' && data.edge) return formatEdgeKind(data.edge as EdgeHit);
+    if (isTrickshotAirball(turn, previous)) return 'Airball (Trickshot, zählt nicht)';
     if (!cups && !isHitTurnType(turn.type)) return QUIET_LABELS[turn.type] ?? 'Verfehlt';
     const kinds = [
         SHORT_LABELS[turn.type],

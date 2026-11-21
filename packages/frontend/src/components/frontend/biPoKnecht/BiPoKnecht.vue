@@ -310,7 +310,7 @@ import { useProfile } from '../multiplayer/useProfile';
 import KnechtGameOver from './KnechtGameOver.vue';
 import KnechtIcon from './KnechtIcon.vue';
 import type { KnechtIconName } from './knechtIcons';
-import { getHittableCups, getTeamPoints, type KnechtAction } from './knechtEngine';
+import { countAirballs, getHittableCups, getTeamPoints, type KnechtAction } from './knechtEngine';
 import { formatPoints, getPlayerName, getTeam, getTeamColor, getTeamName, swapCupColors } from './KnechtUtilFunctions';
 import { useBiPoKnecht, type KnechtMode } from './useBiPoKnecht';
 import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
@@ -698,7 +698,7 @@ const loadShots = (): number[] => {
     }
 };
 const shotsConfirmed = ref<number[]>(loadShots());
-const airballs = computed(() => [0, 1].map(teamIndex => state.value.turns.filter(turn => turn.type === 'airball' && turn.teamIndex === teamIndex).length));
+const airballs = computed(() => [0, 1].map(teamIndex => countAirballs(state.value.turns, teamIndex)));
 const shotTeam = computed(() => {
     const due = [0, 1].find(teamIndex => Math.floor(airballs.value[teamIndex] / SHOT_EVERY_AIRBALLS) > (shotsConfirmed.value[teamIndex] ?? 0));
     return due ?? null;

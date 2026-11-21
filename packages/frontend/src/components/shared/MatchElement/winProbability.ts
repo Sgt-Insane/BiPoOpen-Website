@@ -1,4 +1,4 @@
-import { CUP_COUNT, OVERTIME_FORMATION } from '@/components/frontend/biPoKnecht/knechtEngine';
+import { CUP_COUNT, isTrickshotAirball, OVERTIME_FORMATION } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getScoringTeam, getTurnCups } from '@/components/frontend/biPoKnecht/knechtStats';
 
 // Live-Siegwahrscheinlichkeit: ein vereinfachtes Becher-Rennen.
@@ -82,7 +82,8 @@ export const getWinProbabilities = (match: Match, expected = .5, finished = true
     const points: WinPoint[] = [{ index: -1, time: match.time, chance: chanceNow(turns[0]?.teamIndex ?? 0) }];
     turns.forEach((turn, index) => {
         if (overtimeAt.has(index)) { remaining[0] = OVERTIME_FORMATION.length; remaining[1] = OVERTIME_FORMATION.length; }
-        if (turn.type === 'hit' || turn.type === 'miss' || turn.type === 'airball' || turn.type === 'bouncer' || turn.type === 'onfire' || turn.type === 'ballsback' || turn.type === 'lastCup' || turn.type === 'bomb') {
+        // Airball beim Trickshot zaehlt nicht als Wurf
+        if (!isTrickshotAirball(turn, turns[index - 1]) && (turn.type === 'hit' || turn.type === 'miss' || turn.type === 'airball' || turn.type === 'bouncer' || turn.type === 'onfire' || turn.type === 'ballsback' || turn.type === 'lastCup' || turn.type === 'bomb')) {
             throws[turn.teamIndex]++;
             if (turn.type !== 'miss' && turn.type !== 'airball') hits[turn.teamIndex]++;
         }

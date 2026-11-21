@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getKnechtCareerStats, getTurnCups, getTurnStats } from './knechtStats';
+import { countAirballs, isTrickshotAirball } from './knechtEngine';
 
 const turn = (teamIndex: number, playerIndex: number, type: Turn['type'], data: Record<string, unknown> = {}): Turn =>
     ({ teamIndex, playerIndex, type, data, time: 0 } as Turn);
@@ -23,6 +24,20 @@ describe('Knecht-Statistik', () => {
         expect(bob).toMatchObject({ throws: 2, hits: 1, misses: 1, ballsBacks: 1 });
         expect(chris).toMatchObject({ throws: 1, airballs: 1 });
         expect(dana).toMatchObject({ throws: 0, ownCups: 1 });
+    });
+
+    it('zaehlt einen Airball beim Trickshot nicht als Wurf und nicht fuer die Shots', () => {
+        const turns = [
+            turn(0, 1, 'trickshot', { catcherIndex: 0 }), turn(0, 0, 'airball'),    // Trickshot ins Leere
+            turn(0, 1, 'airball'),                                                  // normaler Airball
+        ];
+        const game = match([['Alice', 'Bob'], ['Chris']], [[0, 0], [0]], turns);
+        const [alice, bob] = getTurnStats(game, turns, [[0, 0], [0]]);
+        expect(alice).toMatchObject({ throws: 0, airballs: 0, trickshotCatches: 1 });
+        expect(bob).toMatchObject({ throws: 2, misses: 1, airballs: 1 });
+        expect(countAirballs(turns, 0)).toBe(1);
+        expect(isTrickshotAirball(turns[1], turns[0])).toBe(true);
+        expect(isTrickshotAirball(turns[2], turns[1])).toBe(false);
     });
 
     it('fasst alle Knecht-Spiele eines Spielers zusammen und ignoriert Spiele ohne Verlauf', () => {

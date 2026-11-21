@@ -1,4 +1,4 @@
-import { isHitTurnType } from './knechtEngine';
+import { isHitTurnType, isTrickshotAirball } from './knechtEngine';
 
 // Statistik aus dem Wurfverlauf (Turns) eines Spiels: fuer den Spielende-Bildschirm und das Spielerprofil.
 // Rein, ohne Vue und ohne Netzwerk.
@@ -37,9 +37,11 @@ export const getTurnStats = (match: Match, turns: Turn[], points: number[][]): K
     const streaks = new Map<KnechtPlayerStats, number>();
     let pendingTrickshot: number | null = null;
 
-    turns.forEach(turn => {
+    turns.forEach((turn, index) => {
         const entry = find(turn.teamIndex, turn.playerIndex);
         if (!entry) return;
+        // Airball beim Trickshot zaehlt nicht als Wurf
+        if (isTrickshotAirball(turn, turns[index - 1])) { pendingTrickshot = null; return; }
         // Alte Knecht-Spiele speichern Nullwurf, Airball und Trickshot ohne data
         const data = (turn.data ?? {}) as Record<string, unknown>;
 

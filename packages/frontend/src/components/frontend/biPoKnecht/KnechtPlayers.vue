@@ -49,7 +49,7 @@ import { computed, ref, watch } from 'vue';
 import Avatar from '@/components/shared/Avatar.vue';
 import GlossaryWord from '@/components/shared/GlossaryWord.vue';
 import KnechtIcon from './KnechtIcon.vue';
-import { getBallNumber, getFinalPlayerPoints, getTeamPoints, isOnFireEnabled } from './knechtEngine';
+import { countAirballs, getBallNumber, getFinalPlayerPoints, getTeamPoints, isOnFireEnabled } from './knechtEngine';
 import { getTeamColor, formatPoints, getTeam, getTeamName } from './KnechtUtilFunctions';
 import type { BiPoKnechtGame } from './useBiPoKnecht';
 
@@ -98,7 +98,7 @@ const getFire = (playerIndex: number) => {
     return streak >= 3 ? 'on-fire' : streak === 2 ? 'heating-up' : 'normal';
 };
 
-const airballsTowardsShot = computed(() => state.value.turns.filter(turn => turn.type === 'airball' && turn.teamIndex === props.teamIndex).length % 3);
+const airballsTowardsShot = computed(() => countAirballs(state.value.turns, props.teamIndex) % 3);
 
 const hotPlayers = computed(() => team.value.players
     .map((player, playerIndex) => ({ playerIndex, name: player.name, fire: getFire(playerIndex) }))

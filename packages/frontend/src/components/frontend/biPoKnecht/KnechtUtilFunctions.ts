@@ -5,7 +5,7 @@ import { clearGameDataCache } from '@/util/gameDataCache';
 import { addDemoGame, isDemoMode } from '@/util/demoGames';
 import { formatEdge, formatHitEdge } from './knechtEdges';
 import { useAddGame } from '@/components/shared/GameEntry/useAddGame';
-import { getFinalPlayerPoints, isHitTurnType, type KnechtState } from './knechtEngine';
+import { getFinalPlayerPoints, isHitTurnType, isTrickshotAirball, isTrickshotThrow, type KnechtState } from './knechtEngine';
 import { getAccuracy, getTurnStats, type KnechtPlayerStats } from './knechtStats';
 
 export type KnechtGameKind = 'open' | 'league' | 'cup';
@@ -129,9 +129,7 @@ const TURN_LABELS: Record<Turn['type'], string> = {
 };
 
 // Treffer mit Trickshot: der Faenger des vorherigen Wurfs hat getroffen
-const isTrickshotHit = (turn: Turn, previous?: Turn) =>
-    previous?.type === 'trickshot' && previous.teamIndex === turn.teamIndex
-    && ((previous.data ?? {}) as Record<string, unknown>).catcherIndex === turn.playerIndex;
+const isTrickshotHit = isTrickshotThrow;
 
 // Treffer werden immer als "Treffer · Art" beschrieben, z.B. "Treffer · Bouncer (2 Becher)"
 export const getTurnLabel = (turn: Turn, match?: Match, previous?: Turn) => {
@@ -141,6 +139,7 @@ export const getTurnLabel = (turn: Turn, match?: Match, previous?: Turn) => {
         return catcher ? `Verfehlt · ${catcher} fängt (Trickshot)` : 'Verfehlt · Trickshot-Fang';
     }
     if (turn.type === 'miss' && data.edge) return `Verfehlt · ${formatEdge(data.edge as EdgeHit)}`;
+    if (isTrickshotAirball(turn, previous)) return 'Airball beim Trickshot (zählt nicht)';
     if (turn.type === 'penalty') return data.card === 'red' ? 'Ellenbogen · Rote Karte, Strafbecher' : 'Ellenbogen · Gelbe Karte';
     if (turn.type === 'owncup') return `${(data.cups as number[]).length} eigene${(data.cups as number[]).length === 1 ? 'r' : ''} Becher runter`;
     if (!isHitTurnType(turn.type)) return TURN_LABELS[turn.type];

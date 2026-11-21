@@ -106,6 +106,18 @@ export const CUP_ROWS = [1, 2, 3, 4].map(row => Array.from({ length: row }, (_, 
 export const isHitTurnType = (type: Turn['type']) =>
     type === 'hit' || type === 'bouncer' || type === 'bomb' || type === 'ballsback' || type === 'lastCup' || type === 'onfire';
 
+// Wurf des Faengers nach einem Trickshot-Fang (previous = Eintrag davor)
+export const isTrickshotThrow = (turn: Turn, previous?: Turn) =>
+    previous?.type === 'trickshot' && previous.teamIndex === turn.teamIndex
+    && ((previous.data ?? {}) as Record<string, unknown>).catcherIndex === turn.playerIndex;
+
+// Airball beim Trickshot: zaehlt nicht als Wurf (keine Trefferquote, kein Airball fuer die Shots)
+export const isTrickshotAirball = (turn: Turn, previous?: Turn) => turn.type === 'airball' && isTrickshotThrow(turn, previous);
+
+// Airballs eines Teams, die fuer die Shots zaehlen
+export const countAirballs = (turns: Turn[], teamIndex: number) =>
+    turns.filter((turn, index) => turn.type === 'airball' && turn.teamIndex === teamIndex && !isTrickshotAirball(turn, turns[index - 1])).length;
+
 // On Fire / Heaten Up nur, wenn ein Team mehr als einen Spieler hat (nicht im 1 gegen 1 / Liga)
 export const isOnFireEnabled = (state: KnechtState, teamIndex: number) => state.config.playerCounts[teamIndex] > 1;
 
