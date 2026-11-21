@@ -9,6 +9,7 @@ describe('Formationen', () => {
     it('erkennt benannte Formationen der stehenden Becher', () => {
         expect(findFormation(indices(7, 8, 9, 10))?.name).toBe('Berliner Mauer');
         expect(findFormation(indices(2, 3))?.name).toBe('Twin Towers');
+        expect(findFormation(indices(2, 3, 4, 6, 8, 9))?.name).toBe('Donut');
         expect(findFormation(indices(1, 2, 3, 4, 6, 7, 8, 9, 10))?.name).toBe('Arschlochbecher');
         expect(findFormation(indices(1, 2, 3))).toBeNull();
     });

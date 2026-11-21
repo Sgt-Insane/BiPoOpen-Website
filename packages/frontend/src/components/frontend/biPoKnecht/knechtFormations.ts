@@ -12,7 +12,7 @@ import { CUP_COUNT } from './knechtEngine';
 //
 // Namen einfach hier aendern oder neue Zeilen ergaenzen.
 
-export type FormationEffect = 'wall' | 'ring' | 'hole' | 'towers' | 'stripe' | 'pop' | 'eye' | 'spin';
+export type FormationEffect = 'wall' | 'donut' | 'hole' | 'towers' | 'stripe' | 'pop' | 'eye' | 'spin';
 
 export type KnechtFormation = {
     name: string;
@@ -24,7 +24,7 @@ const allExcept = (...missing: number[]) => Array.from({ length: CUP_COUNT }, (_
 
 export const KNECHT_FORMATIONS: KnechtFormation[] = [
     { name: 'Berliner Mauer', cups: [7, 8, 9, 10], effect: 'wall' },
-    { name: 'Ring of Fire', cups: [2, 3, 4, 6, 8, 9], effect: 'ring' },
+    { name: 'Donut', cups: [2, 3, 4, 6, 8, 9], effect: 'donut' },
     { name: 'Arschlochbecher', cups: allExcept(5), effect: 'hole' },
     { name: 'Twin Towers', cups: [2, 3], effect: 'towers' },
     { name: 'Schneise', cups: allExcept(3, 5, 8), effect: 'stripe' },
