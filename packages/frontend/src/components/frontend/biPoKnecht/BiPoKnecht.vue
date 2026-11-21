@@ -42,7 +42,7 @@
             </div>
 
             <!-- Schiedsrichter: Tisch von der Seite, quer -->
-            <!-- Raster: Becher oben, Spieler unten. Beide Tische sind gleich hoch, die Dreiecke stehen sich mittig gegenueber. -->
+            <!-- Beide Tische in voller Hoehe, die Dreiecke stehen sich mittig gegenueber. Namen und Stand liegen oben als Leiste darueber. -->
             <div v-else class="kn-field kn-field--referee" :style="{ gridTemplateColumns: `minmax(0, ${isTarget(leftTeam) ? 3 : 2}fr) minmax(0, ${isTarget(rightTeam) ? 3 : 2}fr)` }">
                 <div v-for="teamIndex in [leftTeam, rightTeam]" :key="teamIndex" class="kn-end" :class="{ 'kn-end--target': isTarget(teamIndex) }">
                     <div class="kn-end-rack">
@@ -933,15 +933,24 @@ onUnmounted(() => {
 .kn-field--player{ flex-direction: column; }
 .kn-field--referee{
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
     transition: grid-template-columns .35s cubic-bezier(.4, 0, .2, 1);
 }
 /* Becher und Spieler beider Tische liegen im selben Raster: die Spielerleiste ist links und rechts gleich hoch */
 .kn-field--referee .kn-end{ display: contents; }
 .kn-field--referee .kn-end > *{ grid-column: 1; min-width: 0; }
 .kn-field--referee .kn-end + .kn-end > *{ grid-column: 2; border-left: 2px solid var(--bp-surface); }
-.kn-field--referee .kn-end-rack{ grid-row: 1; }
-.kn-field--referee .KnechtPlayers{ grid-row: 2; }
+.kn-field--referee .kn-end > *{ grid-row: 1; }
+/* Namensleiste oben ueber dem Tisch (beim werfenden Team ueber dem ausgegrauten Dreieck) */
+.kn-field--referee .KnechtPlayers{
+    position: relative;
+    z-index: 2;
+    align-self: start;
+    background: color-mix(in srgb, var(--bp-surface) 82%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 1px 0 rgba(31, 35, 40, .08);
+}
 /* Zwei Handys, das andere Team ist dran: Stand bleibt lesbar, Eingabe gesperrt */
 .kn-field--player{ position: relative; }
 .kn-wait{
@@ -1140,11 +1149,6 @@ onUnmounted(() => {
 /* Schwebendes Menue (Rueckgaengig, Menue) bleibt bei der Sperre bedienbar */
 .KnechtSideBar{
     z-index: 25;
-}
-/* Schiri: Knoepfe oben rechts ueber dem Tisch (Airball-Zone bzw. leere Ecke), nicht ueber Namen und Punktestand */
-.kn--referee .KnechtSideBar{
-    top: 8px;
-    transform: none;
 }
 /* Wartender Tisch rechts: Dreieck nicht unter die Knoepfe der Seitenleiste schieben */
 .kn-field--referee .kn-end + .kn-end :deep(.kn-rack--waiting .kn-pyramid){ padding-right: 52px; }

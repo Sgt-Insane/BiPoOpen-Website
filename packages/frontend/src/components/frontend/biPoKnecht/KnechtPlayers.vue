@@ -335,6 +335,8 @@ const getPlayerLine = (playerIndex: number) => {
     .kn-player-name{ font-size: 13px; }
     .kn-player-stats{ font-size: 10px; }
     .kn-thrower-hint{ display: none; }
+    /* 1 gegen 1: der Name steht schon im Kopf, umschalten kann man nicht */
+    .kn-player-list--single{ display: none; }
 }
 
 /* Kompakt: wartendes Team im Spielermodus */
