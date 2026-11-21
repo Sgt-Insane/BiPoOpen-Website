@@ -1,5 +1,5 @@
 <template>
-    <div class="BiPoKnecht" :class="[`kn--${mode}`, { 'kn--rotate': rotateBoard }]">
+    <div class="BiPoKnecht" :class="[`kn--${mode}`, { 'kn--upright': uprightField }]">
         <div class="kn-board">
             <!-- Schwebendes Menue (drei Punkte), das Spielfeld bleibt in voller Breite -->
             <KnechtSideBar
@@ -13,9 +13,10 @@
 
             <!-- Spielermodus: Handy liegt auf dem Tisch, jedes Team tippt an seinem Tischende.
                  Zwei Handys: gleiche Ansicht, das eigene Team immer unten und nichts gedreht (jedes Handy liest nur
-                 ein Team). Ist das andere Team dran, sieht man den Stand, die Eingabe ist aber gesperrt. -->
-            <div v-if="mode === 'player'" class="kn-field kn-field--player">
-                <KnechtPlayers :game="game" :teamIndex="topTeam" :rotated="!twoPhone" :compact="!isThrowing(topTeam)" />
+                 ein Team). Ist das andere Team dran, sieht man den Stand, die Eingabe ist aber gesperrt.
+                 Schiri im Hochformat: gleiche Aufteilung oben/unten, aber nichts gedreht (eine Person traegt fuer alle ein). -->
+            <div v-if="mode === 'player' || uprightField" class="kn-field kn-field--player">
+                <KnechtPlayers :game="game" :teamIndex="topTeam" :rotated="!twoPhone && !uprightField" :compact="!isThrowing(topTeam)" />
                 <div class="kn-end" :class="{ 'kn-end--target': isTarget(topTeam) }">
                     <KnechtRack :game="game" :teamIndex="topTeam" direction="up" :isTarget="isTarget(topTeam) && !waitingForOther" :pro="proActive" :owners="cupOwners.racks[topTeam]" :showDrinkers="!twoPhone">
                         <template #front><KnechtControls v-if="(isTarget(topTeam) && !waitingForOther)" :game="game" :trickshotActive="sheet === 'trickshot'" :pro="proActive" :catchReady="catchWindow?.team === 1 - topTeam" @trickshot="openTrickshot" /></template>
@@ -26,7 +27,7 @@
                     <transition name="kn-myturn">
                         <div v-if="showMyTurn" class="kn-myturn">🎯 Du bist dran!</div>
                     </transition>
-                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && !twoPhone ? 'up' : 'down'" :isTarget="isTarget(bottomTeam) && !waitingForOther" :rotated="isTarget(bottomTeam) && !twoPhone" :pro="proActive" :owners="cupOwners.racks[bottomTeam]" showDrinkers>
+                    <KnechtRack :game="game" :teamIndex="bottomTeam" :direction="isTarget(bottomTeam) && flipsForThrower ? 'up' : 'down'" :isTarget="isTarget(bottomTeam) && !waitingForOther" :rotated="isTarget(bottomTeam) && flipsForThrower" :pro="proActive" :owners="cupOwners.racks[bottomTeam]" showDrinkers>
                         <template #front><KnechtControls v-if="(isTarget(bottomTeam) && !waitingForOther)" :game="game" :trickshotActive="sheet === 'trickshot'" :pro="proActive" :catchReady="catchWindow?.team === 1 - bottomTeam" @trickshot="openTrickshot" /></template>
                     </KnechtRack>
                 </div>
@@ -195,6 +196,7 @@
                     <SelectButton :modelValue="twoPhone ? 'player' : modeSetting" :options="MODE_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" :disabled="twoPhone" fluid @update:modelValue="setMode" />
                     <div v-if="twoPhone" class="kn-menu-hint">Mit mehreren Handys immer Spieler-Modus – außer dieses Handy trägt für alle ein (unten)</div>
                     <div v-else-if="modeSetting === 'auto'" class="kn-menu-hint">Hochkant = Spieler, quer = Schiedsrichter</div>
+                    <div v-else-if="modeSetting === 'referee'" class="kn-menu-hint">Quer: Tisch von der Seite · hochkant: Feld oben/unten, alles richtig herum</div>
 
                     <div class="kn-menu-label">Anzeige & Rückmeldung</div>
                     <button v-if="fullscreenSupported" type="button" role="switch" class="kn-menu-toggle" :aria-checked="fullscreen" @click="toggleFullscreen">
@@ -317,7 +319,7 @@ import KnechtEdgeZoom from './KnechtEdgeZoom.vue';
 import { addShots } from '@/components/frontend/shots/shots';
 import { isVibrationSupported, toggleVibration, vibrationEnabled } from './knechtHaptics';
 import { ANIMATION_OPTIONS, animationLevel, animationMode, setAnimationLevel } from './knechtAnimations';
-import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, lockLandscape, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
+import { enterFullscreen, exitFullscreen, isFullscreen, isFullscreenSupported, releaseWakeLock, requestWakeLock, unlockOrientation } from './knechtScreen';
 
 const props = defineProps<{
     match: Match;
@@ -376,9 +378,8 @@ const openTurnEditor = (turnIndex: number) => {
 const setMode = (value: ModeSetting) => {
     modeSetting.value = value;
     localStorage.setItem(MODE_KEY, value);
-    // Fest Schiedsrichter: Querformat sperren. Auto darf nicht sperren, sonst kaeme man nicht mehr zurueck.
-    if (value === 'referee') lockLandscape();
-    else unlockOrientation();
+    // Keine Sperre mehr: Schiri geht quer und hochkant (hochkant: Feld oben/unten, nichts gedreht)
+    unlockOrientation();
     // Menue bleibt offen: Schalter wie Knecht Pro (nur Schiri) erscheinen sofort sichtbar
 };
 
@@ -461,7 +462,10 @@ const onOrientationChange = (event: MediaQueryListEvent) => { isPortrait.value =
 const mode = computed<KnechtMode>(() => twoPhone.value ? 'player' : modeSetting.value === 'auto' ? (isPortrait.value ? 'player' : 'referee') : modeSetting.value);
 // Animationen sind je Modus eingestellt (Spieler: alle, Schiri: nur besondere)
 watch(mode, value => { animationMode.value = value; }, { immediate: true });
-const rotateBoard = computed(() => mode.value === 'referee' && isPortrait.value);
+// Schiri im Hochformat: Feld oben/unten, nichts gedreht (frueher wurde das Querformat-Feld um 90 Grad gedreht)
+const uprightField = computed(() => mode.value === 'referee' && isPortrait.value);
+// Spielermodus auf einem gemeinsamen Handy: das werfende Team unten liest sein Feld von der anderen Tischseite
+const flipsForThrower = computed(() => !twoPhone.value && !uprightField.value);
 // Schiedsrichter-Modus genutzt: am Ende nach dem Namen fragen
 watch(mode, value => { if (value === 'referee') refereeUsed.value = true; }, { immediate: true });
 
@@ -812,7 +816,6 @@ const startGame = (teamIndex: number) => {
     game.start(teamIndex);
     enterFullscreen();
     requestWakeLock();
-    if (modeSetting.value === 'referee') lockLandscape();
 };
 
 // ─── Start aus der Anstoss-Lobby: kein "Wer faengt an?", nur Schnick-Schnack-Schnuck als Popup ueber dem Feld ───
@@ -912,16 +915,6 @@ onUnmounted(() => {
 }
 
 /* Schiedsrichter im Hochformat: Feld um 90 Grad gedreht */
-.kn--rotate .kn-board{
-    inset: auto;
-    top: 0;
-    left: 100dvw;
-    width: 100dvh;
-    height: 100dvw;
-    transform: rotate(90deg);
-    transform-origin: top left;
-}
-
 .kn-field{
     position: relative;
     display: flex;
