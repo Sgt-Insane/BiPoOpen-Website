@@ -131,6 +131,7 @@ const getPlayerLine = (playerIndex: number) => {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    container-type: inline-size;
     padding: 8px 10px 10px;
     background: var(--bp-surface);
     transition: opacity .25s ease, filter .25s ease;
@@ -314,6 +315,27 @@ const getPlayerLine = (playerIndex: number) => {
     white-space: nowrap;
     font-size: 11px;
     color: var(--bp-text-muted);
+}
+
+/* Schmal (z.B. werfendes Team auf dem kleinen Tisch im Schiri-Modus): Teamname und Punktestand in der ersten Zeile,
+   Abzeichen (am Zug, Heaten Up, ...) darunter. So wird nichts uebereinandergeschoben. */
+@container (max-width: 420px){
+    .kn-players-header{
+        flex-wrap: wrap;
+        gap: 4px 6px;
+    }
+    .kn-team-logo, .kn-team-name, .kn-team-score{ order: -1; }
+    .kn-team-name{ flex: 1 1 0; }
+    /* Umbruch nach dem Punktestand: alle Abzeichen in die zweite Zeile */
+    .kn-players-header::after{ content: ''; flex-basis: 100%; order: -1; }
+    .kn-fire-pill{ max-width: 100%; }
+    .kn-fire-pill > span{ white-space: normal; overflow-wrap: anywhere; }
+    .kn-player{ gap: 6px; padding: 5px 7px; }
+    .kn-player-avatar{ width: 24px !important; height: 24px !important; min-width: 24px; font-size: 10px !important; }
+}
+/* Sehr schmal: Spielerkarten untereinander in voller Breite statt zusammengedrueckt */
+@container (max-width: 260px){
+    .kn-player-list{ grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
 
 /* Kompakt: wartendes Team im Spielermodus */

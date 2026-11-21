@@ -458,6 +458,9 @@ const onAirballClick = (event: MouseEvent) => {
     width: 30%;
     padding: 10px 6px;
 }
+/* Wartender Tisch: keine Eingabe, das Dreieck steht mittig */
+.kn-rack--waiting.kn-rack--left .kn-front,
+.kn-rack--waiting.kn-rack--right .kn-front{ display: none; }
 .kn-zone-label-miss{
     font-size: 10px;
     text-align: center;
