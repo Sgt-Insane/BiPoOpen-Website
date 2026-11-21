@@ -294,18 +294,21 @@ const onAirballClick = (event: MouseEvent) => {
     min-width: 0;
 }
 .kn-rack--down .kn-pyramid{ flex-direction: column; }
+/* Schiri (Tisch von der Seite): neben dem Dreieck liegen Airball-Zone (14 %) und Knoepfe (30 %), das Dreieck
+   ist etwa 4,4 Becher breit. 11,5 % der Breite fuellt den Platz dazwischen aus, mit etwas Abstand. */
 .kn-rack--left .kn-pyramid,
 .kn-rack--right .kn-pyramid{
-    --kn-cup: min(10cqw, 17cqh);
+    --kn-cup: min(11.5cqw, 20cqh);
     flex-direction: row-reverse;
 }
 .kn-rack--right .kn-pyramid{ flex-direction: row; }
 .kn-rack--waiting .kn-pyramid{
     --kn-cup: min(12cqw, 17cqh);
 }
+/* Wartender Tisch: deutlich kleiner als der, auf den geworfen wird */
 .kn-rack--waiting.kn-rack--left .kn-pyramid,
 .kn-rack--waiting.kn-rack--right .kn-pyramid{
-    --kn-cup: min(17cqw, 14cqh);
+    --kn-cup: min(12cqw, 11.5cqh);
 }
 
 .kn-row{
