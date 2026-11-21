@@ -102,3 +102,12 @@ export const TURN_ICONS: Record<Turn['type'], KnechtIconName> = {
     owncup: 'owncup',
     penalty: 'penalty',
 };
+
+// Symbol eines Eintrags, ueberall gleich (Spielverlauf auf der Webseite, Live-Seite, Verlauf im Knecht):
+// das Symbol der Art des Eintrags. Einzige Ausnahme: ein normaler Treffer des Faengers nach einem Trickshot-Fang
+// zeigt den Trickshot. Ausgleich, Fuehrungswechsel und Highlights aendern das Symbol nicht.
+export const getTurnIcon = (turn: Turn, previous?: Turn): KnechtIconName => {
+    const catcher = previous?.type === 'trickshot' && previous.teamIndex === turn.teamIndex
+        && ((previous.data ?? {}) as Record<string, unknown>).catcherIndex === turn.playerIndex;
+    return turn.type === 'hit' && catcher ? 'trickshot' : TURN_ICONS[turn.type];
+};

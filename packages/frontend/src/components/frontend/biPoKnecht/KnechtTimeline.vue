@@ -33,7 +33,7 @@
 import { computed } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
 import { getTurnPoints, type KnechtState } from './knechtEngine';
-import { TURN_ICONS, type KnechtIconName } from './knechtIcons';
+import { getTurnIcon, type KnechtIconName } from './knechtIcons';
 import { getTeamColor, formatPoints, getPlayerName, getTeamName, getTurnLabel } from './KnechtUtilFunctions';
 
 const props = defineProps<{
@@ -81,7 +81,7 @@ const entries = computed<Entry[]>(() => {
             key: `t-${turnIndex}`,
             turnIndex,
             teamIndex: turn.teamIndex,
-            icon: TURN_ICONS[turn.type],
+            icon: getTurnIcon(turn, props.state.turns[turnIndex - 1]),
             player: getPlayerName(props.match, turn.teamIndex, turn.playerIndex),
             label: getTurnLabel(turn, props.match, props.state.turns[turnIndex - 1]),
             points,

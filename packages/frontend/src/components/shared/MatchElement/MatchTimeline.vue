@@ -157,7 +157,7 @@ import { computed, inject, nextTick, onBeforeUnmount, PropType, ref, watch } fro
 import Avatar from '@/components/shared/Avatar.vue';
 import GlossaryText from '@/components/shared/GlossaryText.vue';
 import KnechtIcon from '@/components/frontend/biPoKnecht/KnechtIcon.vue';
-import { TURN_ICONS, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
+import { getTurnIcon, type KnechtIconName } from '@/components/frontend/biPoKnecht/knechtIcons';
 import { isHitTurnType } from '@/components/frontend/biPoKnecht/knechtEngine';
 import { getAccuracy, getScoringTeam, getTurnCups, getTurnStats } from '@/components/frontend/biPoKnecht/knechtStats';
 import { getEloPlayerKey } from '@/components/frontend/worldRanking/eloRating';
@@ -280,7 +280,7 @@ const rows = computed<Row[]>(() => {
             key: index,
             teamIndex: turn.teamIndex,
             scoringTeam: cups ? scoringTeam : -1,
-            icon: turn.type === 'hit' && isTrickshotHit(turn, turns.value[index - 1]) ? 'trickshot' : TURN_ICONS[turn.type],
+            icon: getTurnIcon(turn, turns.value[index - 1]),
             label: getLabel(turn, turns.value[index - 1], cups),
             action: getAction(getLabel(turn, turns.value[index - 1], cups)),
             name: getRowName(turn),
