@@ -1,6 +1,7 @@
 <template>
     <!-- Schwebende Knoepfe am Rand, das Spielfeld bleibt in voller Breite. Immer sichtbar: Rueckgaengig,
-         drei Punkte (mittig) und Spielverlauf. Die drei Punkte klappen Punktestand und Einstellungen dazu auf. -->
+         drei Punkte (mittig) und Sonderaktionen (alles, was man im Spiel eintragen muss, mit einem Tipp).
+         Die drei Punkte klappen Punktestand, Spielverlauf und Einstellungen dazu auf. -->
     <div class="KnechtSideBar" :class="{ 'kn-fab--open': open }">
         <div v-if="open" class="kn-fab-backdrop" @click="open = false"></div>
 
@@ -8,6 +9,9 @@
             <transition-group name="kn-fab-item">
                 <button v-if="open" key="scoreboard" type="button" class="kn-side-button" v-hint="'Punktestand'" aria-label="Punktestand" @click="pick('scoreboard')">
                     <i class="pi pi-trophy"></i>
+                </button>
+                <button v-if="open" key="timeline" type="button" class="kn-side-button" v-hint="'Spielverlauf'" aria-label="Spielverlauf" @click="pick('timeline')">
+                    <i class="pi pi-clock"></i>
                 </button>
             </transition-group>
 
@@ -19,12 +23,12 @@
                 <i :class="open ? 'pi pi-times' : 'pi pi-ellipsis-v'"></i>
             </button>
 
-            <button type="button" class="kn-side-button" v-hint="'Spielverlauf'" aria-label="Spielverlauf" @click="pick('timeline')">
-                <i class="pi pi-clock"></i>
+            <button type="button" class="kn-side-button kn-side-button--special" v-hint="'Sonderaktion: Ellenbogen, eigene Becher, Deathcup'" aria-label="Sonderaktion eintragen" @click="pick('special')">
+                <i class="pi pi-flag"></i>
             </button>
 
             <transition-group name="kn-fab-item">
-                <button v-if="open" key="menu" type="button" class="kn-side-button" v-hint="'Einstellungen, Sonderfälle & Pause'" aria-label="Einstellungen & Sonderfälle" @click="pick('menu')">
+                <button v-if="open" key="menu" type="button" class="kn-side-button" v-hint="'Einstellungen & Pause'" aria-label="Einstellungen" @click="pick('menu')">
                     <i class="pi pi-cog"></i>
                 </button>
             </transition-group>
@@ -36,15 +40,16 @@
 import { ref } from 'vue';
 
 defineProps<{ canUndo: boolean }>();
-const emit = defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: [] }>();
+const emit = defineEmits<{ undo: []; scoreboard: []; timeline: []; menu: []; special: [] }>();
 
 const open = ref(false);
 
-const pick = (action: 'undo' | 'scoreboard' | 'timeline' | 'menu') => {
+const pick = (action: 'undo' | 'scoreboard' | 'timeline' | 'menu' | 'special') => {
     open.value = false;
     if (action === 'undo') emit('undo');
     else if (action === 'scoreboard') emit('scoreboard');
     else if (action === 'timeline') emit('timeline');
+    else if (action === 'special') emit('special');
     else emit('menu');
 };
 </script>
@@ -99,6 +104,9 @@ const pick = (action: 'undo' | 'scoreboard' | 'timeline' | 'menu') => {
 /* Geschlossen dezent, damit die Knoepfe nicht vom Spiel ablenken */
 .kn-side-button:not(:disabled){
     opacity: .9;
+}
+.kn-side-button--special .pi{
+    color: #E5484D;
 }
 .kn-fab--open .kn-side-button:not(:disabled){
     opacity: 1;

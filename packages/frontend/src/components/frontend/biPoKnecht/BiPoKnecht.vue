@@ -9,6 +9,7 @@
                 @scoreboard="sheet = 'scoreboard'"
                 @timeline="sheet = 'timeline'"
                 @menu="sheet = 'menu'"
+                @special="sheet = 'special'"
             />
 
             <!-- Spielermodus: Handy liegt auf dem Tisch, jedes Team tippt an seinem Tischende.
@@ -176,6 +177,24 @@
                 </div>
             </KnechtSheet>
 
+            <!-- Sonderaktionen: alles, was man im Spiel eintragen muss, direkt vom Spielfeld (Knopf mit der Fahne) -->
+            <KnechtSheet :visible="sheet === 'special'" title="Sonderaktion" subtitle="Was ist passiert?" :flipped="sheetFlipped" @update:visible="sheet = null">
+                <div class="kn-menu-list">
+                    <button type="button" class="kn-menu-button kn-special-button" @click="sheet = 'elbow'">
+                        <KnechtIcon name="penalty" />
+                        <span>Ellenbogen-Call <small>Verwarnung, ab der zweiten Strafbier (Strafbecher)</small></span>
+                    </button>
+                    <button type="button" class="kn-menu-button kn-special-button" @click="sheet = 'ownCup'">
+                        <KnechtIcon name="owncup" />
+                        <span>Eigene Becher umgeworfen <small>Zählen für den Gegner</small></span>
+                    </button>
+                    <button type="button" class="kn-menu-button kn-menu-button--danger kn-special-button" @click="confirmDeathcup">
+                        <KnechtIcon name="deathcup" />
+                        <span>Deathcup von {{ throwerName }} <small>Spiel endet sofort</small></span>
+                    </button>
+                </div>
+            </KnechtSheet>
+
             <KnechtSheet :visible="sheet === 'elbow'" title="Ellenbogen-Call" subtitle="Wer war mit dem Ellenbogen über der Tischkante?" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <KnechtElbow :game="game" @done="sheet = null" />
             </KnechtSheet>
@@ -188,7 +207,7 @@
                 <KnechtLivePanel :live="live ?? null" :match="game.match" :referee="mode === 'referee'" @action="onLiveAction" />
             </KnechtSheet>
 
-            <KnechtSheet :visible="sheet === 'menu'" title="Einstellungen & Sonderfälle" :flipped="sheetFlipped" @update:visible="sheet = null">
+            <KnechtSheet :visible="sheet === 'menu'" title="Einstellungen" :flipped="sheetFlipped" @update:visible="sheet = null">
                 <div class="kn-menu-list">
                     <!-- Einheitlich: Auswahl als Segmente, An/Aus als Schalter (Zustand immer sichtbar), Aktionen als Knoepfe -->
                     <div class="kn-menu-label">Modus</div>
@@ -233,10 +252,6 @@
                     </button>
                     <div v-if="!twoPhone" class="kn-menu-hint">{{ mode === 'player' ? 'Oder einfach das Handy auf dem Tisch umdrehen' : 'Oder das Handy umdrehen, wenn du auf die andere Tischseite gehst' }}</div>
 
-                    <div class="kn-menu-label">Sonderfälle</div>
-                    <button type="button" class="kn-menu-button" @click="sheet = 'ownCup'"><KnechtIcon name="owncup" /> Eigene Becher runtergeworfen</button>
-                    <button v-if="mode === 'referee'" type="button" class="kn-menu-button" @click="sheet = 'elbow'"><KnechtIcon name="penalty" /> Ellenbogen-Call</button>
-                    <button type="button" class="kn-menu-button kn-menu-button--danger" @click="confirmDeathcup"><KnechtIcon name="deathcup" /> Deathcup von {{ throwerName }}</button>
 
                     <!-- Fuer alle eintragen: dieses Handy uebernimmt den ganzen Tisch (auch Schiri-Modus), die anderen sehen das -->
                     <template v-if="multiDevice">
@@ -366,7 +381,7 @@ const paused = ref(!!props.initialPaused && props.startTeamIndex !== null);
 const pauseReady = ref<string[]>([]);       // mehrere Handys: wer nach der Pause bereit ist
 const pausedBy = ref<string | null>(null);    // mehrere Handys: wer pausiert hat
 const { profileName } = useProfile();
-const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
+const sheet = ref<'scoreboard' | 'timeline' | 'edit' | 'live' | 'menu' | 'special' | 'trickshot' | 'ownCup' | 'elbow' | null>(null);
 const editTurn = ref<number | null>(null);
 const openTurnEditor = (turnIndex: number) => {
     editTurn.value = turnIndex;
@@ -1358,6 +1373,21 @@ onUnmounted(() => {
 }
 .kn-menu-button:active{
     background: var(--page-gray);
+}
+/* Sonderaktion: grosse Knoepfe mit kurzer Erklaerung darunter */
+.kn-special-button{
+    min-height: 60px;
+    padding: 10px 14px;
+}
+.kn-special-button > span{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.kn-special-button small{
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--bp-text-muted);
 }
 .kn-menu-button--primary{
     justify-content: center;
