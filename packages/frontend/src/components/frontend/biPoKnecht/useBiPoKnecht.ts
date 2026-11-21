@@ -194,6 +194,20 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         const duration = celebration.value && QUICK_KINDS.includes(celebration.value.kind) ? HIT_DURATION : CELEBRATION_DURATION;
         celebrationTimer = celebration.value ? setTimeout(showNextCelebration, duration) : null;
     };
+    // Schon gezeigte Aktionen (Stelle im Spiel + Inhalt ohne Zeit). Rueckgaengig und danach derselbe Wurf, ein
+    // zurueckgenommener Wurf, der ueber den Abgleich wiederkommt, oder die eigenen Wuerfe nach dem Zusammenfuehren
+    // mit einem anderen Handy spielen ihre Animationen und Toene nicht noch einmal ab.
+    const celebrated = new Set<string>();
+    const actionKey = (action: KnechtAction, index: number) => `${index}:${JSON.stringify({ ...action, time: undefined })}`;
+    // true, wenn die Aktion an dieser Stelle zum ersten Mal vorkommt (und merkt sie sich)
+    const isFresh = (action: KnechtAction, index: number) => {
+        const key = actionKey(action, index);
+        if (celebrated.has(key)) return false;
+        celebrated.add(key);
+        return true;
+    };
+    actions.value.forEach(isFresh);
+
     const celebrate = (all: Omit<KnechtCelebration, 'id'>[]) => {
         // Einstellung im Menue: alle, nur besondere (ohne normale Treffer und Airballs) oder keine Animationen
         const list = animationLevel.value === 'off' ? [] : animationLevel.value === 'special' ? all.filter(entry => SPECIAL_KINDS.includes(entry.kind)) : all;
@@ -249,7 +263,8 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         // Bombe/Bouncer lief schon vor der Becherwahl: nicht noch einmal zeigen
         const list = celebrationsFor(before, next, action, newActions[newActions.length - 2]).filter(entry => entry.kind !== shownBeforePick);
         shownBeforePick = null;
-        celebrate(list);
+        // Nach Rueckgaengig derselbe Wurf noch einmal: nur der Ton, keine grossen Animationen
+        if (isFresh(action, newActions.length - 1)) celebrate(list);
         return true;
     };
 
@@ -276,12 +291,16 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         const appended = remote.length > current.length && current.every((action, index) => JSON.stringify(action) === JSON.stringify(remote[index]));
         const error = replaceActions(remote);
         // Nach laengerer Pause (z.B. Handy neu geladen) nicht alle verpassten Wuerfe nachspielen
-        if (error || !appended || remote.length - current.length > 3) return error;
-        const list = remote.slice(current.length).flatMap((action, offset) => {
-            const index = current.length + offset;
-            return celebrationsFor(getStateAfter(index), getStateAfter(index + 1), action, remote[index - 1]);
-        });
-        playFeedback(state.value, remote[remote.length - 1]);
+        if (error) return error;
+        // Das andere Handy hat zurueckgenommen: laufende Animation des zurueckgenommenen Wurfs beenden
+        if (remote.length < current.length) { banner.value = null; clearCelebrations(); }
+        // Alle uebernommenen Aktionen als gesehen merken, gefeiert werden nur neu angehaengte
+        const fresh = remote.map((action, index) => ({ action, index })).filter(({ action, index }) => isFresh(action, index) && index >= current.length);
+        // Nach laengerer Pause (z.B. Handy neu geladen) nicht alle verpassten Wuerfe nachspielen
+        if (!appended || remote.length - current.length > 3 || !fresh.length) return null;
+        const list = fresh.flatMap(({ action, index }) => celebrationsFor(getStateAfter(index), getStateAfter(index + 1), action, remote[index - 1]));
+        const last = fresh[fresh.length - 1];
+        playFeedback(getStateAfter(last.index + 1), last.action);
         celebrate(list);
         return null;
     };
@@ -396,6 +415,7 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
     const start = (teamIndex: number) => {
         startTeamIndex.value = teamIndex;
         actions.value = [];
+        celebrated.clear();
     };
 
 

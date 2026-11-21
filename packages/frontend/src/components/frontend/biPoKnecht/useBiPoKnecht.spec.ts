@@ -68,6 +68,34 @@ describe('useBiPoKnecht (Oberflaeche)', () => {
         expect(game.trickshotPending.value).toBe(false);
     });
 
+    it('spielt nach Rueckgaengig und demselben Wurf keine Animation erneut ab, bei einem anderen Wurf schon', () => {
+        const game = createGame();
+        game.tapCup(4);
+        expect(game.celebration.value?.kind).toBe('hit');
+        game.undo();
+        expect(game.celebration.value).toBeNull();
+        game.tapCup(4);
+        expect(game.actions.value).toHaveLength(1);
+        expect(game.celebration.value).toBeNull();
+        game.undo();
+        game.tapCup(5);
+        expect(game.celebration.value?.kind).toBe('hit');
+    });
+
+    it('zeigt Wuerfe vom anderen Handy einmal, nach dessen Rueckgaengig nicht noch einmal', () => {
+        const thrower = createGame();
+        const watcher = createGame();
+        thrower.tapCup(4);
+        const hit = thrower.actions.value.map(action => ({ ...action }));
+        expect(watcher.syncActions(hit)).toBeNull();
+        expect(watcher.celebration.value?.kind).toBe('hit');
+        expect(watcher.syncActions([])).toBeNull();          // anderes Handy nimmt den Wurf zurueck
+        expect(watcher.celebration.value).toBeNull();
+        expect(watcher.syncActions(hit.map(action => ({ ...action, time: action.time + 500 })))).toBeNull();
+        expect(watcher.actions.value).toHaveLength(1);
+        expect(watcher.celebration.value).toBeNull();
+    });
+
     it('bricht die Becherauswahl mit Rueckgaengig ab, danach wird der letzte Wurf entfernt', () => {
         const game = createGame();
         game.throwMiss('miss');
