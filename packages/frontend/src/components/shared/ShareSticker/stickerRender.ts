@@ -149,10 +149,10 @@ const drawPlayer = (ctx: Ctx, palette: Palette, data: StickerData, player: Stick
     return 720;
 };
 
-// ─── Auszeichnungen aller Spieler ───
+// ─── Titel aller Spieler (nach dem Spiel) ───
 const drawAwards = (ctx: Ctx, palette: Palette, data: StickerData) => {
     brand(ctx, palette, data, 70);
-    text(ctx, palette, 'Auszeichnungen', WIDTH / 2, 170, { weight: 900, size: 76, align: 'center' });
+    text(ctx, palette, 'Titel', WIDTH / 2, 170, { weight: 900, size: 76, align: 'center' });
     let y = 250;
     data.players.filter(player => player.award).forEach(player => {
         const team = data.teams[player.teamIndex];

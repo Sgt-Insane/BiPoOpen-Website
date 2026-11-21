@@ -171,8 +171,8 @@ export { getAccuracy, type KnechtPlayerStats } from './knechtStats';
 export const getPlayerStats = (match: Match, state: KnechtState): KnechtPlayerStats[] =>
     getTurnStats(match, state.turns, getFinalPlayerPoints(state));
 
-// ─── Auszeichnungen ───
-// Jeder Spieler bekommt genau eine: das Auffaelligste aus seinem Spiel, positiv oder negativ.
+// ─── Titel nach dem Spiel (nicht die Auszeichnungen im Spielerprofil) ───
+// Jeder Spieler bekommt genau einen: das Auffaelligste aus seinem Spiel, positiv oder negativ.
 // Reihenfolge: erst die seltenen Titel (echte Highlights), dann haeufigere, zuletzt fuer jeden, der noch keinen
 // hat, sein auffaelligster Wert. Jeder Titel (ausser dem letzten Rueckfall) wird hoechstens einmal je Spiel
 // vergeben, und zwar an den Spieler, auf den er am besten passt.

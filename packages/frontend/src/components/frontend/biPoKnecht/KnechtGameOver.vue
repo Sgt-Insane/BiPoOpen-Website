@@ -14,12 +14,12 @@
                 <div class="kn-over-reason">{{ reasonText }}<template v-if="duration"> · {{ duration }}</template></div>
             </div>
 
-            <!-- Schritt 1: Auszeichnungen -->
+            <!-- Schritt 1: Titel (je Spieler einer, nicht die Auszeichnungen im Profil) -->
             <template v-if="step === 'awards'">
-                <div class="kn-over-section-title">Auszeichnungen</div>
-                <!-- Jeder Spieler, der geworfen hat, bekommt eine Auszeichnung (das Auffaelligste aus seinem Spiel) -->
+                <div class="kn-over-section-title">Titel</div>
+                <!-- Jeder Spieler, der geworfen hat, bekommt einen Titel (das Auffaelligste aus seinem Spiel) -->
                 <div class="kn-awards">
-                    <div v-if="!awardEntries.length" class="kn-award-none">Diesmal keine besonderen Momente – nächstes Spiel!</div>
+                    <div v-if="!awardEntries.length" class="kn-award-none">Diesmal keine Titel – nächstes Spiel!</div>
                     <div v-for="{ award, index } in awardEntries" :key="index" class="kn-award" :style="{ '--kn-team-color': getTeamColor(match, stats[index].teamIndex) }">
                         <span class="kn-award-icon">{{ award.icon }}</span>
                         <span class="kn-award-text">

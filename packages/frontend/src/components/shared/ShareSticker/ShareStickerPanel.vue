@@ -71,7 +71,7 @@ const SLIDE_LIST = (): Omit<Slide, 'url'>[] => [
     { key: 'result', label: 'Endstand', template: 'result' },
     { key: 'curve', label: 'Spielverlauf', template: 'curve' },
     ...data.value.players.map((player, index) => ({ key: `player-${index}`, label: player.name, template: 'player' as const, playerIndex: index })),
-    { key: 'awards', label: 'Auszeichnungen', template: 'awards' },
+    { key: 'awards', label: 'Titel', template: 'awards' },
 ];
 
 const render = async () => {

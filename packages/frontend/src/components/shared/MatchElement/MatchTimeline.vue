@@ -57,7 +57,7 @@
             </button>
         </div>
 
-        <!-- Spieler: zugeklappt Becher (gross), Elo und Auszeichnung. Antippen klappt Wuerfe, Quote, Wurfzeit
+        <!-- Spieler: zugeklappt Becher (gross), Elo und Titel. Antippen klappt Wuerfe, Quote, Wurfzeit
              und den Link zum Profil auf (immer nur ein Spieler offen). -->
         <div v-if="showNames && tab === 'players'" class="mtl-players">
             <div v-for="team in playerRows" :key="team.teamIndex" class="mtl-players-team" :style="{ '--mtl-team-color': getTeamColor(match, team.teamIndex) }">
@@ -72,7 +72,7 @@
                                 {{ row.elo.rating.toLocaleString('de-DE') }}
                                 <b :class="{ 'is-up': row.elo.delta > 0, 'is-down': row.elo.delta < 0 }">{{ formatEloDelta(row.elo.delta) }}</b>
                             </span>
-                            <!-- Auszeichnung: oben der Titel, darunter in einer Zeile, wofuer -->
+                            <!-- Titel nach dem Spiel: oben der Name, darunter in einer Zeile, wofuer -->
                             <span v-if="row.award" class="mtl-player-award" :title="row.award.detail">
                                 <b><span aria-hidden="true">{{ row.award.icon }}</span> {{ row.award.title }}</b>
                                 <span class="mtl-player-award-detail" v-fit-text>{{ row.award.detail }}</span>
@@ -174,7 +174,7 @@ import { getCupChartMoments } from './cupChart';
 
 const props = defineProps({
     match: { type: Object as PropType<Match>, required: true },
-    // Laufendes Spiel (Live-Ticker): noch keine Auszeichnungen, "Stand" statt "Endstand"
+    // Laufendes Spiel (Live-Ticker): noch keine Titel, "Stand" statt "Endstand"
     live: { type: Boolean, default: false },
 });
 
@@ -389,7 +389,7 @@ loadEloRatings();
 const openPlayer = ref<string | null>(null);
 const togglePlayer = (key: string) => { openPlayer.value = openPlayer.value === key ? null : key; };
 
-// Je Spieler: Elo (sobald geladen und das Spiel gewertet ist), Becher, Trefferquote, Auszeichnung und Wurfzeit
+// Je Spieler: Elo (sobald geladen und das Spiel gewertet ist), Becher, Trefferquote, Titel und Wurfzeit
 const playerRows = computed(() => {
     const sides = getMatchElo(props.match);
     const stats = playerStats.value;
