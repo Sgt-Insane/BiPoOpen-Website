@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { findFormation, KNECHT_FORMATIONS } from './knechtFormations';
 import { applyAction, createInitialState } from './knechtEngine';
-import { getNewFormations } from './useBiPoKnecht';
+import { getCelebrations, getNewFormations } from './useBiPoKnecht';
 
 const indices = (...numbers: number[]) => numbers.map(number => number - 1);
 
@@ -34,5 +34,17 @@ describe('Formationen', () => {
         // Becher 5 getroffen: Team 2 hat jetzt den Arschlochbecher
         expect(getNewFormations(before, next)).toEqual([{ rackIndex: 1, formation: expect.objectContaining({ name: 'Arschlochbecher' }) }]);
         expect(getNewFormations(next, next)).toEqual([]);
+    });
+
+    it('zeigt die Merkel-Route nur, wenn Wuerfe sie stehen lassen, nicht nach einem Re-Rack', () => {
+        expect(findFormation(indices(1, 2, 3, 5))?.name).toBe('Merkel-Route');
+        // Stand vorher: 1 2 3 5 6 stehen bei Team 2 (Rack 1)
+        const before = createInitialState({ playerCounts: [1, 1], startTeamIndex: 0 });
+        before.racks[1] = { hit: indices(4, 7, 8, 9, 10), pending: [] };
+        const thrown = { ...before, racks: [before.racks[0], { hit: indices(4, 6, 7, 8, 9, 10), pending: [] }] } as typeof before;
+        const hit = { type: 'throw', player: 0, outcome: 'hit', cup: 5, time: 1 } as const;
+        expect(getCelebrations(before, thrown, hit).formations.map(entry => entry.formation.name)).toEqual(['Merkel-Route']);
+        // Gleiche Stellung, aber vom Re-Rack aufgestellt
+        expect(getCelebrations(before, thrown, { type: 'reRack', time: 1 }).formations).toEqual([]);
     });
 });

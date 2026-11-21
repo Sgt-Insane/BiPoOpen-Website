@@ -78,8 +78,10 @@ export const getCelebrations = (before: KnechtState, next: KnechtState, action: 
         throwKinds.push('equalizer');
     }
     const followUps = next.events.filter(event => (FOLLOW_UP_EVENTS as string[]).includes(event)) as KnechtCelebrationKind[];
-    // Verlaengerung: neu aufgestellte Becher sind keine geworfene Formation
-    const formations = followUps.includes('overtime') ? [] : getNewFormations(before, next);
+    // Verlaengerung: neu aufgestellte Becher sind keine geworfene Formation. Re-Rack: nur Formationen, die
+    // auch so aufgestellt gelten duerfen (nicht z.B. die Merkel-Route)
+    const formations = followUps.includes('overtime') ? []
+        : getNewFormations(before, next).filter(entry => action.type !== 'reRack' || !entry.formation.onlyByThrows);
     return { throwKinds, formations, followUps };
 };
 

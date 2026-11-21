@@ -26,6 +26,9 @@
                         <div v-if="formation.effect === 'wall'" class="kc-wall"></div>
                         <div v-if="formation.effect === 'ring'" class="kc-fire-ring"></div>
                         <div v-if="formation.effect === 'eye'" class="kc-sharingan"><span v-for="i in 3" :key="i" class="kc-tomoe" :style="{ '--i': i }"></span></div>
+                        <svg v-if="formation.effect === 'diamond' && diamondPoints" class="kc-diamond" :viewBox="`0 0 ${RACK_WIDTH} ${RACK_HEIGHT}`">
+                            <polygon :points="diamondPoints" />
+                        </svg>
                         <svg v-if="formation.effect === 'stripe' && stripeLine" class="kc-stripe-line" :viewBox="`0 0 ${RACK_WIDTH} ${RACK_HEIGHT}`">
                             <line :x1="stripeLine.x1" :y1="stripeLine.y1" :x2="stripeLine.x2" :y2="stripeLine.y2" />
                         </svg>
@@ -103,6 +106,7 @@ const FORMATION_COLORS: Record<FormationEffect, [string, string]> = {
     pop: ['#E5484D', '#7A1418'],
     eye: ['#C1121F', '#1A0004'],
     spin: ['#5B6B7A', '#1F262E'],
+    diamond: ['#3E63DD', '#14215A'],
 };
 
 const formation = computed(() => props.celebration?.kind === 'formation' ? props.celebration.formation ?? null : null);
@@ -162,6 +166,18 @@ const stripeLine = computed(() => {
     const first = missing[0], last = missing[missing.length - 1];
     const dx = last.x - first.x, dy = last.y - first.y;
     return { x1: first.x - dx * .35, y1: first.y - dy * .35, x2: last.x + dx * .35, y2: last.y + dy * .35 };
+});
+
+// Merkel-Route: Raute um die stehenden Becher, etwas groesser als die Becher selbst
+const diamondPoints = computed(() => {
+    const cups = (formation.value?.cups ?? []).map(cupCenter);
+    if (cups.length < 3) return null;
+    const cx = cups.reduce((sum, cup) => sum + cup.x, 0) / cups.length;
+    const cy = cups.reduce((sum, cup) => sum + cup.y, 0) / cups.length;
+    return cups
+        .sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx))
+        .map(cup => `${(cx + (cup.x - cx) * 1.55).toFixed(1)},${(cy + (cup.y - cy) * 1.55).toFixed(1)}`)
+        .join(' ');
 });
 
 // Zufall je Animation fest (aus der id), damit sich nichts beim Neuzeichnen verschiebt
@@ -744,6 +760,29 @@ const rerackCups = computed(() => {
     100%{ height: 120px; translate: 0 -80px; }
 }
 /* Schneise: Strahl fegt durch die Luecke */
+/* Merkel-Route: Raute zeichnet sich um die Becher und pulsiert */
+.kc-diamond{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+.kc-diamond polygon{
+    fill: rgba(255, 255, 255, .12);
+    stroke: white;
+    stroke-width: 8;
+    stroke-linejoin: round;
+    stroke-dasharray: 520;
+    stroke-dashoffset: 520;
+    filter: drop-shadow(0 0 10px var(--kc-color));
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: kc-stripe-draw .8s ease-out .5s forwards, kc-diamond-pulse 1.1s ease-in-out 1.3s infinite;
+}
+@keyframes kc-diamond-pulse{
+    50%{ transform: scale(1.06); }
+}
 .kc-stripe-line{
     position: absolute;
     inset: 0;
@@ -775,7 +814,7 @@ const rerackCups = computed(() => {
 }
 
 @media (prefers-reduced-motion: reduce){
-    .kc-stripes, .kc-ring, .kc-particle, .kc-ball, .kc-rack, .kc-wall, .kc-fire-ring, .kc-sharingan{ display: none; }
+    .kc-stripes, .kc-ring, .kc-particle, .kc-ball, .kc-rack, .kc-wall, .kc-fire-ring, .kc-sharingan, .kc-diamond{ display: none; }
     .kc-formation--spin{ animation: none; }
     .kc-fcup{ animation: none !important; }
     .kc-content, .kc-icon, .kc-subtitle, .kc--on-fire .kc-title{ animation: none; }
