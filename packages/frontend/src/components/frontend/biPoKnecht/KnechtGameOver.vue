@@ -17,7 +17,7 @@
             <!-- Schritt 1: Auszeichnungen -->
             <template v-if="step === 'awards'">
                 <div class="kn-over-section-title">Auszeichnungen</div>
-                <!-- Auszeichnungen gibt es nur fuer Besonderes, nicht jeder Spieler bekommt eine -->
+                <!-- Jeder Spieler, der geworfen hat, bekommt eine Auszeichnung (das Auffaelligste aus seinem Spiel) -->
                 <div class="kn-awards">
                     <div v-if="!awardEntries.length" class="kn-award-none">Diesmal keine besonderen Momente – nächstes Spiel!</div>
                     <div v-for="{ award, index } in awardEntries" :key="index" class="kn-award" :style="{ '--kn-team-color': getTeamColor(match, stats[index].teamIndex) }">

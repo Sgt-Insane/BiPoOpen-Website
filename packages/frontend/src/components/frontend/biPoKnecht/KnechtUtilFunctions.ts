@@ -172,12 +172,25 @@ export const getPlayerStats = (match: Match, state: KnechtState): KnechtPlayerSt
     getTurnStats(match, state.turns, getFinalPlayerPoints(state));
 
 // ─── Auszeichnungen ───
-// Nur fuer wirklich Besonderes: nicht jeder Spieler und nicht jedes Spiel bekommt eine. Jeder Titel wird hoechstens
-// einmal vergeben, und zwar an den Spieler, auf den er am besten passt (nicht an den, der zufaellig zuerst geprueft
-// wird). Jeder Spieler bekommt hoechstens einen Titel, seltene Titel zuerst.
+// Jeder Spieler bekommt genau eine: das Auffaelligste aus seinem Spiel, positiv oder negativ.
+// Reihenfolge: erst die seltenen Titel (echte Highlights), dann haeufigere, zuletzt fuer jeden, der noch keinen
+// hat, sein auffaelligster Wert. Jeder Titel (ausser dem letzten Rueckfall) wird hoechstens einmal je Spiel
+// vergeben, und zwar an den Spieler, auf den er am besten passt.
+// Schwellen nach 60 Knecht-Spielen mit Wurfverlauf (162 Spieler, Stand 11/2026): Trefferquote Median 20 %,
+// oberes Viertel ab 26 %, oberste 10 % ab 35 %, unteres Viertel unter 16 %; beste Serie meist 2, ab 3 selten;
+// laengste Serie ohne Treffer Median 10, oberes Viertel ab 14; Wuerfe Median 29, oberes Viertel ab 42.
 export type KnechtAward = { icon: string; title: string; detail: string };
 
-type AwardContext = { averageAccuracy: number; maxStreak: number; teamSize: (teamIndex: number) => number; teamPoints: (teamIndex: number) => number };
+type AwardContext = {
+    averageAccuracy: number;
+    maxStreak: number;
+    teamSize: (teamIndex: number) => number;
+    teamPoints: (teamIndex: number) => number;
+    // Bester/schlechtester Wert im Spiel (nur eindeutig: bei Gleichstand keiner)
+    isTop: (s: KnechtPlayerStats, value: (s: KnechtPlayerStats) => number) => boolean;
+    isBottom: (s: KnechtPlayerStats, value: (s: KnechtPlayerStats) => number) => boolean;
+    won: (teamIndex: number) => boolean;
+};
 // strength: wie gut der Titel passt (hoeher = besser), null = passt nicht
 type AwardRule = { icon: string; title: string; strength: (s: KnechtPlayerStats, ctx: AwardContext) => number | null; detail: (s: KnechtPlayerStats, ctx: AwardContext) => string };
 
@@ -207,12 +220,35 @@ const AWARD_RULES: AwardRule[] = [
     // Der letzte Becher faellt in jedem Spiel: nur auszeichnen, wenn es knapp war (Gegner bei mindestens 8)
     // und das eigene Team gewonnen hat (ein letzter Becher vor der Verlaengerung entscheidet nichts)
     { icon: '🧊', title: 'Eiskalt', strength: (s, ctx) => when(s.lastCups > 0 && ctx.teamPoints(1 - s.teamIndex) >= 8 && ctx.teamPoints(s.teamIndex) > ctx.teamPoints(1 - s.teamIndex), ctx.teamPoints(1 - s.teamIndex)), detail: (s, ctx) => `Letzten Becher zum ${formatPoints(ctx.teamPoints(s.teamIndex))} : ${formatPoints(ctx.teamPoints(1 - s.teamIndex))} versenkt` },
-    { icon: '🦅', title: 'Adlerauge', strength: s => when(s.throws >= 6 && getAccuracy(s) >= 60, getAccuracy(s)), detail: s => `${getAccuracy(s)} % Trefferquote (${s.hits}/${s.throws})` },
-    { icon: '😬', title: 'Kantenkönig', strength: s => when(s.edges >= 3, s.edges), detail: s => `${s.edges}× nur die Kante – so knapp` },
+    // Oberste 10 % (ab 35 %), bei genug Wuerfen
+    { icon: '🦅', title: 'Adlerauge', strength: s => when(s.throws >= 10 && getAccuracy(s) >= 35, getAccuracy(s)), detail: s => `${getAccuracy(s)} % Trefferquote (${s.hits}/${s.throws})` },
+    { icon: '😬', title: 'Kantenkönig', strength: s => when(s.edges >= 2, s.edges), detail: s => `${s.edges}× nur die Kante – so knapp` },
     { icon: '✈️', title: 'Luftpost', strength: s => when(s.airballs >= 3, s.airballs), detail: s => `${s.airballs} Airballs – die Wand freut sich` },
     // Nur wer deutlich schlechter als der Rest getroffen hat, nicht wenn alle schwach waren
     { icon: '🎳', title: 'Zielwasser vergessen', strength: (s, ctx) => when(s.throws >= 6 && getAccuracy(s) < 25 && getAccuracy(s) <= ctx.averageAccuracy - 10, 100 - getAccuracy(s)), detail: s => `Nur ${s.hits} Treffer bei ${s.throws} Würfen` },
 ];
+
+// Haeufigere Momente: fast jedes Spiel hat welche. Erst nach den seltenen Titeln, gleiche Regeln (je Titel ein Spieler).
+const COMMON_RULES: AwardRule[] = [
+    { icon: '🔗', title: 'Serientäter', strength: s => when(s.bestStreak >= 3, s.bestStreak), detail: s => `${s.bestStreak} Treffer in Folge` },
+    { icon: '🏆', title: 'Topscorer', strength: (s, ctx) => when(s.points >= 6 && ctx.isTop(s, entry => entry.points), s.points), detail: s => `Meiste Becher im Spiel: ${formatPoints(s.points)}` },
+    { icon: '🎯', title: 'Treffsicher', strength: (s, ctx) => when(s.throws >= 10 && getAccuracy(s) >= 26 && ctx.isTop(s, getAccuracy), getAccuracy(s)), detail: s => `${getAccuracy(s)} % – beste Quote im Spiel (${s.hits}/${s.throws})` },
+    { icon: '🔄', title: 'Rückholer', strength: s => when(s.ballsBacks >= 1, s.ballsBacks), detail: s => s.ballsBacks === 1 ? 'Balls Back geholt' : `${s.ballsBacks}× Balls Back geholt` },
+    { icon: '🤲', title: 'Fänger', strength: s => when(s.trickshotCatches >= 1, s.trickshotCatches), detail: s => plural(s.trickshotCatches, 'Ball für einen Trickshot gefangen', 'Bälle für einen Trickshot gefangen') },
+    { icon: '🏁', title: 'Schlussmacher', strength: (s, ctx) => when(s.lastCups > 0 && ctx.won(s.teamIndex), s.lastCups), detail: () => 'Den letzten Becher versenkt' },
+    { icon: '🛩️', title: 'Bruchpilot', strength: s => when(s.airballs >= 2, s.airballs), detail: s => `${s.airballs} Airballs` },
+    // Oberes Viertel (ab 14 Wuerfen ohne Treffer) und die laengste im Spiel
+    { icon: '🏜️', title: 'Durststrecke', strength: (s, ctx) => when(s.longestDrought >= 14 && ctx.isTop(s, entry => entry.longestDrought), s.longestDrought), detail: s => `${s.longestDrought} Würfe am Stück ohne Treffer` },
+    // Unteres Viertel (unter 16 %) und die schlechteste im Spiel
+    { icon: '🥶', title: 'Kalte Hand', strength: (s, ctx) => when(s.throws >= 10 && getAccuracy(s) < 16 && ctx.isBottom(s, getAccuracy), 100 - getAccuracy(s)), detail: s => `${getAccuracy(s)} % Trefferquote (${s.hits}/${s.throws})` },
+    { icon: '🏋️', title: 'Dauerwerfer', strength: (s, ctx) => when(s.throws >= 42 && ctx.isTop(s, entry => entry.throws), s.throws), detail: s => `${s.throws} Würfe – meiste im Spiel` },
+    { icon: '🧱', title: 'Fels in der Brandung', strength: (s, ctx) => when(ctx.teamSize(s.teamIndex) > 1 && s.points > ctx.teamPoints(s.teamIndex) / 2, s.points), detail: (s, ctx) => `${formatPoints(s.points)} von ${formatPoints(ctx.teamPoints(s.teamIndex))} Bechern fürs Team` },
+];
+
+// Rueckfall, damit jeder eine bekommt: der auffaelligere Wert des Spielers, auch mehrfach im selben Spiel
+const fallbackAward = (s: KnechtPlayerStats): KnechtAward => s.longestDrought >= 10
+    ? { icon: '🐌', title: 'Langer Atem', detail: `${s.longestDrought} Würfe am Stück ohne Treffer – drangeblieben` }
+    : { icon: '🍺', title: 'Lieferdienst', detail: `${formatPoints(s.points)} Becher an den Gegner geliefert${s.bestStreak > 1 ? ` · ${s.bestStreak} in Folge` : ''}` };
 
 // Wer 0 Becher hat, schuldet eine nackte Meile
 const NACKT_AWARD: KnechtAward = { icon: '🍑', title: 'Nackt', detail: '0 Becher – die nackte Meile ruft' };
@@ -221,17 +257,23 @@ const NACKT_AWARD: KnechtAward = { icon: '🍑', title: 'Nackt', detail: '0 Bech
 export const getAwards = (stats: KnechtPlayerStats[]): (KnechtAward | null)[] => {
     const hits = stats.reduce((sum, entry) => sum + entry.hits, 0);
     const throws = stats.reduce((sum, entry) => sum + entry.throws, 0);
+    const teamPoints = (teamIndex: number) => stats.filter(entry => entry.teamIndex === teamIndex).reduce((sum, entry) => sum + entry.points, 0);
+    const extreme = (s: KnechtPlayerStats, value: (s: KnechtPlayerStats) => number, sign: 1 | -1) =>
+        stats.every(entry => entry === s || sign * value(s) > sign * value(entry));
     const ctx: AwardContext = {
         averageAccuracy: getAccuracy({ hits, throws }),
         maxStreak: Math.max(0, ...stats.map(entry => entry.bestStreak)),
         teamSize: teamIndex => stats.filter(entry => entry.teamIndex === teamIndex).length,
-        teamPoints: teamIndex => stats.filter(entry => entry.teamIndex === teamIndex).reduce((sum, entry) => sum + entry.points, 0),
+        teamPoints,
+        isTop: (s, value) => extreme(s, value, 1),
+        isBottom: (s, value) => extreme(s, value, -1),
+        won: teamIndex => teamPoints(teamIndex) > teamPoints(1 - teamIndex),
     };
     // Nackt bekommt jeder ohne Becher, auch mehrere Spieler
     const result: (KnechtAward | null)[] = stats.map(entry => entry.points === 0 ? NACKT_AWARD : null);
 
-    // Seltene Titel zuerst, je Titel an den Spieler, auf den er am besten passt
-    AWARD_RULES.forEach(rule => {
+    // Seltene Titel zuerst, je Titel an den Spieler, auf den er am besten passt, dann die haeufigeren
+    [...AWARD_RULES, ...COMMON_RULES].forEach(rule => {
         let best = -1;
         let bestStrength = -Infinity;
         stats.forEach((entry, index) => {
@@ -242,7 +284,9 @@ export const getAwards = (stats: KnechtPlayerStats[]): (KnechtAward | null)[] =>
         if (best >= 0) result[best] = { icon: rule.icon, title: rule.title, detail: rule.detail(stats[best], ctx) };
     });
 
-    return result;
+    // Wer noch nichts hat (z.B. ohne eigenes Handy kaum aufgefallen), bekommt seinen auffaelligsten Wert.
+    // Nur wer gar nicht geworfen hat, bleibt ohne.
+    return result.map((award, index) => award ?? (stats[index].throws ? fallbackAward(stats[index]) : null));
 };
 
 // Lustiger Text fuer den Speichern-Knopf

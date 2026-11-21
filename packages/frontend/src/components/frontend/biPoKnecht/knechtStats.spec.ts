@@ -25,6 +25,15 @@ describe('Knecht-Statistik', () => {
         expect(dana).toMatchObject({ throws: 0, ownCups: 1 });
     });
 
+    it('merkt sich die laengste Serie eigener Wuerfe ohne Treffer', () => {
+        const turns = [
+            turn(0, 0, 'miss'), turn(0, 0, 'airball'), turn(0, 0, 'hit', { cupIndex: 0 }),
+            turn(0, 0, 'miss'), turn(0, 0, 'miss'), turn(0, 0, 'miss'), turn(0, 0, 'hit', { cupIndex: 1 }),
+        ];
+        const game = match([['Alice'], ['Chris']], [[2], [0]], turns);
+        expect(getTurnStats(game, turns, [[2], [0]])[0].longestDrought).toBe(3);
+    });
+
     it('fasst alle Knecht-Spiele eines Spielers zusammen und ignoriert Spiele ohne Verlauf', () => {
         const games = [
             match([['Alice'], ['Chris']], [[10], [4]], [turn(0, 0, 'hit', { cupIndex: 0 }), turn(0, 0, 'bomb', { cupIndex1: 0, cupIndex2: 1 }), turn(1, 0, 'miss')]),
