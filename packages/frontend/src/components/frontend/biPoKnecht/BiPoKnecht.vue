@@ -1170,8 +1170,19 @@ onUnmounted(() => {
 .KnechtSideBar{
     z-index: 25;
 }
-/* Wartender Tisch rechts: Dreieck nicht unter die Knoepfe der Seitenleiste schieben */
-.kn-field--referee .kn-end + .kn-end :deep(.kn-rack--waiting .kn-pyramid){ padding-right: 52px; }
+/* Schiri: Rueckgaengig, Menue und Verlauf unten mittig am Rand, nebeneinander. Dort liegt immer der Ziel-Tisch
+   neben seinem Hinweis, nicht ueber Bechern, Namen oder den Knoepfen des werfenden Teams. */
+.kn--referee .KnechtSideBar{
+    top: auto;
+    right: auto;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.kn--referee .KnechtSideBar :deep(.kn-fab-menu){
+    flex-direction: row;
+    gap: 8px;
+}
 .kn-turn-start{
     display: flex;
     align-items: center;
