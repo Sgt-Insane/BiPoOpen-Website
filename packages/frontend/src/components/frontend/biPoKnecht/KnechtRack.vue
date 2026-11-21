@@ -2,10 +2,14 @@
     <div
         ref="root"
         class="KnechtRack"
-        :class="[`kn-rack--${direction}`, { 'kn-rack--target': isTarget, 'kn-rack--waiting': !isTarget, 'kn-rack--rotated': rotated, 'kn-rack--picking': !!game.pick.value }]"
+        :class="[`kn-rack--${direction}`, { 'kn-rack--target': isTarget, 'kn-rack--waiting': !isTarget, 'kn-rack--rotated': rotated, 'kn-rack--picking': !!game.pick.value, 'kn-rack--hold': holdEnabled }]"
         :style="{ '--kn-team-color': getTeamColor(game.match, teamIndex) }"
         @click="onTableClick"
-        @pointerdown.capture="rememberPointer"
+        @pointerdown.capture="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerUp"
+        @pointercancel="cancelHold"
+        @contextmenu="onContextMenu"
     >
         <!-- Hinter den Bechern: Airball (Ball ueber den Tisch) -->
         <div v-if="isTarget" class="kn-zone kn-zone-airball" @click.stop="onAirballClick">
@@ -53,6 +57,17 @@
             <slot name="front"></slot>
         </div>
 
+        <!-- Knecht Pro, Ballweg: erst bestaetigen, dann eintragen (es zaehlt der letzte Ball) -->
+        <div v-if="isTarget && path.length && !game.pick.value" class="kn-path-bar" @click.stop @pointerdown.stop>
+            <span class="kn-path-text" :class="{ 'kn-path-text--bad': !pathResult }">{{ pathText }}</span>
+            <div class="kn-path-actions">
+                <button type="button" class="kn-path-button" aria-label="Letzten Ball entfernen" @click="removeLastBall"><i class="pi pi-undo"></i></button>
+                <button type="button" class="kn-path-button" aria-label="Ballweg verwerfen" @click="clearPath"><i class="pi pi-times"></i></button>
+                <button type="button" class="kn-path-button kn-path-button--primary" :disabled="!pathResult" @click="commitPath">Eintragen</button>
+            </div>
+        </div>
+        <KnechtBallPath v-if="isTarget && (path.length || hold?.active)" :path="path" :problems="pathProblems" :hold="loupe" :geometry="holdGeometry" :hittable="game.hittableCups.value" :ballSize="getBallSize()" />
+
         <!-- Zusatzbecher waehlen (Bouncer, Bombe) -->
         <div v-if="isTarget && game.pick.value" class="kn-pick" @click.stop>
             <KnechtIcon :name="pickIcon" />
@@ -63,9 +78,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import KnechtIcon from './KnechtIcon.vue';
+import KnechtBallPath from './KnechtBallPath.vue';
 import Avatar from '@/components/shared/Avatar.vue';
+import { classifyPoint, describePath, getPathProblems, getPathResult, isSameZone, type BallZone, type PathBall } from './knechtBallPath';
 import type { CupRemoval } from './knechtCupOwners';
 import { classifyMiss, type RackGeometry } from './knechtEdges';
 import { vibrate } from './knechtHaptics';
@@ -153,6 +170,7 @@ const getTapPoint = (event: MouseEvent) => {
 };
 
 const onCupClick = (cup: number, event: MouseEvent) => {
+    if (takeClick(event)) return;
     // Tipp ausserhalb des runden Bechers (Touch-Korrektur): ist ein Wurf auf den Tisch bzw. an die Kante.
     // Tastatur (detail 0) hat keine Position und trifft immer.
     const cupRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
@@ -188,6 +206,7 @@ const getGeometry = (): RackGeometry | null => {
 
 // Tippen auf den freien Tisch = Nullwurf, nur auf dem Feld, auf das geworfen wird
 const onTableClick = (event: MouseEvent) => {
+    if (takeClick(event)) return;
     if (!props.isTarget || props.game.pick.value) return;
     const geometry = getGeometry();
     const tap = getTapPoint(event);
@@ -207,6 +226,7 @@ const onTableClick = (event: MouseEvent) => {
 
 // Airball: der Ball landet irgendwo hinter dem Tisch
 const onAirballClick = (event: MouseEvent) => {
+    if (takeClick(event)) return;
     if (props.game.pick.value) return;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (props.game.throwMiss('airball')) {
@@ -214,6 +234,137 @@ const onAirballClick = (event: MouseEvent) => {
         props.game.markBall('airball', rect.left + rect.width * (.15 + Math.random() * .7), rect.top + rect.height * (.2 + Math.random() * .6), getBallSize());
     }
 };
+
+// ─── Knecht Pro: Ballweg mit Lupe ───
+// Finger halten: Lupe erscheint, die Stelle unter dem Finger (Kante, Becher, Tisch) wird hervorgehoben, Loslassen legt
+// einen Ball ab. Weitere Baelle (halten oder einfach tippen) zeigen den Weg, ein Ball laesst sich mit Halten verschieben.
+// Eingetragen wird erst mit "Eintragen": es zaehlt, wo der letzte Ball liegt.
+const HOLD_MS = 320;
+const MOVE_TOLERANCE = 12;
+const path = ref<PathBall[]>([]);
+type Hold = { pointerId: number; startX: number; startY: number; x: number; y: number; zone: BallZone; active: boolean; moving: number | null; timer: ReturnType<typeof setTimeout> | null };
+const hold = ref<Hold | null>(null);
+const holdGeometry = ref<RackGeometry | null>(null);
+let swallowClickUntil = 0;
+
+// Halten nur, wenn gerade normal eingetragen wird (nicht beim Bouncer in zwei Tipps oder bei der Becherauswahl)
+const holdEnabled = computed(() => !!props.pro && props.isTarget && !props.game.pick.value && !props.game.bouncerArmed.value);
+const pathProblems = computed(() => getPathProblems(path.value, props.game.hittableCups.value));
+const pathResult = computed(() => getPathResult(path.value, props.game.hittableCups.value));
+const pathText = computed(() => {
+    const firstProblem = pathProblems.value.find(Boolean);
+    return firstProblem ? `Ball ${pathProblems.value.indexOf(firstProblem) + 1}: ${firstProblem}` : describePath(path.value, pathResult.value);
+});
+const loupe = computed(() => hold.value?.active ? { x: hold.value.x, y: hold.value.y, zone: hold.value.zone, moving: hold.value.moving } : null);
+
+const isInAirball = (x: number, y: number) => {
+    const rect = root.value?.querySelector('.kn-zone-airball')?.getBoundingClientRect();
+    return !!rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+};
+const zoneAt = (x: number, y: number): BallZone | null => {
+    if (isInAirball(x, y)) return { kind: 'airball' };
+    const geometry = holdGeometry.value ?? getGeometry();
+    return geometry ? classifyPoint({ x, y }, geometry) : null;
+};
+const ZONE_HAPTICS = { cup: 'hit', rim: 'edge', table: 'table', airball: 'airball' } as const;
+
+const clearTimer = () => { if (hold.value?.timer) clearTimeout(hold.value.timer); };
+const cancelHold = () => { clearTimer(); hold.value = null; };
+
+const onPointerDown = (event: PointerEvent) => {
+    rememberPointer(event);
+    if (!holdEnabled.value || hold.value || (event.target as HTMLElement | null)?.closest('.kn-path-bar')) return;
+    const zone = zoneAt(event.clientX, event.clientY);
+    if (!zone) return;
+    // Auf einem schon gelegten Ball: dieser wird verschoben
+    const size = getBallSize();
+    const moving = path.value.findIndex(ball => Math.hypot(ball.x - event.clientX, ball.y - event.clientY) <= size);
+    hold.value = {
+        pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, zone, active: false,
+        moving: moving >= 0 ? moving : null,
+        timer: setTimeout(() => {
+            if (!hold.value) return;
+            holdGeometry.value = getGeometry();
+            hold.value = { ...hold.value, active: true, timer: null };
+            try { root.value?.setPointerCapture(event.pointerId); } catch { /* egal */ }
+            vibrate(ZONE_HAPTICS[hold.value.zone.kind]);
+        }, HOLD_MS),
+    };
+};
+
+const onPointerMove = (event: PointerEvent) => {
+    const current = hold.value;
+    if (!current || event.pointerId !== current.pointerId) return;
+    if (!current.active) {
+        if (Math.hypot(event.clientX - current.startX, event.clientY - current.startY) > MOVE_TOLERANCE) cancelHold();
+        return;
+    }
+    const zone = zoneAt(event.clientX, event.clientY) ?? current.zone;
+    if (!isSameZone(zone, current.zone)) vibrate(ZONE_HAPTICS[zone.kind]);
+    hold.value = { ...current, x: event.clientX, y: event.clientY, zone };
+};
+
+const onPointerUp = (event: PointerEvent) => {
+    const current = hold.value;
+    if (!current || event.pointerId !== current.pointerId) return;
+    clearTimer();
+    hold.value = null;
+    if (!current.active) return;
+    // Der Klick nach dem Loslassen soll nichts eintragen
+    swallowClickUntil = event.timeStamp + 600;
+    const ball: PathBall = { x: current.x, y: current.y, zone: current.zone };
+    path.value = current.moving !== null ? path.value.map((entry, index) => index === current.moving ? ball : entry) : [...path.value, ball];
+};
+
+// Lange druecken oeffnet sonst das Kontextmenue des Browsers
+const onContextMenu = (event: Event) => { if (holdEnabled.value) event.preventDefault(); };
+
+// true: der Klick ist erledigt (direkt nach dem Halten, oder als weiterer Ball im Ballweg)
+const takeClick = (event: MouseEvent) => {
+    if (event.timeStamp < swallowClickUntil) { event.stopPropagation(); return true; }
+    if (!path.value.length || !props.isTarget || props.game.pick.value || event.detail === 0) return false;
+    event.stopPropagation();
+    const tap = getTapPoint(event);
+    const zone = zoneAt(tap.x, tap.y);
+    if (!zone) return true;
+    path.value = [...path.value, { x: tap.x, y: tap.y, zone }];
+    vibrate(ZONE_HAPTICS[zone.kind]);
+    return true;
+};
+
+const removeLastBall = () => { path.value = path.value.slice(0, -1); };
+const clearPath = () => { path.value = []; holdGeometry.value = null; };
+
+const commitPath = () => {
+    const result = pathResult.value;
+    if (!result) return;
+    const last = path.value[path.value.length - 1];
+    clearPath();
+    if (result.outcome === 'airball') {
+        if (props.game.throwMiss('airball')) vibrate('airball');
+        return;
+    }
+    if (result.outcome === 'miss') {
+        if (props.game.throwMiss('miss', { ...(result.spot && { spot: result.spot }), ...(result.edge && { edge: result.edge }) })) {
+            props.game.markBall('miss', last.x, last.y, getBallSize());
+            vibrate(result.edge ? 'edge' : 'table');
+        }
+        return;
+    }
+    // Treffer, vorher auf dem Tisch = Bouncer (Aufprallstelle wie beim Bouncer in zwei Tipps)
+    if (result.bounceSpot) {
+        if (!props.game.bouncerArmed.value) props.game.toggleBouncer();
+        props.game.setBounceSpot(result.bounceSpot);
+    }
+    if (props.game.tapCup(result.cup, result.edge)) {
+        props.game.markBall('hit', last.x, last.y, getBallSize());
+        vibrate('hit');
+    }
+};
+
+// Anderes Team am Zug, Spielstand geaendert (z.B. Rueckgaengig) oder Pro aus: offener Ballweg verfaellt
+watch(() => [props.isTarget, props.pro, props.game.actions.value.length], () => { cancelHold(); clearPath(); });
+onBeforeUnmount(cancelHold);
 </script>
 
 <style scoped>
@@ -232,6 +383,66 @@ const onAirballClick = (event: MouseEvent) => {
 .kn-rack--left{ flex-direction: row; }
 .kn-rack--right{ flex-direction: row-reverse; }
 .kn-rack--rotated{ transform: rotate(180deg); }
+/* Knecht Pro: Halten fuer die Lupe, ohne dass der Browser scrollt, markiert oder ein Menue oeffnet */
+.kn-rack--hold{
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* ─── Knecht Pro: Ballweg bestaetigen ─── */
+.kn-path-bar{
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: var(--bp-surface);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .2);
+}
+.kn-path-text{
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--bp-text-strong);
+}
+.kn-path-text--bad{
+    color: #E5484D;
+}
+.kn-path-actions{
+    display: flex;
+    gap: 6px;
+}
+.kn-path-button{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--bp-border);
+    border-radius: 10px;
+    background: var(--bp-surface);
+    color: var(--bp-text-strong);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+.kn-path-button--primary{
+    flex: 1;
+    border: none;
+    background: var(--main-color);
+    color: white;
+}
+.kn-path-button:disabled{
+    opacity: .4;
+    cursor: default;
+}
 
 .kn-rack--target{
     cursor: pointer;

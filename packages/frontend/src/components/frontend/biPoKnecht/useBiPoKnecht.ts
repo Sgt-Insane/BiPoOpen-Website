@@ -21,6 +21,7 @@ export type CupPick = {
     needed: number;
     candidates: number[];
     chosen: number[];
+    edge?: EdgeHit;             // Knecht Pro (Ballweg): der Ball war vorher an der Kante
 };
 
 const BANNER_DURATION = 1800;
@@ -307,24 +308,28 @@ export const useBiPoKnecht = (match: Match, initialStartTeamIndex: number | null
         bounceSpot.value = null;
     };
 
-    const throwHit = (cup: number, bouncer: boolean, extraCups: number[] = []) => {
+    const throwHit = (cup: number, bouncer: boolean, extraCups: number[] = [], edge?: EdgeHit) => {
         const spot = bouncer ? bounceSpot.value : null;
-        return dispatch({ type: 'throw', player: selectedPlayer.value, outcome: 'hit', cup, bouncer, extraCups, time: now(), ...(spot && { spot: { ...spot } }) });
+        return dispatch({
+            type: 'throw', player: selectedPlayer.value, outcome: 'hit', cup, bouncer, extraCups, time: now(),
+            ...(spot && { spot: { ...spot } }), ...(edge && { edge: JSON.parse(JSON.stringify(edge)) as EdgeHit }),
+        });
     };
 
     // Becher angetippt: Treffer, oder Zusatzbecher waehrend der Auswahl. true, wenn ein Wurf eingetragen wurde.
-    const tapCup = (cup: number): boolean => {
+    // edge (Knecht Pro, Ballweg): der Ball war vorher an der Kante
+    const tapCup = (cup: number, edge?: EdgeHit): boolean => {
         const current = pick.value;
         if (current) {
             if (!current.candidates.includes(cup)) return false;
             current.chosen = current.chosen.includes(cup) ? current.chosen.filter(other => other !== cup) : [...current.chosen, cup];
-            return current.chosen.length === current.needed && throwHit(current.cup, current.bouncer, current.chosen);
+            return current.chosen.length === current.needed && throwHit(current.cup, current.bouncer, current.chosen, current.edge);
         }
         if (!hittableCups.value.has(cup)) return false;
 
         const preview = previewHit(state.value, cup, bouncerArmed.value, selectedPlayer.value);
-        if (preview.extrasNeeded === 0) return throwHit(cup, bouncerArmed.value);
-        pick.value = { cup, bouncer: bouncerArmed.value, type: preview.type, needed: preview.extrasNeeded, candidates: preview.extraCandidates, chosen: [] };
+        if (preview.extrasNeeded === 0) return throwHit(cup, bouncerArmed.value, [], edge);
+        pick.value = { cup, bouncer: bouncerArmed.value, type: preview.type, needed: preview.extrasNeeded, candidates: preview.extraCandidates, chosen: [], ...(edge && { edge }) };
         // Wie am Tisch: erst die Bombe bzw. der Bouncer, dann die Zusatzbecher waehlen
         shownBeforePick = preview.type === 'bomb' ? 'bomb' : 'bouncer';
         const team = state.value.activeTeamIndex;

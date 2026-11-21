@@ -219,7 +219,7 @@
                     <div class="kn-menu-hint">{{ animationLevel === 'all' ? 'Bei jeder Aktion' : animationLevel === 'special' ? 'Nur Bombe, Bouncer, Trickshot, Balls Back, Heaten Up, On Fire & Formationen' : 'Keine großen Animationen' }}</div>
                     <button v-if="proAvailable" type="button" role="switch" class="kn-menu-toggle" :aria-checked="proEnabled" @click="toggleProMode">
                         <KnechtIcon name="miss" />
-                        <span class="kn-menu-toggle-text">Knecht Pro <small>„Zug starten“ = Bälle in der Hand, ab da läuft die Wurfzeit · Kante: Fehlwurf knapp neben den Becher tippen, dann jede Kantenberührung, rein = Treffer, „rein und wieder raus“</small></span>
+                        <span class="kn-menu-toggle-text">Knecht Pro <small>„Zug starten“ = Bälle in der Hand, ab da läuft die Wurfzeit · Finger halten: Lupe, Ball genau auf Kante, Becher oder Tisch ablegen. Mehrere Bälle zeigen den Weg (z. B. Kante, dann Becher), „Eintragen“ – es zählt der letzte Ball</small></span>
                         <span class="kn-menu-switch" aria-hidden="true"></span>
                     </button>
 
@@ -601,7 +601,8 @@ const readPro = (key: string, fallback: boolean) => {
         return fallback;
     }
 };
-const proSettings = ref<Record<KnechtMode, boolean>>({ referee: readPro(PRO_KEYS.referee, true), player: readPro(PRO_KEYS.player, false) });
+// Knecht Pro ist in beiden Modi erst einmal aus (wer ihn eingeschaltet hat, behaelt ihn)
+const proSettings = ref<Record<KnechtMode, boolean>>({ referee: readPro(PRO_KEYS.referee, false), player: readPro(PRO_KEYS.player, false) });
 const proAvailable = computed(() => !twoPhone.value);
 const proEnabled = computed(() => proSettings.value[mode.value]);
 const proActive = computed(() => proEnabled.value && proAvailable.value);
@@ -623,7 +624,8 @@ const restartEdgeTimer = () => {
 };
 watch(() => game.actions.value.length, (length, previous) => {
     const last = game.actions.value[length - 1];
-    if (!proActive.value || length <= (previous ?? 0) || last?.type !== 'throw' || !last.edge) {
+    // Ballweg (Halten mit Lupe) bringt die Kontaktstellen schon mit: dann keine Nahansicht
+    if (!proActive.value || length <= (previous ?? 0) || last?.type !== 'throw' || !last.edge || last.edge.contacts?.length) {
         if (length < (previous ?? 0)) edgePrompt.value = null;
         return;
     }
