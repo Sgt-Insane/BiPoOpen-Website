@@ -47,8 +47,9 @@
                 <div v-for="teamIndex in [leftTeam, rightTeam]" :key="teamIndex" class="kn-end" :class="{ 'kn-end--target': isTarget(teamIndex) }">
                     <div class="kn-end-rack">
                         <KnechtRack :game="game" :teamIndex="teamIndex" :direction="teamIndex === leftTeam ? 'left' : 'right'" :isTarget="isTarget(teamIndex)" :pro="proActive" :owners="cupOwners.racks[teamIndex]" showDrinkers />
-                        <!-- Re-Rack, Bouncer, Trickshot beim werfenden Team unter dem ausgegrauten Dreieck: das Ziel-Dreieck bleibt gross -->
-                        <div v-if="isTarget(1 - teamIndex)" class="kn-end-controls">
+                        <!-- Re-Rack, Bouncer, Trickshot beim werfenden Team, am Rand zum Ziel-Tisch (ueber dem ausgegrauten Dreieck):
+                             das Ziel-Dreieck bleibt gross -->
+                        <div v-if="isTarget(1 - teamIndex)" class="kn-end-controls" :class="teamIndex === leftTeam ? 'kn-end-controls--right' : 'kn-end-controls--left'">
                             <KnechtControls :game="game" :trickshotActive="sheet === 'trickshot'" :pro="proActive" :catchReady="catchWindow?.team === teamIndex" @trickshot="openTrickshot" />
                         </div>
                     </div>
@@ -946,21 +947,19 @@ onUnmounted(() => {
 .kn-field--referee .kn-end-rack{ position: relative; }
 .kn-end-controls{
     position: absolute;
-    right: 8px;
-    bottom: 8px;
-    left: 8px;
+    top: 50%;
     z-index: 2;
-    display: flex;
-    justify-content: center;
+    width: min(150px, calc(100% - 16px));
+    transform: translateY(-50%);
 }
-.kn-end-controls :deep(.KnechtControls){
-    flex-direction: row;
-    flex-wrap: wrap;
-    width: min(360px, 100%);
-}
+/* Am Rand zum Ziel-Tisch, untereinander (ausgegraute Becher duerfen verdeckt sein) */
+.kn-end-controls--left{ left: 8px; }
+.kn-end-controls--right{ right: 8px; }
+.kn-end-controls :deep(.KnechtControls){ width: 100%; }
 /* Laengere Texte (z.B. "Bouncer: wo kam er auf?") brechen im Knopf um, statt herauszulaufen */
-.kn-end-controls :deep(.kn-control){ flex: 1 1 0; min-width: 0; height: auto; min-height: 40px; padding: 4px 8px; font-size: 13px; line-height: 1.15; }
-.kn-end-controls :deep(.kn-control-rerack){ flex-basis: 100%; }
+.kn-end-controls :deep(.kn-control){ height: auto; min-height: 40px; padding: 4px 8px; font-size: 13px; line-height: 1.15; }
+/* Gesperrt: nicht durchsichtig, sonst scheinen die Becher darunter durch */
+.kn-end-controls :deep(.kn-control:disabled){ opacity: 1; color: var(--bp-text-subtle); box-shadow: none; }
 /* Namensleiste oben ueber dem Tisch (beim werfenden Team ueber dem ausgegrauten Dreieck) */
 .kn-field--referee .KnechtPlayers{
     position: relative;
