@@ -23,4 +23,19 @@ describe('Becher: Werfer und Trinker', () => {
         const drinkers = getCupOwners(state).removals.filter(removal => removal.rackTeam === 1).map(removal => removal.drinker);
         expect(drinkers).toEqual([1, 0, 1]);
     });
+
+    it('behaelt nach einem Re-Rack alle Werfer auf den freien Feldern', () => {
+        // Team 0 raeumt 1-4 ab (Spieler 0, 1, 0, 1), dann Re-Rack: 6 Becher stehen vorne (Felder 0-5)
+        const state = play([2, 2], [
+            hit(0, 0), miss(1), miss(0), miss(1),
+            hit(1, 1), miss(0), miss(0), miss(1),
+            hit(0, 2), miss(1), miss(0), miss(1),
+            hit(1, 3), miss(0), miss(0), miss(1),
+            { type: 'reRack' },
+        ]);
+        const rack = getCupOwners(state).racks[1];
+        // Die Felder 0-3 sind wieder besetzt, die vier Werfer stehen auf den freien Feldern 6-9
+        expect([...rack.keys()].sort()).toEqual([6, 7, 8, 9]);
+        expect([...rack.values()].map(removal => removal.cup).sort()).toEqual([0, 1, 2, 3]);
+    });
 });

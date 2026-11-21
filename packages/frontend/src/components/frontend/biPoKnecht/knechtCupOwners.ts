@@ -1,10 +1,11 @@
-import { isHitTurnType, type KnechtState } from './knechtEngine';
+import { CUP_COUNT, getStandingCups, isHitTurnType, type KnechtState } from './knechtEngine';
 
 // Wer hat welchen Becher abgeraeumt und wer muss ihn trinken?
 // - Werfer: steht auf dem Platz des getroffenen Bechers (Profilbild)
 // - Trinker: im Team des getroffenen Bechers immer abwechselnd. Wer im Team als Erster geworfen hat,
 //   trinkt den ersten Becher, dann der Naechste usw. (Bombe: jeder Becher zaehlt einzeln).
-// Nach einem Re-Rack oder der Verlaengerung stehen die Becher neu: die Plaetze beginnen leer.
+// Ein getroffenes Feld behaelt das Profilbild bis zum Spielende. Steht dort (Re-Rack, letzter Becher an der Spitze,
+// Verlaengerung) wieder ein Becher, wandert das Bild auf ein freies Feld: so sind immer alle Werfer zu sehen.
 
 export type CupRemoval = {
     turnIndex: number;
@@ -50,15 +51,7 @@ export const getCupOwners = (state: KnechtState): CupOwners => {
     const orders = [getDrinkOrder(state, 0), getDrinkOrder(state, 1)];
     const drunk = [0, 0];
 
-    const applyMarkers = (turnIndex: number) => state.markers.forEach(marker => {
-        if (marker.afterTurnIndex !== turnIndex) return;
-        if (marker.kind === 'overtime') racks.forEach(rack => rack.clear());
-        // Re-Rack: das werfende Team stellt die Becher des Gegners neu
-        if (marker.kind === 'reRack') racks[1 - marker.teamIndex].clear();
-    });
-
     state.turns.forEach((turn, turnIndex) => {
-        applyMarkers(turnIndex);
         const removed = cupsOfTurn(turn);
         if (!removed) return;
         removed.cups.forEach(cup => {
@@ -70,10 +63,25 @@ export const getCupOwners = (state: KnechtState): CupOwners => {
                 thrower: { teamIndex: turn.teamIndex, playerIndex: turn.playerIndex },
                 drinker: order[drunk[removed.rackTeam]++ % order.length] ?? 0,
             };
-            racks[removed.rackTeam].set(cup, removal);
             removals.push(removal);
         });
     });
-    applyMarkers(state.turns.length);
+
+    // Plaetze verteilen: zuerst bleibt jeder Treffer auf seinem Feld, solange es leer ist (bei mehreren Treffern auf
+    // demselben Feld der neueste). Die uebrigen fuellen die freien Felder der Reihe nach, neueste zuerst.
+    [0, 1].forEach(rackTeam => {
+        const standing = new Set(getStandingCups(state.racks[rackTeam]));
+        const empty = Array.from({ length: CUP_COUNT }, (_, cup) => cup).filter(cup => !standing.has(cup));
+        const own = removals.filter(removal => removal.rackTeam === rackTeam).reverse();
+        const placed = new Set<CupRemoval>();
+        own.forEach(removal => {
+            if (!standing.has(removal.cup) && !racks[rackTeam].has(removal.cup)) { racks[rackTeam].set(removal.cup, removal); placed.add(removal); }
+        });
+        const free = empty.filter(cup => !racks[rackTeam].has(cup));
+        own.filter(removal => !placed.has(removal)).forEach(removal => {
+            const cup = free.shift();
+            if (cup !== undefined) racks[rackTeam].set(cup, removal);
+        });
+    });
     return { racks, removals };
 };
