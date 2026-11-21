@@ -109,6 +109,17 @@ export const devLiveServer = (): Plugin => ({
 
             if (req.method === 'GET' && parts.length === 1) return send(200, { game: toPublic(game) });
 
+            // Long-Polling wie im Backend: antworten, sobald sich die Version aendert, sonst nach wait ms "unveraendert"
+            if (req.method === 'POST' && parts[1] === 'wait') {
+                const since = typeof body?.since === 'number' ? body.since : null;
+                const deadline = Date.now() + Math.max(0, Math.min(Number(body?.wait ?? 0) || 0, 8000));
+                let closed = false;
+                res.on('close', () => { closed = true; });
+                while (since !== null && game.version === since && Date.now() + 100 <= deadline && !closed) await new Promise(resolve => setTimeout(resolve, 100));
+                if (closed) return;
+                return send(200, since !== null && game.version === since ? { unchanged: true, version: since } : { game: toPublic(game) });
+            }
+
             const me = deviceOf(game, body?.token);
             if (!me) return send(404, { message: 'not found' });
 

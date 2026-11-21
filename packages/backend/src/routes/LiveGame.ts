@@ -8,6 +8,7 @@ router.post("/create", controller.create);
 router.post("/peek", controller.peek);
 router.post("/join", controller.join);
 router.get("/:id", controller.read);
+router.post("/:id/wait", controller.wait);
 router.post("/:id/sync", controller.sync);
 router.post("/:id/bind", controller.bind);
 router.post("/:id/claim", controller.claim);

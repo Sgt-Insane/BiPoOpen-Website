@@ -1,22 +1,28 @@
 import { onUnmounted, ref } from 'vue';
 import {
-    bindLiveDevice, claimLiveGame, createLiveGame, finishLiveGame, getLiveGame, joinLiveGame, kickLiveDevice, leaveLiveGame, releaseLiveGame, syncLiveGame,
+    bindLiveDevice, claimLiveGame, createLiveGame, finishLiveGame, getLiveGame, joinLiveGame, kickLiveDevice, leaveLiveGame, releaseLiveGame, syncLiveGame, waitForLiveGame,
     type LiveBinding, type LiveGame, type LiveProgress,
 } from './knechtLive';
 import type { LiveDevice, LiveDeviceBinding } from './liveDevices';
 
 // Synchronisiert ein laufendes Knecht-Spiel mit dem Server (Live-Ticker, mehrere Handys).
 //
-// - Jede lokale Aenderung wird kurz danach hochgeladen, mit der zuletzt bekannten Version (baseVersion).
-// - Alle 1,5 s wird der Serverstand abgefragt; hat ein anderes Handy etwas eingetragen, wird es uebernommen.
+// - Jede lokale Aenderung wird sofort hochgeladen, mit der zuletzt bekannten Version (baseVersion).
+// - Long-Polling: eine Abfrage wartet beim Server, bis sich etwas aendert (hoechstens WAIT_MS), und kommt dann sofort
+//   zurueck; hat ein anderes Handy etwas eingetragen, wird es uebernommen. Kennt das Backend das noch nicht,
+//   wird wie frueher alle POLL_MS abgefragt.
 // - Haben zwei Handys gleichzeitig eingetragen (Konflikt), werden die eigenen neuen Wuerfe hinter die des anderen
 //   gehaengt (z.B. 2 gegen 2, beide Spieler werfen gleichzeitig). Passt das nicht zu den Regeln, gilt der Stand,
 //   der zuerst beim Server war, und dieses Handy bekommt einen Hinweis.
 // - Jedes Handy traegt fuer einen Spieler oder ein Tischende ein (siehe liveDevices.ts). Jedes Handy kann eintragen,
 //   abbrechen und andere Handys trennen; eingetragen wird nur von einem Handy gleichzeitig (claim).
 
-const POLL_MS = 1500;
-const PUSH_DELAY_MS = 250;
+const POLL_MS = 1500;           // ohne Long-Polling (aelteres Backend) und nach einem Fehler
+const WAIT_MS = 7000;           // so lange wartet eine Abfrage hoechstens beim Server
+// Kurz sammeln: z.B. Treffer und Zusatzbecher kurz hintereinander gehen in einem Upload
+const PUSH_DELAY_MS = 40;
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 export type LiveStatus = 'off' | 'connecting' | 'live' | 'offline';
 
@@ -51,7 +57,8 @@ export const useKnechtLiveSync = (options: Options) => {
     let pushing = false;
     let pushAgain = false;
     let pushTimer: ReturnType<typeof setTimeout> | null = null;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollRun = 0;                            // laufende Abfrage-Schleife (hoeher = die alte endet)
+    let longPolling = true;                     // false: Backend kennt /wait noch nicht
     let resyncPending = false;                  // nach dem Neuladen: erst den Serverstand pruefen
 
     const setBinding = (value: LiveBinding | null) => {
@@ -148,6 +155,15 @@ export const useKnechtLiveSync = (options: Options) => {
         if (!binding.value) return;
         if (!game) { status.value = 'offline'; return; }
         status.value = 'live';
+        handleRemote(game);
+    };
+
+    // Eigener Upload laeuft oder steht unmittelbar an: dessen Antwort bringt den Stand
+    const isPushBusy = () => pushing || (!!pushTimer && !resyncPending);
+
+    // Serverstand einer Abfrage uebernehmen
+    const handleRemote = (game: LiveGame) => {
+        if (!binding.value || isPushBusy()) return;
         if (!handleServer(game)) return;
         if (resyncPending) {
             resyncPending = false;
@@ -177,13 +193,36 @@ export const useKnechtLiveSync = (options: Options) => {
         }
     };
 
+    // Abfrage-Schleife: Long-Polling, sonst (aelteres Backend, nach dem Neuladen) regelmaessig der ganze Stand
+    const pollLoop = async (run: number) => {
+        const active = () => run === pollRun && !!binding.value;
+        while (active()) {
+            // Erst den eigenen Upload abwarten: dessen Antwort bringt den Stand, und eine Abfrage mit der
+            // alten Version kaeme sofort zurueck
+            if (isPushBusy()) { await sleep(50); continue; }
+            if (!longPolling || resyncPending) {
+                await poll();
+                if (active() && (!longPolling || resyncPending)) await sleep(POLL_MS);
+                continue;
+            }
+            const current = binding.value!;
+            const result = await waitForLiveGame(current.id, current.version, WAIT_MS);
+            if (!active()) return;
+            if (result === 'unsupported') { longPolling = false; continue; }
+            if (!result) { status.value = 'offline'; await sleep(POLL_MS); continue; }
+            status.value = 'live';
+            if ('game' in result) handleRemote(result.game);
+            // Nichts Neues: eigene Aenderungen nachreichen, falls ein Upload verloren ging (z.B. Netzaussetzer)
+            else if (!isPushBusy()) schedulePush(0);
+        }
+    };
+
     const startPolling = () => {
         stopPolling();
-        pollTimer = setInterval(poll, POLL_MS);
+        pollLoop(pollRun);
     };
     const stopPolling = () => {
-        if (pollTimer) clearInterval(pollTimer);
-        pollTimer = null;
+        pollRun++;
     };
 
     const ended = (game: LiveGame) => {
@@ -239,7 +278,6 @@ export const useKnechtLiveSync = (options: Options) => {
         resyncPending = true;   // der erste Abruf entscheidet, wessen Stand gilt
         status.value = 'connecting';
         startPolling();
-        poll();
     };
 
     // Dieses Handy umstellen (wirft LiveJoinError('taken'))

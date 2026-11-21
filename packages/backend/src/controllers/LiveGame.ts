@@ -213,6 +213,36 @@ const read = (req: Request, res: Response) => {
         .catch(() => res.status(404).json({ message: 'not found' }));
 };
 
+// Warten auf eine Aenderung (Long-Polling): antwortet, sobald die Version nicht mehr since ist, sonst nach
+// spaetestens WAIT_MAX_MS mit { unchanged: true }. Waehrend des Wartens wird nur die Version gelesen.
+// POST statt GET: der Service Worker cached GET-Anfragen ans Backend.
+const WAIT_MAX_MS = 8000;
+const WAIT_STEP_MS = 200;
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const wait = async (req: Request, res: Response) => {
+    // since fehlt: sofort den Stand liefern (Version 0 ist ein gueltiger Stand eines neuen Spiels)
+    const since = typeof req.body?.since === 'number' ? req.body.since : null;
+    const waitMs = Math.max(0, Math.min(Number(req.body?.wait ?? 0) || 0, WAIT_MAX_MS));
+    const deadline = Date.now() + waitMs;
+    let closed = false;
+    res.on('close', () => { closed = true; });
+    try {
+        while (since !== null) {
+            const head = await LiveGame.findById(req.params.id).select('version').lean();
+            if (!head) return res.status(404).json({ message: 'not found' });
+            if (head.version !== since) break;
+            if (closed) return;
+            if (Date.now() + WAIT_STEP_MS > deadline) return res.status(200).json({ unchanged: true, version: since });
+            await sleep(WAIT_STEP_MS);
+        }
+        const game = await LiveGame.findById(req.params.id).lean();
+        if (closed) return;
+        game ? res.status(200).json({ game: toPublic(game) }) : res.status(404).json({ message: 'not found' });
+    } catch {
+        if (!closed) res.status(404).json({ message: 'not found' });
+    }
+};
+
 // Aktueller Stand fuer ein Handy, das nicht schreiben durfte: 404 = nicht (mehr) dabei, sonst 409 mit dem Stand
 const conflict = async (res: Response, id: string, token: unknown) => {
     const current = await LiveGame.findById(id).lean();
@@ -301,4 +331,4 @@ const finish = async (req: Request, res: Response) => {
     }
 };
 
-export default { create, peek, join, bind, kick, leave, list, read, sync, claim, release, finish };
+export default { create, peek, join, bind, kick, leave, list, read, wait, sync, claim, release, finish };

@@ -42,7 +42,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import MatchTimeline from '@/components/shared/MatchElement/MatchTimeline.vue';
-import { getLiveGame, type LiveGame } from '@/components/frontend/biPoKnecht/knechtLive';
+import { getLiveGame, waitForLiveGame, type LiveGame } from '@/components/frontend/biPoKnecht/knechtLive';
 import { getTeamColor } from '@/components/frontend/biPoKnecht/KnechtUtilFunctions';
 import { getLiveView } from './liveView';
 import { useEloRatings } from '@/components/shared/useEloRatings';
@@ -74,25 +74,52 @@ const chance = computed(() => {
     return getWinProbabilities(match, expected, false).at(-1)?.chance ?? null;
 });
 
+// Neue Wuerfe per Long-Polling (sofort nach jeder Aenderung). Kennt das Backend das noch nicht, wie bisher alle POLL_MS.
+// Der Timer laeuft weiter fuer die Spielzeit und als Rueckfall.
 let timer: ReturnType<typeof setInterval> | null = null;
+let longPolling = true;
+let watching = false;
+let alive = true;
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+const watchGame = async () => {
+    if (watching) return;
+    watching = true;
+    while (alive && longPolling && game.value?.status === 'live') {
+        if (document.visibilityState !== 'visible') { await sleep(POLL_MS); continue; }
+        const result = await waitForLiveGame(id, game.value.version, 7000);
+        if (!alive) break;
+        if (result === 'unsupported') longPolling = false;
+        else if (!result) await sleep(POLL_MS);
+        else if ('game' in result) game.value = result.game;
+    }
+    watching = false;
+};
+
 const load = async () => {
     now.value = Date.now();
+    // Beendet: nicht weiter abfragen
+    if (game.value && game.value.status !== 'live') {
+        if (timer) clearInterval(timer);
+        timer = null;
+        return;
+    }
+    if (game.value && longPolling) return watchGame();
     if (document.visibilityState !== 'visible' && game.value) return;
     const loaded = await getLiveGame(id);
     if (loaded) game.value = loaded;
     else if (!game.value) notFound.value = true;
-    // Beendet: nicht weiter abfragen
-    if (game.value && game.value.status !== 'live' && timer) {
-        clearInterval(timer);
-        timer = null;
-    }
+    if (game.value && longPolling) watchGame();
 };
 
 onMounted(() => {
     load();
     timer = setInterval(load, POLL_MS);
 });
-onBeforeUnmount(() => { if (timer) clearInterval(timer); });
+onBeforeUnmount(() => {
+    alive = false;
+    if (timer) clearInterval(timer);
+});
 
 const goBack = () => {
     if (window.history.state?.back) router.back();

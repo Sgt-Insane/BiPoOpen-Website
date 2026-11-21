@@ -131,6 +131,22 @@ export const getLiveGame = async (id: string): Promise<LiveGame | null> => {
     }
 };
 
+// Auf eine Aenderung warten (Long-Polling): der Server antwortet sofort, sobald es eine neuere Version als since gibt,
+// sonst nach waitMs mit "unveraendert". POST, damit der Service Worker die Antwort nicht cached.
+// 'unsupported': das Backend kennt das noch nicht (aelteres Backend) - dann wie bisher regelmaessig abfragen.
+export type LiveWaitResult = { game: LiveGame } | { unchanged: true } | 'unsupported' | null;
+export const waitForLiveGame = async (id: string, since: number, waitMs: number): Promise<LiveWaitResult> => {
+    try {
+        const { data } = await axios.post(url(`${id}/wait`), { since, wait: waitMs }, { timeout: waitMs + 10000 });
+        if (data?.unchanged) return { unchanged: true };
+        return data?.game ? { game: data.game as LiveGame } : null;
+    } catch (error: any) {
+        // Unbekannte Route: Express antwortet mit HTML statt mit { message }
+        if (error?.response?.status === 404 && typeof error.response.data?.message !== 'string') return 'unsupported';
+        return null;
+    }
+};
+
 export const listLiveGames = async (): Promise<LiveGame[]> => {
     try {
         const { data } = await axios.get(url('list'));
